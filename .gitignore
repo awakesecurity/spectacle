@@ -1,6 +1,8 @@
 dist
 dist-*
 cabal-dev
+hie.yaml
+TAGS
 *.o
 *.hi
 *.hie
@@ -21,3 +23,6 @@ cabal.project.local
 cabal.project.local~
 .HTF/
 .ghc.environment.*
+result
+result-*
+.DS_Store

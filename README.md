@@ -1,2 +1,3 @@
-# Haskell-Specify
-A formal specification tool with an EDSL in Haskell and Haskell-based model checker.
+# spectacle
+
+Embedded specification language & model checker in Haskell.
