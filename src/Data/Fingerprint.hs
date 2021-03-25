@@ -113,17 +113,17 @@ insert = go 0
         | x == leafHash -> Leaf x
         | otherwise ->
           go shift x (Many (bitmask leafHash shift) (Arr.singleton fp))
-      Many bitmap vector ->
+      Many bitmap array ->
         let index = maskIndex bitmap mask
             mask = bitmask x shift
          in if bitmap .&. mask == 0
               then
                 let leaf = Leaf x
-                    array' = Arr.insertAt vector index leaf
+                    array' = Arr.insertAt array index leaf
                     bitmap' = bitmap .|. mask
                  in Many bitmap' array'
               else
-                let subtree = vector Arr.! index
+                let subtree = array Arr.! index
                     subtree' = go (shift + bitsPerSubkey) x subtree
-                    array' = Arr.updateAt vector index subtree'
+                    array' = Arr.updateAt array index subtree'
                  in Many bitmap array'
