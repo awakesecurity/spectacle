@@ -20,7 +20,7 @@ let
     (newPkgs: oldPkgs: rec {
       haskellPackagesGhc8101 = oldPkgs.haskell.packages.ghc8101.extend (
         newPkgs.lib.fold newPkgs.lib.composeExtensions (_: _: {}) [
-          (readDirectory ./nix/packages)
+          (oldPkgs.callPackage ./nix/haskell-packages.nix {})
           (haskellPackagesNew: haskellPackagesOld: {
             spectacle = haskellPackagesNew.callCabal2nix "spectacle" ./. { };
 
@@ -74,6 +74,16 @@ let
 
         ]
       );
+
+      all-cabal-hashes =
+        let
+          rev = "9ed3ceaf0d81ee0ceb87d11ff56081271eef246b";
+          sha256 = "14k3r6qkq4fzl8rmhkkzci4zxrncz4mv8drmql5mw2m0qqspv522";
+        in
+          oldPkgs.fetchurl {
+            url = "https://github.com/commercialhaskell/all-cabal-hashes/archive/${rev}.tar.gz";
+            inherit sha256;
+          };
     })
   ];
 
