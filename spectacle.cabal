@@ -95,7 +95,6 @@ test-suite unit-tests
 
   build-depends:
       hashable
-    , transformers >= 0.5
     , spectacle
     , hedgehog
     , tasty

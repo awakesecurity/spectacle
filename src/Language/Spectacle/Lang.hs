@@ -6,7 +6,7 @@ module Language.Spectacle.Lang
 
     -- ** Syntax
     Syntax,
-    type (|>) (..),
+    type (|>),
     send,
 
     -- ** Interpreters
@@ -42,7 +42,7 @@ import Language.Spectacle.Lang.Interpreters
     replaceRelay,
     replaceRelayS,
   )
-import Language.Spectacle.Lang.Sum (Syntax, type (|>) (..))
+import Language.Spectacle.Lang.Sum (Syntax, type (|>))
 import Language.Spectacle.Type.Rec (Rec)
 
 -- -----------------------------------------------------------------------------
