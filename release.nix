@@ -1,6 +1,4 @@
 let
-  config = { };
-
   readDirectory = directory:
     haskellPackagesNew: haskellPackagesOld:
       let
@@ -77,8 +75,7 @@ let
     })
   ];
 
-  nixpkgs = import ./nix/20_03.nix;
-  pkgs    = import nixpkgs { inherit config overlays; };
+  pkgs = import ./nix/nixpkgs.nix { inherit overlays; };
 
   spectacle-shell = (pkgs.haskellPackagesGhc8101.shellFor {
     packages = p: [
