@@ -20,9 +20,8 @@ in {
   inherit (pkgs.haskellPackages) fourmolu dhall-yaml dhall-nix;
   inherit spectacle-shell;
 
-  spectacle = pkgs.haskell.lib.appendConfigureFlags pkgs.haskellPackages.spectacle [
-    "--ghc-options=-Werror"
-    "--ghc-options=-Wmissing-import-lists"
-    "--ghc-options=-Wunused-packages"
-  ];
+  spectacle =
+    pkgs.haskell.lib.appendConfigureFlags pkgs.haskellPackages.spectacle [
+      "--ghc-options=-Werror"
+    ];
 }
