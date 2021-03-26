@@ -5,8 +5,21 @@ on:
       - main
   pull_request:
 jobs:
-  build:
+  build-linux:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2.3.4
+        name: Checkout
+      - uses: cachix/install-nix-action@v12
+        name: Install Nix
+      - uses: cachix/cachix-action@v8
+        name: Set up Cachix
+        with:
+          name: awakesecurity
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+      - run: nix-build release.nix --attr spectacle
+  build-macos:
+    runs-on: macos-10.15
     steps:
       - uses: actions/checkout@v2.3.4
         name: Checkout
