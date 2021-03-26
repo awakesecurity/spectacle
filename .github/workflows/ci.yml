@@ -12,6 +12,8 @@ jobs:
         name: Checkout
       - uses: cachix/install-nix-action@v12
         name: Install Nix
+        with:
+          nix_path: nixpkgs=./nix/pkgs.nix
       - uses: cachix/cachix-action@v8
         name: Set up Cachix
         with:
@@ -25,6 +27,8 @@ jobs:
         name: Checkout
       - uses: cachix/install-nix-action@v12
         name: Install Nix
+        with:
+          nix_path: nixpkgs=./nix/pkgs.nix
       - uses: cachix/cachix-action@v8
         name: Set up Cachix
         with:
@@ -38,6 +42,8 @@ jobs:
         name: Checkout
       - uses: cachix/install-nix-action@v12
         name: Install Nix
+        with:
+          nix_path: nixpkgs=./nix/pkgs.nix
       - uses: cachix/cachix-action@v8
         name: Set up Cachix
         with:
