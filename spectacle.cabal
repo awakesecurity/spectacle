@@ -64,6 +64,7 @@ library
     , lifted-base
     , lifted-async
     , mtl >= 2.2
+    , natural-transformation
     , primitive
     , stm >= 2.5
     , transformers >= 0.5
