@@ -16,7 +16,7 @@ let
 
   overlays = [
     (newPkgs: oldPkgs: rec {
-      haskellPackagesGhc8101 = oldPkgs.haskell.packages.ghc8101.extend (
+      haskellPackages = oldPkgs.haskellPackages.extend (
         newPkgs.lib.fold newPkgs.lib.composeExtensions (_: _: {}) [
           (readDirectory ./nix/packages)
           (haskellPackagesNew: haskellPackagesOld: {
@@ -77,11 +77,11 @@ let
 
   pkgs = import ./nix/nixpkgs.nix { inherit overlays; };
 
-  spectacle-shell = (pkgs.haskellPackagesGhc8101.shellFor {
+  spectacle-shell = (pkgs.haskellPackages.shellFor {
     packages = p: [
       p.spectacle
     ];
-    buildInputs = [ pkgs.haskellPackages.cabal-install pkgs.haskellPackagesGhc8101.ghcid ];
+    buildInputs = [ pkgs.haskellPackages.cabal-install pkgs.haskellPackages.ghcid ];
   });
 
   fourmoluOptions =
@@ -93,10 +93,10 @@ let
 
 in {
   inherit pkgs fourmoluOptions;
-  inherit (pkgs.haskellPackagesGhc8101) fourmolu dhall-yaml dhall-nix;
+  inherit (pkgs.haskellPackages) fourmolu dhall-yaml dhall-nix;
   inherit spectacle-shell;
 
-  spectacle = pkgs.haskell.lib.appendConfigureFlags pkgs.haskellPackagesGhc8101.spectacle [
+  spectacle = pkgs.haskell.lib.appendConfigureFlags pkgs.haskellPackages.spectacle [
     "--ghc-options=-Werror"
     "--ghc-options=-Wmissing-import-lists"
     "--ghc-options=-Wunused-packages"
