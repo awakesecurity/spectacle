@@ -1,17 +1,5 @@
 let
-  overlays = [
-    (newPkgs: oldPkgs: rec {
-      haskellPackages = oldPkgs.haskellPackages.extend (
-        newPkgs.lib.fold newPkgs.lib.composeExtensions (_: _: {}) [
-          (haskellPackagesNew: haskellPackagesOld: {
-            spectacle = haskellPackagesNew.callCabal2nix "spectacle" ./. { };
-          })
-        ]
-      );
-    })
-  ];
-
-  pkgs = import ./nix/nixpkgs.nix { inherit overlays; };
+  pkgs = import ./nix/pkgs.nix;
 
   spectacle-shell = (pkgs.haskellPackages.shellFor {
     packages = p: [
