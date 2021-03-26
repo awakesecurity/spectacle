@@ -108,8 +108,16 @@ test-suite unit-tests
   main-is:             Main.hs
 
   other-modules:
-      Fingerprint
+      Checker
+    , Checker.Diehard
+    , Fingerprint
     , Fingerprint.Array
+    , Lang.Sum
+    , Spec
+    , Spec.CyclicDependencies
+    , Spec.Exceptions
+    , Spec.Sharing
+
 
   build-depends:
       hashable
