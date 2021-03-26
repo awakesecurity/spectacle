@@ -70,20 +70,17 @@ library
     , transformers-base
 
   exposed-modules:
-      Control.Monad.Mapping
-    , Control.Monad.Nondet
-    , Control.Monad.Nondet.Internal
+      Data.FTCQueue
     , Data.Fingerprint
     , Data.Fingerprint.Array
     , Data.Fingerprint.Binary
-    , Data.FTCQueue
     , Data.Type.HList
     , Data.Type.HList.Class
     , Data.Type.HList.Internal
     , Data.Type.Induction
     , Data.Var
     , Language.Spectacle.Checker
-    , Language.Spectacle.Spec
+    , Language.Spectacle.Effect.NonDet
     , Language.Spectacle.Lang
     , Language.Spectacle.Lang.Control
     , Language.Spectacle.Lang.Internal
@@ -91,9 +88,16 @@ library
     , Language.Spectacle.Lang.Sum
     , Language.Spectacle.RTS
     , Language.Spectacle.RTS.Callstack
+    , Language.Spectacle.RTS.Env
     , Language.Spectacle.RTS.Exception
+    , Language.Spectacle.Spec
+    , Language.Spectacle.Syntax
     , Language.Spectacle.Syntax.Ascript
+    , Language.Spectacle.Syntax.Closure
     , Language.Spectacle.Syntax.Name
+    , Language.Spectacle.Syntax.Quantifier
+    , Language.Spectacle.Syntax.Relation
+    , Language.Spectacle.Syntax.Subst
     , Language.Spectacle.Type.Rec
 
 test-suite unit-tests
@@ -105,13 +109,6 @@ test-suite unit-tests
   other-modules:
       Fingerprint
     , Fingerprint.Array
-    , Checker
-    , Checker.Diehard
-    , Lang.Sum
-    , Spec
-    , Spec.CyclicDependencies
-    , Spec.Exceptions
-    , Spec.Sharing
 
   build-depends:
       hashable
