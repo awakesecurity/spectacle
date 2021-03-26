@@ -48,6 +48,7 @@ module Language.Spectacle.Type.Rec
 where
 
 import Data.Functor.Identity (Identity (Identity, runIdentity))
+import Data.Hashable (Hashable, hash, hashWithSalt)
 import Data.Kind (Constraint, Type)
 
 import GHC.TypeLits (Symbol)
@@ -141,6 +142,30 @@ instance (Eq (m a), Eq (RecT m row)) => Eq (RecT m (nm # a ': row)) where
   f1 :| r1 == f2 :| r2 = f1 == f2 && r1 == r2
   {-# INLINE (==) #-}
 
+-- | @since 0.1.0.0
+instance Ord (RecT m '[]) where
+  -- Nominal Equality
+  compare RNil RNil = EQ
+  {-# INLINE CONLIKE compare #-}
+
+-- | @since 0.1.0.0
+instance (Ord (m a), Ord (RecT m row)) => Ord (RecT m (nm # a ': row)) where
+  compare (f1 :| r1) (f2 :| r2) = case compare f1 f2 of
+    LT -> LT
+    GT -> GT
+    EQ -> compare r1 r2
+  {-# INLINE compare #-}
+
+-- | @since 0.1.0.0
+instance Hashable (RecT m '[]) where
+  hashWithSalt salt RNil = hashWithSalt salt salt
+  {-# INLINE hashWithSalt #-}
+
+-- | @since 0.1.0.0
+instance (Hashable (m a), Hashable (RecT m row)) => Hashable (RecT m (nm # a ': row)) where
+  hashWithSalt salt (f :| r) = hashWithSalt (hashWithSalt salt r) (hash f)
+  {-# INLINE hashWithSalt #-}
+
 -- | Apple some function @f a -> g a@ "over" the values of the fields. Whether
 -- it be a natural transformation or transforming a GADT.
 --
@@ -195,3 +220,12 @@ data FieldT nm m a
 -- | @since 0.1.0.0
 instance Show (m a) => Show (FieldT nm m a) where
   show (FieldT nm x) = "FieldT " ++ show nm ++ " " ++ show x
+
+-- | @since 0.1.0.0
+instance Ord (m a) => Ord (FieldT nm m a) where
+  compare (FieldT _ x) (FieldT _ y) = compare x y
+  {-# INLINE compare #-}
+
+-- | @since 0.1.0.0
+instance Hashable (m a) => Hashable (FieldT nm m a) where
+  hashWithSalt salt (FieldT _ x) = hashWithSalt salt x
