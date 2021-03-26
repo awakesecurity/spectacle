@@ -57,23 +57,12 @@ library
 
   build-depends:
       containers >= 0.6
-    , exceptions >= 0.10
     , hashable >= 1.3.0.0
-    , monad-control
-    , async
-    , lifted-base
-    , lifted-async
-    , mtl >= 2.2
+    , natural-transformation
     , primitive
-    , stm >= 2.5
-    , transformers >= 0.5
-    , transformers-base
 
   exposed-modules:
-      Control.Monad.Mapping
-    , Control.Monad.Nondet
-    , Control.Monad.Nondet.Internal
-    , Data.Fingerprint
+      Data.Fingerprint
     , Data.Fingerprint.Array
     , Data.Fingerprint.Binary
     , Data.FTCQueue
@@ -81,9 +70,6 @@ library
     , Data.Type.HList.Class
     , Data.Type.HList.Internal
     , Data.Type.Induction
-    , Data.Var
-    , Language.Spectacle.Checker
-    , Language.Spectacle.Spec
     , Language.Spectacle.Lang
     , Language.Spectacle.Lang.Control
     , Language.Spectacle.Lang.Internal
@@ -105,13 +91,6 @@ test-suite unit-tests
   other-modules:
       Fingerprint
     , Fingerprint.Array
-    , Checker
-    , Checker.Diehard
-    , Lang.Sum
-    , Spec
-    , Spec.CyclicDependencies
-    , Spec.Exceptions
-    , Spec.Sharing
 
   build-depends:
       hashable
