@@ -39,6 +39,9 @@ common common
     -Wmissing-home-modules
     -Wredundant-constraints
     -fshow-warning-groups
+    -Wmissing-import-lists
+    -Wunused-packages
+
 
   build-depends:
       base >=4.14 && <4.15
@@ -62,10 +65,10 @@ library
     , primitive
 
   exposed-modules:
-      Data.Fingerprint
+      Data.FTCQueue
+    , Data.Fingerprint
     , Data.Fingerprint.Array
     , Data.Fingerprint.Binary
-    , Data.FTCQueue
     , Data.Type.HList
     , Data.Type.HList.Class
     , Data.Type.HList.Internal
@@ -92,9 +95,9 @@ test-suite unit-tests
       Fingerprint
     , Fingerprint.Array
 
+
   build-depends:
       hashable
-    , transformers >= 0.5
     , spectacle
     , hedgehog
     , tasty
