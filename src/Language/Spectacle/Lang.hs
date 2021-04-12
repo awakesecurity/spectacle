@@ -1,126 +1,130 @@
-module Language.Spectacle.Lang
-  ( -- * CEK Machine
-    Lang (..),
-    runLang,
-    evalLang,
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeFamilies #-}
 
-    -- ** Syntax
-    Syntax,
-    type (|>),
+-- | The 'Lang' monad and functions for defining Spectacles syntax as effects.
+--
+-- @since 0.1.0.0
+module Language.Spectacle.Lang
+  ( -- * Lang
+    Lang (Pure, Yield),
+    runLang,
     send,
+    scope,
+
+    -- * Effects
+    type EffectK,
+    type ScopeK,
+    FirstOrder,
+    Effect,
 
     -- ** Interpreters
+
+    -- *** First-order
     interpret,
-    interpretWith,
-    reinterpretWith,
-    interpose,
-    interposeWith,
-    queueApp,
-    queueCompose,
-    handleRelay,
-    handleRelayS,
-    replaceRelay,
-    replaceRelayS,
-    interposeRelay,
+    stateful,
+
+    -- ** Membership
+    type (:<),
+    Member (inject, project, injectS, projectS),
+
+    -- ** Unions
+    Union (Op, Scoped),
+    Op (OHere, OThere),
+    Scoped (SHere, SThere),
+    decomposeOp,
+    decomposeS,
   )
 where
 
 import Control.Natural (type (~>))
+import Data.Coerce (coerce)
+import Data.Void (absurd)
 
-import Data.Type.Induction (WInductMaybe)
-import Language.Spectacle.Lang.Control (Control (Done, Next), Store (carried))
-import Language.Spectacle.Lang.Internal
-  ( Lang (Lang),
-    queueApp,
-    queueCompose,
-    send,
+import Data.Functor.Loom (hoist, weave, (~>~))
+import Language.Spectacle.Lang.Internal (Lang (Pure, Yield), Union (Op, Scoped), scope, send)
+import Language.Spectacle.Lang.Member (Member (inject, injectS, project, projectS), type (:<))
+import Language.Spectacle.Lang.Op (Op (OHere, OThere), decomposeOp)
+import Language.Spectacle.Lang.Scoped
+  ( Effect,
+    EffectK,
+    FirstOrder,
+    ScopeK,
+    Scoped (SHere, SThere),
+    decomposeS,
   )
-import Language.Spectacle.Lang.Interpreters
-  ( handleRelay,
-    handleRelayS,
-    interposeRelay,
-    replaceRelay,
-    replaceRelayS,
-  )
-import Language.Spectacle.Lang.Sum (Syntax, type (|>))
-import Language.Spectacle.Type.Rec (Rec)
 
--- -----------------------------------------------------------------------------
+-- -------------------------------------------------------------------------------------------------
 
--- | Run a 'Lang' instance whose effects have been completely dispatched with
--- the provided store.
+-- | Used to unwrap the pure value in 'Lang' after all of its effects have been discharged.
 --
 -- @since 0.1.0.0
-runLang :: Rec cxt -> Lang '[] cxt a -> Store cxt a
-runLang store (Lang m) = case m store of
-  Done store' -> store'
-  -- @Lang '[] cxt a@ cannot be constructed, only obtain by completely
-  -- handling all effects in 'Lang' which always results in 'Done' so this
-  -- this 'Next' case should be impossible to reach so long as 'Lang' is
-  -- handled safely.
-  Next _ -> error "runLang: pattern match on 'Next' should be impossible"
-{-# INLINE runLang #-}
+runLang :: Lang ctx '[] a -> a
+runLang (Pure x) = x
+runLang _ =
+  -- @Lang ctx '[] a@ can only be constructed with 'Pure' or obtained by discharging all its
+  -- effects, which would result in 'Pure'. Cases where @Lang ctx '[] a@ holds impure values mean
+  -- that:
+  --
+  -- 1. An effect escaped the scope of 'Lang' and therefore was not discharged when the handler for
+  -- that effect was run on 'Lang'. This not impossible but is /very/ difficult to do since the
+  -- escaped effect would have to be hidden from 'Loom'. 'Lang' in a first-order operation,
+  -- FO effects with resumptions to Lang, or intentionally weakening/coercing a @Lang ctx effs' a@
+  -- into some other 'Lang' are all ways which basically gaurentee that effects will be left
+  -- unhandled.
+  --
+  -- 2. Operations like 'unsafeCoerce' where used to change the effect signature of 'Lang'.
+  error
+    "internal error: Lang match against Yield, this means that an effect escaped the scope of Lang \
+    \and was left unhandled. This should be impossible."
 
--- | Like 'runLang', 'evalLang' runs a 'Lang' instance whose have been completely
--- dispatched but returns the carried value while discarding the 'Store'.
---
--- @since 0.1.0.0
-evalLang :: Rec cxt -> Lang '[] cxt a -> a
-evalLang store = carried . runLang store
-{-# INLINE evalLang #-}
-
--- | Interprets an effect given a natural transformation from the effect being
--- interpreted to 'Lang'.
+-- | Interpreter combinator for purely first-order effects.
 --
 -- @since 0.1.0.0
 interpret ::
-  (m (Lang sig cxt) ~> Lang sig cxt) ->
-  Lang (m ': sig) cxt a ->
-  Lang sig cxt a
-interpret f = interpretWith \_ m -> (f m >>=)
+  FirstOrder eff =>
+  (Lang ctx (eff ': effs) ~> Lang ctx effs) ->
+  (forall x. eff x -> (x -> Lang ctx effs a) -> Lang ctx effs a) ->
+  Lang ctx (eff ': effs) a ->
+  Lang ctx effs a
+interpret eta handling = loop
+  where
+    loop = \case
+      Pure x -> pure x
+      Yield (Op op) k -> case decomposeOp op of
+        Left other -> Yield (Op other) k'
+        Right eff -> handling eff k'
+        where
+          k' = loop . k
+      Yield (Scoped s l) k -> case decomposeS s of
+        Left other -> Yield (Scoped other (l ~>~ hoist eta)) (loop . k)
+        Right bot -> absurd (coerce bot)
 {-# INLINE interpret #-}
 
--- | Interpret an effect given its continuation.
+-- | Like 'interpret', but threads an extra parameter through the interpreters continuation,
+-- typically used as state.
 --
 -- @since 0.1.0.0
-interpretWith ::
-  forall m a sig cxt.
-  (forall x. Rec cxt -> m (Lang sig cxt) x -> (x -> Lang sig cxt a) -> Lang sig cxt a) ->
-  Lang (m ': sig) cxt a ->
-  Lang sig cxt a
-interpretWith = handleRelay pure
-{-# INLINE interpretWith #-}
-
--- | Reinterpret an effect @f@ as another effect @g@ given its continuation.
---
--- @since 0.1.0.0
-reinterpretWith ::
-  WInductMaybe g sig =>
-  (forall x. Rec cxt -> f (Lang sig cxt) x -> (x -> Lang (g ': sig) cxt a) -> Lang (g ': sig) cxt a) ->
-  Lang (f ': sig) cxt a ->
-  Lang (g ': sig) cxt a
-reinterpretWith = replaceRelay pure
-{-# INLINE reinterpretWith #-}
-
--- | Interpose indermediate computations between effects.
---
--- @since 0.1.0.0
-interpose ::
-  m |> sig =>
-  (m (Lang sig cxt) ~> Lang sig cxt) ->
-  Lang sig cxt a ->
-  Lang sig cxt a
-interpose f = interposeWith \_ m -> (f m >>=)
-{-# INLINE interpose #-}
-
--- | Interpose intermediate computations between effects given the effects
--- continuation.
---
--- @since 0.1.0.0
-interposeWith ::
-  m |> sig =>
-  (forall x. Rec cxt -> m (Lang sig cxt) x -> (x -> Lang sig cxt a) -> Lang sig cxt a) ->
-  Lang sig cxt a ->
-  Lang sig cxt a
-interposeWith = interposeRelay pure
-{-# INLINE interposeWith #-}
+stateful ::
+  FirstOrder eff =>
+  s ->
+  (s -> a -> Lang ctx effs b) ->
+  (forall x. s -> Lang ctx (eff ': effs) x -> Lang ctx effs (s, x)) ->
+  (forall x. s -> eff x -> (s -> x -> Lang ctx effs b) -> Lang ctx effs b) ->
+  Lang ctx (eff ': effs) a ->
+  Lang ctx effs b
+stateful s onRet eta handling = loop s
+  where
+    loop st = \case
+      Pure x -> onRet st x
+      Yield (Op op) k -> case decomposeOp op of
+        Left other -> Yield (Op other) (k' st)
+        Right eff -> handling st eff k'
+        where
+          k' st' = loop st' . k
+      Yield (Scoped scoped l) k -> case decomposeS scoped of
+        Left other -> Yield (Scoped other (weave (st, ()) (uncurry eta) l)) (uncurry k')
+        Right bot -> absurd (coerce bot)
+        where
+          k' st' = loop st' . k
