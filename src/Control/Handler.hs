@@ -15,7 +15,8 @@ import Data.Functor.Identity (Identity (..))
 
 -- -------------------------------------------------------------------------------------------------
 
--- | 'Handler' is a newtype wrapper over weaving functions. A 'Handler' almost always some form of:
+-- | 'Handler' is a newtype wrapper over weaving functions. A 'Handler' is almost always some form
+-- of:
 --
 -- @
 -- higherOrderHandler :: Handler f (Lang ctx (eff ': effs) a) (Lang ctx effs a)

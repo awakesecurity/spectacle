@@ -71,10 +71,10 @@ runLang _ =
   -- that effect was run on 'Lang'. This not impossible but is /very/ difficult to do since the
   -- escaped effect would have to be hidden from 'Loom'. 'Lang' in a first-order operation,
   -- FO effects with resumptions to Lang, or intentionally weakening/coercing a @Lang ctx effs' a@
-  -- into some other 'Lang' are all ways which basically gaurentee that effects will be left
+  -- into some other 'Lang' are all ways which basically guarentee that effects will be left
   -- unhandled.
   --
-  -- 2. Operations like 'unsafeCoerce' where used to change the effect signature of 'Lang'.
+  -- 2. Operations like 'unsafeCoerce' were used to change the effect signature of 'Lang'.
   error
     "internal error: Lang match against Yield, this means that an effect escaped the scope of Lang \
     \and was left unhandled. This should be impossible."

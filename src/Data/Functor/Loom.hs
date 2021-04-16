@@ -27,7 +27,7 @@ import qualified Control.Handler as Handler
 -- The @f ()@ is a functor that provides the structure for weaving, this is 'Identity' in the case
 -- of purely first-order effects. For the higher-order @Error@ effect, @f@ becomes 'Either'.
 --
--- The @(f a -> b)@ is an evaluation map. For pure first-order effect this is just 'runIdentity'.
+-- The @(f a -> b)@ is an evaluation map. For purely first-order effects this is just 'runIdentity'.
 -- Even in most cases for higher-order effects the evaluation map is only 'id'; however, there are
 -- instances where being able to unpack the structure of @f@ after weaving is useful.
 --
@@ -37,14 +37,17 @@ data Loom m n a b where
 
 -- | @since 0.1.0.0
 instance Functor (Loom m n a) where
-  fmap f (Loom ctx eta tmorph) = Loom ctx eta (f . tmorph)
+  fmap f (Loom ctx eta tmorphism) = Loom ctx eta (f . tmorphism)
   {-# INLINE fmap #-}
 
 -- | Unwraps a 'Loom' into a natural transformation.
 --
 -- @since 0.1.0.0
-runLoom :: Functor n => Loom m n a b -> (m a -> n b)
-runLoom (Loom ctx eta tmorph) = fmap tmorph . unHandler eta . (<$ ctx)
+runLoom :: forall m n a b. Functor n => Loom m n a b -> (m a -> n b)
+runLoom (Loom ctx (Handler eta) tmorphism) m = fmap tmorphism (weaveEff ctx m eta)
+  where
+    weaveEff :: Functor f => f () -> m a -> (forall x. f (m x) -> n (f x)) -> n (f a)
+    weaveEff structure eff distribute = distribute (eff <$ structure)
 {-# INLINE runLoom #-}
 
 -- | Composition of weaving functions with 'Loom'.
@@ -56,8 +59,8 @@ weave ::
   (forall x. f (n x) -> o (f x)) ->
   Loom m n a b ->
   Loom m o a (f b)
-weave ctx eta (Loom ctx' eta' tmorph) =
-  Loom (Compose (ctx' <$ ctx)) (Handler.compose eta' (Handler eta)) (fmap tmorph . getCompose)
+weave ctx eta (Loom ctx' eta' tmorphism) =
+  Loom (Compose (ctx' <$ ctx)) (Handler.compose eta' (Handler eta)) (fmap tmorphism . getCompose)
 {-# INLINE weave #-}
 
 -- | Composition of 'Loom'.

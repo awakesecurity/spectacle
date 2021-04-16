@@ -23,7 +23,7 @@ import qualified Data.Functor.Loom as Loom
 import Language.Spectacle.Lang.Member (Member (inject, injectS), type (:<))
 import Language.Spectacle.Lang.Op (Op)
 import Language.Spectacle.Lang.Scoped (Effect, EffectK, Scoped)
-import Language.Spectacle.Syntax.NonDet.Internal (NonDet (Choose, Empty))
+import Language.Spectacle.Syntax.Concrete.NonDet.Internal (NonDet (Choose, Empty))
 
 -- -------------------------------------------------------------------------------------------------
 
