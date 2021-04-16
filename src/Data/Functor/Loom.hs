@@ -16,7 +16,7 @@ import Control.Natural (type (~>))
 import Data.Functor.Compose (Compose (Compose, getCompose))
 import Data.Functor.Identity (Identity (Identity, runIdentity))
 
-import Control.Handler (Handler (Handler, unHandler))
+import Control.Handler (Handler (Handler))
 import qualified Control.Handler as Handler
 
 -- -------------------------------------------------------------------------------------------------

@@ -4,7 +4,7 @@
 --
 -- @since 0.1.0.0
 module Language.Spectacle.Lang.Member
-  ( type (:<),
+  ( Members,
     Member (inject, project, injectS, projectS),
   )
 where
@@ -18,19 +18,19 @@ import Language.Spectacle.Lang.Scoped (Effect, EffectK, Scoped (SHere, SThere))
 
 -- | N-ary, infix operator for 'Member'.
 --
--- * @'[A, B, C] :< effs = (Member A effs, Member B effs, Member C effs)@
--- * @A :< effs = '[A] :< effs = Member A effs@
+-- * @Members '[A, B, C] effs = (Member A effs, Member B effs, Member C effs)@
+-- * @Members A effs = Members '[A] effs = Member A effs@
 --
 -- @since 0.1.0.0
-type (:<) :: forall k. k -> [EffectK] -> Constraint
-type family eff :< effs where
+type Members :: forall k. k -> [EffectK] -> Constraint
+type family Members eff effs where
 -- Type ascription is used here rather than a type application to the LHS of the equations since
 -- fourmolu does not know how to parse type applications at the type level yet.
 --
 -- https://github.com/tweag/ormolu/issues/698
-  (:<) (eff :: EffectK) effs = Member eff effs
-  (:<) (eff ': effs' :: [EffectK]) effs = (Member eff effs, effs' :< effs)
-  (:<) ('[] :: [EffectK]) effs = ()
+  Members (eff :: EffectK) effs = Member eff effs
+  Members (eff ': effs' :: [EffectK]) effs = (Member eff effs, Members effs' effs)
+  Members ('[] :: [EffectK]) effs = ()
 
 -- | An effect @eff@ is a member of the effect signature @effs@ if @eff@ occurs in @effs@.
 --
