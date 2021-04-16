@@ -16,7 +16,7 @@
 -- its continuation which is needed to define a "local" operation for Reader. If this was allowed,
 -- it becomes very easy for effects to escape the scope of the free monad and continue without being
 -- handled, examples of which are in [1. Effect Handlers in Haskell, Evidently.]("Language.Spectacle.Lang.Scoped#references").
--- Instead, scoped operations like local are be defined in a corresponding instance of 'Effect'
+-- Instead, scoped operations like local are defined in a corresponding instance of 'Effect'
 -- like so:
 --
 -- @
@@ -24,14 +24,14 @@
 --   Local :: m a -> (r -> r) -> 'Effect' (Reader r) m a
 -- @
 --
--- Where @m@ is a some 'Langauge.Spectacle.Lang.Lang'. This approach lets us define scoped
--- operations which may have:
+-- Where @m@ is some 'Langauge.Spectacle.Lang.Lang'. This approach lets us define scoped operations
+-- which may have:
 --
 -- * Dependencies on other effects.
 -- * Constraints on types in the effect.
 -- * Monomorphic types in the continuation.
 --
--- Effects which only have first-order operations must still give an newtype instance for 'Effect'
+-- Effects which only have first-order operations must still give a newtype instance for 'Effect'
 -- wrapping 'Data.Void.Void' and handled with 'Data.Void.absurd'.
 --
 -- === Reasoning behind the 'Effect' family
@@ -44,9 +44,9 @@
 --
 -- An alternative would be to change the continuation of the Freer monad to accumulate weaves rather
 -- than monadic actions, thus pushing the weaving responsibility to the handler site. This allows
--- monomorphic effects and constrained data contexts, but struggles handling effects like NonDet
--- since its not possible to distribute functors over the freer monad. The work around this is to
--- use a concrete functorial state like ListT to distribute and then fold back into the resulting
+-- monomorphic effects and constrained data contexts, but struggles with handling effects like NonDet
+-- since it's not possible to distribute functors over the freer monad. The way to work around this is
+-- to use a concrete functorial state like ListT to distribute and then fold back into the resulting
 -- alternative. This works at the consequence of having different semantics for NonDet in first-
 -- order vs higher-order operations.
 --
@@ -120,7 +120,7 @@ data Scoped effs m a where
   SHere :: Effect eff m a -> Scoped (eff ': effs) m a
   SThere :: Scoped effs m a -> Scoped (eff ': effs) m a
 
--- | Orthogonal decomposition a 'Scoped'. Decomposing a 'Scoped' can yield either the 'Effect'
+-- | Orthogonal decomposition of a 'Scoped'. Decomposing a 'Scoped' can yield either the 'Effect'
 -- instance for @eff@ or witness a proof that @Eff eff m a@ does not inhabit this sum and remove
 -- it from the effect signature.
 --
