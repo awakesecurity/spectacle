@@ -20,7 +20,7 @@ import GHC.TypeLits (Symbol)
 import Data.Ascript (Ascribe)
 import Data.Functor.Loom (Loom)
 import qualified Data.Functor.Loom as Loom
-import Language.Spectacle.Lang.Member (Member (inject, injectS), type (:<))
+import Language.Spectacle.Lang.Member (Member (inject, injectS))
 import Language.Spectacle.Lang.Op (Op)
 import Language.Spectacle.Lang.Scoped (Effect, EffectK, Scoped)
 import Language.Spectacle.Syntax.Concrete.NonDet.Internal (NonDet (Choose, Empty))
@@ -45,14 +45,14 @@ data Lang ctx effs a where
 -- | Sends a constructor for the effect @eff@ for 'Lang' to handle.
 --
 -- @since 0.1.0.0
-send :: eff :< effs => eff a -> Lang ctx effs a
+send :: Member eff effs => eff a -> Lang ctx effs a
 send eff = Yield (Op (inject eff)) pure
 {-# INLINE send #-}
 
 -- | Like 'send', but sends a constructor for the 'Effect' instance of @eff@.
 --
 -- @since 0.1.0.0
-scope :: eff :< effs => Effect eff (Lang ctx effs) a -> Lang ctx effs a
+scope :: Member eff effs => Effect eff (Lang ctx effs) a -> Lang ctx effs a
 scope eff = Yield (Scoped (injectS eff) Loom.identity) pure
 {-# INLINE scope #-}
 
@@ -78,7 +78,7 @@ instance Monad (Lang ctx effs) where
   {-# INLINE (>>=) #-}
 
 -- | @since 0.1.0.0
-instance NonDet :< effs => Alternative (Lang ctx effs) where
+instance Member NonDet effs => Alternative (Lang ctx effs) where
   empty = send Empty
   {-# INLINE empty #-}
 
@@ -86,7 +86,7 @@ instance NonDet :< effs => Alternative (Lang ctx effs) where
   {-# INLINE (<|>) #-}
 
 -- | @since 0.1.0.0
-instance NonDet :< effs => MonadPlus (Lang ctx effs) where
+instance Member NonDet effs => MonadPlus (Lang ctx effs) where
   mzero = empty
   {-# INLINE mzero #-}
 

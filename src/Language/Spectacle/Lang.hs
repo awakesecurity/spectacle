@@ -26,7 +26,7 @@ module Language.Spectacle.Lang
     stateful,
 
     -- ** Membership
-    type (:<),
+    type Members,
     Member (inject, project, injectS, projectS),
 
     -- ** Unions
@@ -44,7 +44,7 @@ import Data.Void (absurd)
 
 import Data.Functor.Loom (hoist, weave, (~>~))
 import Language.Spectacle.Lang.Internal (Lang (Pure, Yield), Union (Op, Scoped), scope, send)
-import Language.Spectacle.Lang.Member (Member (inject, injectS, project, projectS), type (:<))
+import Language.Spectacle.Lang.Member (Member (inject, injectS, project, projectS), type Members)
 import Language.Spectacle.Lang.Op (Op (OHere, OThere), decomposeOp)
 import Language.Spectacle.Lang.Scoped
   ( Effect,
@@ -71,7 +71,7 @@ runLang _ =
   -- that effect was run on 'Lang'. This not impossible but is /very/ difficult to do since the
   -- escaped effect would have to be hidden from 'Loom'. 'Lang' in a first-order operation,
   -- FO effects with resumptions to Lang, or intentionally weakening/coercing a @Lang ctx effs' a@
-  -- into some other 'Lang' are all ways which basically guarentee that effects will be left
+  -- into some other 'Lang' are all ways which basically guarantee that effects will be left
   -- unhandled.
   --
   -- 2. Operations like 'unsafeCoerce' were used to change the effect signature of 'Lang'.
