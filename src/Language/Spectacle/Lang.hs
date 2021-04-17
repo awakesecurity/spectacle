@@ -20,10 +20,14 @@ module Language.Spectacle.Lang
     Effect,
 
     -- ** Interpreters
+    stateful,
 
     -- *** First-order
     interpret,
-    stateful,
+    statefulFO,
+
+    -- *** Higher-order
+    statefulH,
 
     -- ** Membership
     type Members,
@@ -42,7 +46,7 @@ import Control.Natural (type (~>))
 import Data.Coerce (coerce)
 import Data.Void (absurd)
 
-import Data.Functor.Loom (hoist, weave, (~>~))
+import Data.Functor.Loom (Loom, hoist, weave, (~>~))
 import Language.Spectacle.Lang.Internal (Lang (Pure, Yield), Union (Op, Scoped), scope, send)
 import Language.Spectacle.Lang.Member (Member (inject, injectS, project, projectS), type Members)
 import Language.Spectacle.Lang.Op (Op (OHere, OThere), decomposeOp)
@@ -50,10 +54,12 @@ import Language.Spectacle.Lang.Scoped
   ( Effect,
     EffectK,
     FirstOrder,
+    HigherOrder,
     ScopeK,
     Scoped (SHere, SThere),
     decomposeS,
   )
+import qualified Data.Functor.Loom as Loom
 
 -- -------------------------------------------------------------------------------------------------
 
@@ -106,12 +112,51 @@ interpret eta handling = loop
 -- typically used as state.
 --
 -- @since 0.1.0.0
-stateful ::
+statefulFO ::
   FirstOrder eff =>
   s ->
   (s -> a -> Lang ctx effs b) ->
   (forall x. s -> Lang ctx (eff ': effs) x -> Lang ctx effs (s, x)) ->
   (forall x. s -> eff x -> (s -> x -> Lang ctx effs b) -> Lang ctx effs b) ->
+  Lang ctx (eff ': effs) a ->
+  Lang ctx effs b
+statefulFO s onRet eta handling =
+  stateful s onRet eta \st eff _ k -> case eff of
+    Left bot -> absurd (coerce bot)
+    Right op -> handling st op k
+{-# INLINE statefulFO #-}
+
+statefulH ::
+  HigherOrder eff =>
+  s ->
+  (s -> a -> Lang ctx effs b) ->
+  (forall x. s -> Lang ctx (eff ': effs) x -> Lang ctx effs (s, x)) ->
+  (forall effs' x y.
+   s ->
+   Effect eff (Lang ctx effs') x ->
+   Loom (Lang ctx effs') (Lang ctx effs) x (s, y) ->
+   (s -> y -> Lang ctx effs b) ->
+   Lang ctx effs b
+  ) ->
+  Lang ctx (eff ': effs) a ->
+  Lang ctx effs b
+statefulH s onRet eta handling =
+  stateful s onRet eta \st eff loom k -> case eff of
+    Left op -> handling st op loom k
+    Right bot -> absurd (coerce bot)
+{-# INLINE statefulH #-}
+
+stateful ::
+  s ->
+  (s -> a -> Lang ctx effs b) ->
+  (forall x. s -> Lang ctx (eff ': effs) x -> Lang ctx effs (s, x)) ->
+  (forall effs' x y.
+   s ->
+   Either (Effect eff (Lang ctx effs') x) (eff y) ->
+   Loom (Lang ctx effs') (Lang ctx effs) x (s, y) ->
+   (s -> y -> Lang ctx effs b) ->
+   Lang ctx effs b
+  ) ->
   Lang ctx (eff ': effs) a ->
   Lang ctx effs b
 stateful s onRet eta handling = loop s
@@ -120,11 +165,12 @@ stateful s onRet eta handling = loop s
       Pure x -> onRet st x
       Yield (Op op) k -> case decomposeOp op of
         Left other -> Yield (Op other) (k' st)
-        Right eff -> handling st eff k'
+        Right eff -> handling st (Right eff) Loom.identity k'
         where
           k' st' = loop st' . k
-      Yield (Scoped scoped l) k -> case decomposeS scoped of
-        Left other -> Yield (Scoped other (weave (st, ()) (uncurry eta) l)) (uncurry k')
-        Right bot -> absurd (coerce bot)
+      Yield (Scoped scoped loom) k -> case decomposeS scoped of
+        Left other -> Yield (Scoped other loom') (uncurry k')
+        Right eff -> handling st (Left eff) loom' k'
         where
           k' st' = loop st' . k
+          loom' = weave (st, ()) (uncurry eta) loom
