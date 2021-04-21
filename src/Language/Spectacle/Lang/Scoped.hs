@@ -1,3 +1,4 @@
+{-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -78,12 +79,13 @@ module Language.Spectacle.Lang.Scoped
     -- * Higher-order union
     Scoped (SHere, SThere),
     decomposeS,
+    extractS,
   )
 where
 
-import Data.Coerce
+import Data.Coerce (Coercible)
 import Data.Kind (Constraint, Type)
-import Data.Void
+import Data.Void (Void)
 
 -- -------------------------------------------------------------------------------------------------
 
@@ -129,3 +131,10 @@ decomposeS :: Scoped (eff ': effs) m a -> Either (Scoped effs m a) (Effect eff m
 decomposeS (SHere eff) = Right eff
 decomposeS (SThere s) = Left s
 {-# INLINE decomposeS #-}
+
+-- | A special case of 'decomposeS'. A singleton sum of @eff@ must be inhabited by @eff@.
+--
+-- @since 0.1.0.0
+extractS :: Scoped '[eff] m a -> Effect eff m a
+extractS (SHere eff) = eff
+extractS (SThere s) = case s of
