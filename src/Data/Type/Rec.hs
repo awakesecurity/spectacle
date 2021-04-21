@@ -60,6 +60,9 @@ data RecT f ctx where
 instance Show (RecT f '[]) where
   show RNil = "RNil"
 
+instance {-# OVERLAPS #-} (Show a, Show (Rec ctx)) => Show (Rec (s # a ': ctx)) where
+  show (RCon name x r) = show name ++ "=" ++ show x ++ " " ++ show r
+
 instance (Show (f a), Show (RecT f ctx)) => Show (RecT f (s # a ': ctx)) where
   show (RConT name x r) = show name ++ "=" ++ show x ++ " " ++ show r
 
