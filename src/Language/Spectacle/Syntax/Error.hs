@@ -43,15 +43,18 @@ catchE m f = scope (CatchE m f)
 -- | Discharge an 'Error' effect into either an error or the result of a successful computation.
 --
 -- @since 0.1.0.0
-runError :: forall ctx effs e a. Lang ctx (Error e ': effs) a -> Lang ctx effs (Either e a)
+runError :: Lang ctx (Error e ': effs) a -> Lang ctx effs (Either e a)
 runError = \case
   Pure x -> pure (Right x)
   Yield (Op op) k -> case decomposeOp op of
     Left other -> Yield (Op other) (runError . k)
-    Right (ThrowE e) -> pure (Left e)
+    Right (ThrowE exc) -> pure (Left exc)
   Yield (Scoped scoped loom) k -> case decomposeS scoped of
     Left other -> Yield (Scoped other loom') (either (pure . Left) k')
-    Right (CatchE m f) -> runLoom loom' m >>= runError . either (runLoom loom . f >=> k) k
+    Right (CatchE m catch) -> do
+      x <- runLoom loom' m
+      runError (either (runLoom loom . catch >=> k) k x)
     where
-      loom' = weave (Right ()) (either (pure . Left) runError) loom
       k' = runError . k
+
+      loom' = weave (Right ()) (either (pure . Left) runError) loom
