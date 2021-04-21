@@ -27,8 +27,8 @@ import Language.Spectacle.Syntax.Prime.Internal (Prime)
 -- * 'plains' is a record relating plain variables in @ctx@ to values in the previous frame of time.
 -- * 'primes' is a record relating primed or "time" variables in @ctx@ to their values in the next
 -- frame of time.
--- * 'callStack' tracks the substitution of primed variables to used guard against a cyclic
--- relation.
+-- * 'callStack' tracks the substitution of primed variables which is used guard against a cyclic
+-- variable relations.
 --
 -- @since 0.1.0.0
 data RuntimeState ctx = RuntimeState

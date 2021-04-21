@@ -1,4 +1,4 @@
--- | Prime or time variable usage and substitution.
+-- | Prime (or time) variable usage and substitution.
 --
 -- @since 0.1.0.0
 module Language.Spectacle.Syntax.Prime
