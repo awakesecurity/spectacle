@@ -13,8 +13,10 @@ import Type.Reflection (Typeable)
 
 data RuntimeException where
   VariableException :: VariableException -> RuntimeException
-  deriving (Exception, Show, Typeable)
+  deriving (Show, Typeable)
+  deriving anyclass Exception
 
 data VariableException where
   CyclicReference :: [String] -> VariableException
-  deriving (Exception, Show, Typeable)
+  deriving (Show, Typeable)
+  deriving anyclass Exception
