@@ -28,8 +28,7 @@ decomposeOp (OHere eff) = Right eff
 decomposeOp (OThere op) = Left op
 {-# INLINE decomposeOp #-}
 
--- | A special case of 'decomposeOp'. A sum with only one possible effect must be inhabited by that
--- effect.
+-- | A special case of 'decomposeOp'. A singleton sum of @eff@ must be inhabited by @eff@.
 --
 -- @since 0.1.0.0
 extractOp :: Op '[eff] a -> eff a
