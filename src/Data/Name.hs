@@ -27,8 +27,8 @@ data Name :: Symbol -> Type where
 
 -- | @since 0.1.0.0
 instance (KnownSymbol s, l ~ s) => IsLabel l (Name s) where
-  -- The @l ~ nm@ unification immediately solves @nm@ so that 'IsLabel' doesn't
-  -- leave it ambiguous with a wanted constraint.
+  -- The @l ~ s@ unification immediately solves @nm@ so that 'IsLabel' doesn't leave it ambiguous
+  -- with a wanted constraint.
   fromLabel = Name Proxy
 
 -- | @since 0.1.0.0
