@@ -19,15 +19,12 @@ import Data.Void (absurd)
 import qualified Data.Functor.Loom as Loom
 import Language.Spectacle.Lang
   ( Effect,
-    Lang (..),
+    Lang (Pure, Yield),
     Union (Op, Scoped),
     decomposeOp,
     decomposeS,
   )
-import Language.Spectacle.Syntax.NonDet.Internal
-  ( Effect (NonDet),
-    NonDet (Choose, Empty),
-  )
+import Language.Spectacle.Syntax.NonDet.Internal (Effect (NonDet), NonDet (Choose, Empty))
 
 -- -------------------------------------------------------------------------------------------------
 
