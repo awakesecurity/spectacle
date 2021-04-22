@@ -16,6 +16,9 @@ import Data.Void (absurd)
 
 import Data.Functor.Loom (hoist, runLoom, (~>~))
 import Language.Spectacle.Exception.RuntimeException
+  ( QuantifierException (ExistsViolated, ForallViolated),
+    RuntimeException (QuantifierException),
+  )
 import Language.Spectacle.Lang
   ( Effect,
     Lang (Pure, Yield),
