@@ -149,7 +149,10 @@ rewriteComplement = \case
       let m' = complement (fmap not m)
           n' = complement (fmap not n)
       k' =<< runLoom loom' (disjunct m' n')
-    Just (Disjunct m n) -> k' =<< runLoom loom' (conjunct (complement (fmap not m)) (complement (fmap not n)))
+    Just (Disjunct m n) -> do
+      let m' = complement (fmap not m)
+          n' = complement (fmap not n)
+      k' =<< runLoom loom' (conjunct m' n')
     where
       loom' = loom ~>~ hoist rewriteComplement
 
