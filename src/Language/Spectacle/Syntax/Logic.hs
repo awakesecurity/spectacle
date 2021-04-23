@@ -18,6 +18,7 @@ where
 import Control.Applicative (Applicative (liftA2))
 import Control.Monad (filterM, unless, when)
 import Data.Coerce (coerce)
+import Data.Foldable (toList)
 import Data.Void (absurd)
 
 import Data.Functor.Loom (hoist, runLoom, (~>~))
@@ -45,8 +46,8 @@ import Language.Spectacle.Syntax.NonDet (NonDet, oneOf)
 -- -------------------------------------------------------------------------------------------------
 
 -- | Universally quantify over some foldable container @f a@. A nondeterministically chosen element
--- in @f a@ will be return so long as the given predicate is 'True' for all elements in the
--- container, otherwise an exception is raised.
+-- in @f a@ will be returned so long as the given predicate is 'True' for all elements in the
+-- container, otherwise a spectacle exception is raised.
 --
 -- @since 0.1.0.0
 forall ::
@@ -54,7 +55,7 @@ forall ::
   f a ->
   (a -> Lang ctx effs Bool) ->
   Lang ctx effs a
-forall xs p = scope (Forall (foldMap (: []) xs) p)
+forall xs p = scope (Forall (toList xs) p)
 {-# INLINE forall #-}
 
 -- | Existential quantification over some foldable constainer @f a@. A nondeterministically chosen
@@ -67,7 +68,7 @@ exists ::
   f a ->
   (a -> Lang ctx effs Bool) ->
   Lang ctx effs a
-exists xs p = scope (Exists (foldMap (: []) xs) p)
+exists xs p = scope (Exists (toList xs) p)
 {-# INLINE exists #-}
 
 -- | Logical negation. The 'complement' operator is equivalent to 'not' for simple expressions, but
@@ -148,11 +149,11 @@ rewriteComplement = \case
     Just (Conjunct m n) -> do
       let m' = complement (fmap not m)
           n' = complement (fmap not n)
-      k' =<< runLoom loom' (disjunct m' n')
+      runLoom loom' (disjunct m' n') >>= k'
     Just (Disjunct m n) -> do
       let m' = complement (fmap not m)
           n' = complement (fmap not n)
-      k' =<< runLoom loom' (conjunct m' n')
+      runLoom loom' (conjunct m' n') >>= k'
     where
       loom' = loom ~>~ hoist rewriteComplement
 
