@@ -110,7 +110,7 @@ evaluateThunks cst = \case
 
 -- | Traverses 'Lang' collecting all closures as 'Thunks' which will subsequently be evaluated
 -- by 'evaluateThunks'. An extra pass is needed to register all closures before substitution of
--- primed variables before substitution takes place.
+-- primed variables takes place.
 --
 -- @since 0.1.0.0
 makeThunks ::
