@@ -10,13 +10,22 @@ module Language.Spectacle.Syntax.Modal.Quoted
     -- * Quoted Terms
     ModalQ (..),
     reifyQ,
+    freshAlwaysQ,
+    freshEventuallyQ,
+    freshComplementQ,
+    freshConjunctQ,
+    freshDisjunctQ,
     ModalMeta (..),
   )
 where
 
 import Control.Monad.Codensity
 
+import qualified Data.Functor.Loom as Loom
 import Language.Spectacle.Lang
+import Language.Spectacle.Syntax.Logic
+import Language.Spectacle.Syntax.Modal.Internal
+import Language.Spectacle.Syntax.NonDet.Internal
 
 -- -------------------------------------------------------------------------------------------------
 
@@ -44,6 +53,49 @@ reifyQ :: ModalQ ctx effs a -> Lang ctx effs a
 reifyQ = \case
   ConstQ x -> pure x
   ModalQ _ union k -> Yield union k
+
+freshAlwaysQ :: Members Modal effs => ModalQ ctx effs Bool -> ModalQ ctx effs Bool
+freshAlwaysQ modalQ =
+  ModalQ (MetaAlways modalQ) (Scoped (injectS (Always modal)) Loom.identity) pure
+  where
+    modal = reifyQ modalQ
+
+freshEventuallyQ :: Members Modal effs => ModalQ ctx effs Bool -> ModalQ ctx effs Bool
+freshEventuallyQ modalQ =
+  ModalQ (MetaUpUntil (ConstQ True) modalQ) (Scoped (injectS (UpUntil (pure True) modal)) Loom.identity) pure
+  where
+    modal = reifyQ modalQ
+
+freshComplementQ ::
+  Members '[Logic, NonDet] effs =>
+  ModalQ ctx effs Bool ->
+  ModalQ ctx effs Bool
+freshComplementQ modalQ =
+  ModalQ (MetaComplement modalQ) (Scoped (injectS (Complement modal)) Loom.identity) pure
+  where
+    modal = reifyQ modalQ
+
+freshConjunctQ ::
+  Members '[Logic, NonDet] effs =>
+  ModalQ ctx effs Bool ->
+  ModalQ ctx effs Bool ->
+  ModalQ ctx effs Bool
+freshConjunctQ lhsQ rhsQ =
+  ModalQ (MetaConjunct lhsQ rhsQ) (Scoped (injectS (Conjunct lhs rhs)) Loom.identity) pure
+  where
+    lhs = reifyQ lhsQ
+    rhs = reifyQ rhsQ
+
+freshDisjunctQ ::
+  Members '[Logic, NonDet] effs =>
+  ModalQ ctx effs Bool ->
+  ModalQ ctx effs Bool ->
+  ModalQ ctx effs Bool
+freshDisjunctQ lhsQ rhsQ =
+  ModalQ (MetaDisjunct lhsQ rhsQ) (Scoped (injectS (Disjunct lhs rhs)) Loom.identity) pure
+  where
+    lhs = reifyQ lhsQ
+    rhs = reifyQ rhsQ
 
 instance Functor (ModalQ ctx effs) where
   fmap f = \case
