@@ -1,1 +1,1 @@
-(import ./release.nix).spectacle-shell
+(import ./default.nix).spectacle-shell

@@ -8,8 +8,8 @@ if [ "$#" -eq 0 ]; then
 fi
 
 git_root=$(git rev-parse --show-toplevel)
-fourmolu=$(nix-build --no-out-link --attr fourmolu "${git_root}"/release.nix)
-config_options=($(nix-instantiate --eval --expr "(import ${git_root}/release.nix).fourmoluOptions" | tr -d \"))
+fourmolu=$(nix-build --no-out-link --attr fourmolu "${git_root}")
+config_options=($(nix-instantiate --eval --expr "(import ${git_root}).fourmoluOptions" | tr -d \"))
 standard_options=(--ghc-opt -XTypeApplications --ghc-opt -XBangPatterns --ghc-opt -XTypeOperators --ghc-opt -XPatternSynonyms)
 
 # Command-line options for 'fourmolu'
