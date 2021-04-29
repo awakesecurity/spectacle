@@ -9,8 +9,11 @@ fi
 
 git_root=$(git rev-parse --show-toplevel)
 fourmolu=$(nix-build --no-out-link --attr fourmolu "${git_root}")
-config_options=($(nix-instantiate --eval --expr "(import ${git_root}).fourmoluOptions" | tr -d \"))
-standard_options=(--ghc-opt -XTypeApplications --ghc-opt -XBangPatterns --ghc-opt -XTypeOperators --ghc-opt -XPatternSynonyms)
+standard_options=(\
+  --ghc-opt -XTypeApplications \
+  --ghc-opt -XBangPatterns \
+  --ghc-opt -XTypeOperators \
+  --ghc-opt -XPatternSynonyms \
+)
 
-# Command-line options for 'fourmolu'
-"${fourmolu}/bin/fourmolu" "${standard_options[@]}" "${config_options[@]}" "$@"
+"${fourmolu}/bin/fourmolu" "${standard_options[@]}" "$@"
