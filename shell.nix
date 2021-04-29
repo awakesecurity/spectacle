@@ -5,7 +5,7 @@ let
 
 in
 spectacle.env.overrideAttrs (old: {
-  buildInputs = [
+  buildInputs = (old.buildInputs or []) ++ [
     pkgs.cabal-install
     pkgs.ghcid
   ];
