@@ -15,7 +15,7 @@ import Data.Coerce (coerce)
 import Data.Monoid (Alt (Alt, getAlt))
 import Data.Void (absurd)
 
-import Data.Functor.Loom
+import Data.Functor.Loom ( (~>~), hoist )
 import Language.Spectacle.Lang
   ( Effect,
     Lang (Op, Pure, Scoped),
@@ -54,5 +54,5 @@ runNonDetA = \case
     where
       k' = runNonDetA . k
   Scoped scoped loom -> case decomposeS scoped of
-    Left other -> Scoped other (loom ~>~ run runNonDetA)
+    Left other -> Scoped other (loom ~>~ hoist runNonDetA)
     Right bot -> absurd (coerce bot)

@@ -10,7 +10,7 @@ module Language.Spectacle.Syntax.Error
   )
 where
 
-import Data.Functor.Loom (run, (~>~), runLoom)
+import Data.Functor.Loom (hoist, (~>~), runLoom)
 import Language.Spectacle.Lang
   ( Effect,
     Lang (Pure, Op, Scoped),
@@ -52,4 +52,4 @@ runError = \case
       x <- runLoom loom' m
       either (runLoom loom' . catch) (pure . pure) x
     where
-      loom' = loom ~>~ run runError
+      loom' = loom ~>~ hoist runError
