@@ -10,14 +10,11 @@ module Language.Spectacle.Syntax.Error
   )
 where
 
-import Control.Monad ((>=>))
-
-import Data.Functor.Loom (runLoom, weave)
+import Data.Functor.Loom (run, (~>~), runLoom)
 import Language.Spectacle.Lang
   ( Effect,
-    Lang (Pure, Yield),
+    Lang (Pure, Op, Scoped),
     Member,
-    Union (Op, Scoped),
     decomposeOp,
     decomposeS,
     scope,
@@ -46,15 +43,13 @@ catchE m f = scope (CatchE m f)
 runError :: Lang ctx (Error e ': effs) a -> Lang ctx effs (Either e a)
 runError = \case
   Pure x -> pure (Right x)
-  Yield (Op op) k -> case decomposeOp op of
-    Left other -> Yield (Op other) (runError . k)
+  Op op k -> case decomposeOp op of
+    Left other -> Op other (runError . k)
     Right (ThrowE exc) -> pure (Left exc)
-  Yield (Scoped scoped loom) k -> case decomposeS scoped of
-    Left other -> Yield (Scoped other loom') (either (pure . Left) k')
+  Scoped scoped loom -> case decomposeS scoped of
+    Left other -> Scoped other loom'
     Right (CatchE m catch) -> do
       x <- runLoom loom' m
-      runError (either (runLoom loom . catch >=> k) k x)
+      either (runLoom loom' . catch) (pure . pure) x
     where
-      k' = runError . k
-
-      loom' = weave (Right ()) (either (pure . Left) runError) loom
+      loom' = loom ~>~ run runError

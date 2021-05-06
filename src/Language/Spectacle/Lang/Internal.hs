@@ -4,10 +4,9 @@
 --
 -- @since 0.1.0.0
 module Language.Spectacle.Lang.Internal
-  ( Lang (Pure, Yield),
+  ( Lang (Pure, Op, Scoped),
     send,
     scope,
-    Union (Op, Scoped),
   )
 where
 
@@ -18,7 +17,7 @@ import Data.Kind (Type)
 import GHC.TypeLits (Symbol)
 
 import Data.Ascript (Ascribe)
-import Data.Functor.Loom (Loom)
+import Data.Functor.Loom (bind, (~>~), Loom (Loom))
 import qualified Data.Functor.Loom as Loom
 import Language.Spectacle.Lang.Member (Member (inject, injectS))
 import Language.Spectacle.Lang.Op (Op)
@@ -39,27 +38,37 @@ import Language.Spectacle.Syntax.NonDet.Internal (NonDet (Choose, Empty))
 -- @since 0.1.0.0
 type Lang :: [Ascribe Symbol Type] -> [EffectK] -> Type -> Type
 data Lang ctx effs a where
-  Pure :: a -> Lang ctx effs a
-  Yield :: Union ctx effs a -> (a -> Lang ctx effs b) -> Lang ctx effs b
+  Pure ::
+    a ->
+    Lang ctx effs a
+  Op ::
+    Op effs a ->
+    (a -> Lang ctx effs b) ->
+    Lang ctx effs b
+  Scoped ::
+    Scoped effs (Lang ctx effs') a ->
+    Loom (Lang ctx effs') (Lang ctx effs) a b ->
+    Lang ctx effs b
 
 -- | Sends a constructor for the effect @eff@ for 'Lang' to handle.
 --
 -- @since 0.1.0.0
 send :: Member eff effs => eff a -> Lang ctx effs a
-send eff = Yield (Op (inject eff)) pure
+send eff = Op (inject eff) pure
 {-# INLINE send #-}
 
 -- | Like 'send', but sends a constructor for the 'Effect' instance of @eff@.
 --
 -- @since 0.1.0.0
 scope :: Member eff effs => Effect eff (Lang ctx effs) a -> Lang ctx effs a
-scope eff = Yield (Scoped (injectS eff) Loom.identity) pure
+scope eff = Scoped (injectS eff) Loom.identity
 {-# INLINE scope #-}
 
 -- | @since 0.1.0.0
 instance Functor (Lang ctx effs) where
   fmap f (Pure x) = Pure (f x)
-  fmap f (Yield u k) = Yield u (fmap f . k)
+  fmap f (Op u k) = Op u (fmap f . k)
+  fmap f (Scoped u loom) = Scoped u (fmap f loom)
   {-# INLINE fmap #-}
 
 -- | @since 0.1.0.0
@@ -68,13 +77,16 @@ instance Applicative (Lang ctx effs) where
   {-# INLINE CONLIKE pure #-}
 
   Pure f <*> m = fmap f m
-  Yield u k <*> m = Yield u ((<*> m) . k)
+  Op u k <*> m = Op u ((<*> m) . k)
+  Scoped u (Loom ctx eta) <*> m = Scoped u (Loom ctx ((<*> m) . eta))
   {-# INLINE (<*>) #-}
 
 -- | @since 0.1.0.0
 instance Monad (Lang ctx effs) where
   Pure x >>= f = f x
-  Yield u k >>= f = Yield u (k >=> f)
+  Op u k >>= f = Op u (k >=> f)
+  Scoped u loom >>= f = Scoped u (loom ~>~ bind f)
+
   {-# INLINE (>>=) #-}
 
 -- | @since 0.1.0.0
@@ -92,15 +104,3 @@ instance Member NonDet effs => MonadPlus (Lang ctx effs) where
 
   mplus = (<|>)
   {-# INLINE mplus #-}
-
--- ------------------------------------------------------------------------------------------------
-
--- | 'Union' joins the extensible sums for both 'Op' and 'Scoped'.
---
--- @since 0.1.0.0
-data Union ctx effs a where
-  Op :: Op effs a -> Union ctx effs a
-  Scoped ::
-    Scoped effs (Lang ctx effs') a ->
-    Loom (Lang ctx effs') (Lang ctx effs) a b ->
-    Union ctx effs b

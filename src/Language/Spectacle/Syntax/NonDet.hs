@@ -11,16 +11,14 @@ module Language.Spectacle.Syntax.NonDet
 where
 
 import Control.Applicative (Alternative (empty, (<|>)), Applicative (liftA2))
-import Control.Monad (join)
 import Data.Coerce (coerce)
 import Data.Monoid (Alt (Alt, getAlt))
 import Data.Void (absurd)
 
-import qualified Data.Functor.Loom as Loom
+import Data.Functor.Loom
 import Language.Spectacle.Lang
   ( Effect,
-    Lang (..),
-    Union (Op, Scoped),
+    Lang (Op, Pure, Scoped),
     decomposeOp,
     decomposeS,
   )
@@ -49,14 +47,12 @@ foldMapA f = getAlt . foldMap (Alt . f)
 runNonDetA :: Alternative f => Lang ctx (NonDet ': effs) a -> Lang ctx effs (f a)
 runNonDetA = \case
   Pure x -> pure (pure x)
-  Yield (Op op) k -> case decomposeOp op of
-    Left other -> Yield (Op other) k'
+  Op op k -> case decomposeOp op of
+    Left other -> Op other k'
     Right Empty -> pure empty
     Right Choose -> liftA2 (<|>) (k' True) (k' False)
     where
       k' = runNonDetA . k
-  Yield (Scoped scoped loom) k -> case decomposeS scoped of
-    Left other -> Yield (Scoped other weaveNonDetA) (runNonDetA . (>>= k))
+  Scoped scoped loom -> case decomposeS scoped of
+    Left other -> Scoped other (loom ~>~ run runNonDetA)
     Right bot -> absurd (coerce bot)
-    where
-      weaveNonDetA = Loom.weave (pure ()) (runNonDetA . join) loom
