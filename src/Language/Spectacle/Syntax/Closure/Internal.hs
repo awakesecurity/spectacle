@@ -11,20 +11,16 @@ import Data.Void (Void)
 import Data.Ascript (type (#))
 import Data.Name (Name)
 import Data.Type.Rec (type (.|))
-import Language.Spectacle.Exception.RuntimeException (RuntimeException)
 import Language.Spectacle.Lang (Effect, EffectK, Lang, ScopeK)
-import Language.Spectacle.Syntax.Error.Internal (Error)
-import Language.Spectacle.Syntax.NonDet.Internal (NonDet)
-import Language.Spectacle.Syntax.Substitute.Internal (Plain, Prime)
 
 -- -------------------------------------------------------------------------------------------------
 
-newtype Closure :: EffectK where
-  Closure :: Void -> Closure a
+newtype Closure :: [EffectK] -> EffectK where
+  Closure :: Void -> Closure sig a
 
-data instance Effect Closure :: ScopeK where
+data instance Effect (Closure sig) :: ScopeK where
   Close ::
     (m ~ Lang ctx effs, s # a .| ctx) =>
     Name s ->
-    Lang ctx '[Prime, Plain, NonDet, Error RuntimeException] a ->
-    Effect Closure m ()
+    Lang ctx sig a ->
+    Effect (Closure sig) m Bool

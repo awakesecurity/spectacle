@@ -1,3 +1,5 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module Language.Spectacle.Syntax.Logic.Internal
@@ -9,7 +11,7 @@ where
 import Data.Void (Void)
 
 import Language.Spectacle.Exception.RuntimeException (RuntimeException)
-import Language.Spectacle.Lang (Effect, EffectK, Lang, Members, ScopeK)
+import Language.Spectacle.Lang (Effect, EffectK, Lang, Member, Members, ScopeK)
 import Language.Spectacle.Syntax.Error.Internal (Error)
 import Language.Spectacle.Syntax.NonDet.Internal (NonDet)
 
@@ -20,26 +22,26 @@ newtype Logic :: EffectK where
 
 data instance Effect Logic :: ScopeK where
   Forall ::
-    (Members '[Logic, Error RuntimeException, NonDet] effs, m ~ Lang ctx effs) =>
+    (m ~ Lang ctx effs, Members '[Logic, NonDet, Error RuntimeException] effs) =>
     [a] ->
     (a -> m Bool) ->
-    Effect Logic m a
+    Effect Logic m Bool
   Exists ::
-    (Members '[Logic, Error RuntimeException, NonDet] effs, m ~ Lang ctx effs) =>
+    (m ~ Lang ctx effs, Members '[Logic, Error RuntimeException, NonDet] effs) =>
     [a] ->
     (a -> m Bool) ->
-    Effect Logic m a
+    Effect Logic m Bool
   Complement ::
-    (m ~ Lang ctx effs, Members Logic effs) =>
-    m a ->
-    Effect Logic m a
+    (m ~ Lang ctx effs, Member Logic effs) =>
+    m Bool ->
+    Effect Logic m Bool
   Conjunct ::
-    (m ~ Lang ctx effs, Members Logic effs) =>
+    (m ~ Lang ctx effs, Members '[Logic, NonDet] effs) =>
     m Bool ->
     m Bool ->
     Effect Logic m Bool
   Disjunct ::
-    (m ~ Lang ctx effs, Members Logic effs) =>
+    (m ~ Lang ctx effs, Members '[Logic, NonDet] effs) =>
     m Bool ->
     m Bool ->
     Effect Logic m Bool
