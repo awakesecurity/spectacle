@@ -13,7 +13,6 @@ module Data.Functor.Loom
     weave,
     bind,
     lift,
-    run,
     hoist,
   )
 where
@@ -96,13 +95,6 @@ bind k = Loom (Identity ()) (runIdentity >=> k)
 lift :: Functor m => (a -> b) -> Loom m m a b
 lift f = Loom (Identity ()) (fmap f . runIdentity)
 {-# INLINE lift #-}
-
--- | Constructs a 'Loom' from an function with a functorial result.
---
--- @since 0.1.0.0
-run :: (m a -> n (f a)) -> Loom m n a (f a)
-run runner = Loom (Identity ()) (runner . runIdentity)
-{-# INLINE run #-}
 
 -- | Constructs a 'Loom' from a natural transformation.
 --
