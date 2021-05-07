@@ -15,15 +15,14 @@ where
 import Data.Coerce (coerce)
 import Data.Void (absurd)
 
-import Data.Functor.Loom (runLoom, weave)
+import Data.Functor.Loom (runLoom, weave, (~>~))
 import Data.Type.Rec (Name, Rec, setRec, type (#), type (.|))
 import Language.Spectacle.Exception.RuntimeException (RuntimeException)
 import Language.Spectacle.Lang
   ( Effect,
-    Lang (Pure, Yield),
+    Lang (Op, Pure, Scoped),
     Member,
     Members,
-    Union (Op, Scoped),
     decomposeOp,
     decomposeS,
     scope,
@@ -43,7 +42,9 @@ import Language.Spectacle.Syntax.Substitute
   ( Plain,
     Prime,
     RuntimeState (RuntimeState, callStack, plains, primes),
-    runExpr,
+    runRelationExpr,
+    type RelationTerm,
+    type RelationTermSyntax,
   )
 
 -- -------------------------------------------------------------------------------------------------
@@ -56,10 +57,10 @@ import Language.Spectacle.Syntax.Substitute
 --
 -- @since 0.1.0.0
 (.=) ::
-  (s # a .| ctx, Member Closure effs) =>
+  (s # a .| ctx, Member (Closure RelationTermSyntax) effs) =>
   Name s ->
-  Lang ctx '[Prime, Plain, NonDet, Error RuntimeException] a ->
-  Lang ctx effs ()
+  RelationTerm ctx a ->
+  Lang ctx effs Bool
 name .= expr = scope (Close name expr)
 
 -- | Discharges a 'Closure' effect, returning a 'Rec' new values for each variable in @ctx@.
@@ -68,7 +69,7 @@ name .= expr = scope (Close name expr)
 runClosure ::
   Members '[NonDet, Error RuntimeException] effs =>
   Rec ctx ->
-  Lang ctx (Closure ': effs) a ->
+  Lang ctx (Closure RelationTermSyntax ': effs) a ->
   Lang ctx effs (Rec ctx, a)
 runClosure vars m = do
   rs <- registers . fst <$> makeThunks (emptyClosureState vars) m
@@ -81,32 +82,29 @@ runClosure vars m = do
 evaluateThunks ::
   Members '[NonDet, Error RuntimeException] effs =>
   ClosureState ctx ->
-  Lang ctx (Closure ': effs) a ->
+  Lang ctx (Closure RelationTermSyntax ': effs) a ->
   Lang ctx effs (ClosureState ctx, a)
 evaluateThunks cst = \case
   Pure x -> pure (cst, x)
-  Yield (Op op) k -> case decomposeOp op of
-    Left other -> Yield (Op other) (k' cst)
+  Op op k -> case decomposeOp op of
+    Left other -> Op other (k' cst)
     Right bottom -> absurd (coerce bottom)
     where
       k' cst' = evaluateThunks cst' . k
-  Yield (Scoped scoped loom) k -> case decomposeS scoped of
-    Left other -> Yield (Scoped other loom') (uncurry k')
+  Scoped scoped loom -> case decomposeS scoped of
+    Left other -> Scoped other (loom' cst)
     Right (Close name _) -> case getRegister name (registers cst) of
-      Thunk expr -> case runExpr (toRuntimeState cst) expr of
+      Thunk expr -> case runRelationExpr (toRuntimeState cst) expr of
         Left exc -> throwE exc
         Right xs -> do
-          (cst', x) <- runLoom loom' (pure ())
-          (RuntimeState _ primes' _, x') <- oneOf xs
-          k' (ClosureState (setRegister name x' primes') (setRec name x' (knownValues cst'))) x
-      Evaluated x -> do
-        (cst', x') <- runLoom loom' (pure ())
-        k' (setKnown name x cst') x'
-      Unchanged -> runLoom loom' (pure ()) >>= uncurry k'
+          (RuntimeState _ primes' _, x) <- oneOf xs
+          let knowns' = setRec name x (knownValues cst)
+              registers' = setRegister name x primes'
+          runLoom (loom' (ClosureState registers' knowns')) (pure True)
+      Evaluated x -> runLoom (loom' (setKnown name x cst)) (pure True)
+      Unchanged -> runLoom (loom' cst) (pure True)
     where
-      k' cst' = evaluateThunks cst' . k
-
-      loom' = weave (cst, ()) (uncurry evaluateThunks) loom
+      loom' cst' = loom ~>~ weave (cst', ()) (uncurry evaluateThunks)
 
 -- | Traverses 'Lang' collecting all closures as 'Thunks' which will subsequently be evaluated
 -- by 'evaluateThunks'. An extra pass is needed to register all closures before substitution of
@@ -116,24 +114,20 @@ evaluateThunks cst = \case
 makeThunks ::
   Members (Error RuntimeException) effs =>
   ClosureState ctx ->
-  Lang ctx (Closure ': effs) a ->
+  Lang ctx (Closure RelationTermSyntax ': effs) a ->
   Lang ctx effs (ClosureState ctx, a)
 makeThunks cst = \case
   Pure x -> pure (cst, x)
-  Yield (Op op) k -> case decomposeOp op of
-    Left other -> Yield (Op other) (k' cst)
+  Op op k -> case decomposeOp op of
+    Left other -> Op other (k' cst)
     Right bottom -> absurd (coerce bottom)
     where
       k' cst' = makeThunks cst' . k
-  Yield (Scoped scoped loom) k -> case decomposeS scoped of
-    Left other -> Yield (Scoped other loom') (uncurry k')
-    Right (Close name expr) -> do
-      (cst', x) <- runLoom loom' (pure ())
-      k' (bindName name expr cst') x
+  Scoped scoped loom -> case decomposeS scoped of
+    Left other -> Scoped other (loom' cst)
+    Right (Close name expr) -> runLoom (loom' (bindName name expr cst)) (pure True)
     where
-      k' cst' = makeThunks cst' . k
-
-      loom' = weave (cst, ()) (uncurry makeThunks) loom
+      loom' cst' = loom ~>~ weave (cst', ()) (uncurry makeThunks)
 
 -- -------------------------------------------------------------------------------------------------
 
@@ -141,7 +135,7 @@ makeThunks cst = \case
 --
 -- @since 0.1.0.0
 data ClosureState ctx = ClosureState
-  { registers :: Registers ctx
+  { registers :: Registers RelationTermSyntax ctx
   , knownValues :: Rec ctx
   }
 
@@ -164,7 +158,7 @@ setKnown name x ClosureState {..} =
 -- | Injects a 'ClosuresState' into a 'RuntimeState' with an empty call stack.
 --
 -- @since 0.1.0.0
-toRuntimeState :: ClosureState ctx -> RuntimeState ctx
+toRuntimeState :: ClosureState ctx -> RuntimeState RelationTermSyntax ctx
 toRuntimeState ClosureState {..} =
   RuntimeState
     { plains = knownValues
