@@ -22,13 +22,13 @@ genFingerprint range gen =
 
 -- | Generate a value to hash.
 genHash :: MonadGen m => m String
-genHash = Gen.string (Range.constant 0 100) Gen.alphaNum
+genHash = Gen.string (Range.constant 0 10) Gen.alphaNum
 
 -- | Making sure fingerprint never drops a hash.
 prop_insert_lookup :: Property
 prop_insert_lookup = property do
-  xs <- forAll $ Gen.list (Range.constant 0 100) genHash
-  fps <- forAll $ genFingerprint (Range.constant 0 1000) genHash
+  xs <- forAll $ Gen.list (Range.constant 0 10) genHash
+  fps <- forAll $ genFingerprint (Range.constant 0 10) genHash
   let fps' = foldl (flip insert) fps $ map (fromIntegral . hash) xs
   mapM_ (assert . (`member` fps')) xs
 
