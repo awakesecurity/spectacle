@@ -13,30 +13,27 @@ module Language.Spectacle.Syntax.Prime
     runPrime,
     substPrime,
     RuntimeState (RuntimeState, plains, primes, callStack),
-    type RelationTerm,
-    type RelationTermSyntax,
-    runRelationExpr,
+    substitute,
   )
 where
 
 import Data.Coerce (coerce)
 import Data.Function ((&))
-import Data.Kind (Type)
 import Data.Void (absurd)
-import GHC.TypeLits (Symbol)
 
-import Data.Functor.Loom (hoist, runLoom, weave, (~>~))
-import Data.Type.Rec (Ascribe, Name, Rec, getRec, type (#), type (.|))
+import Data.Functor.Loom (hoist, runLoom, (~>~))
+import Data.Type.Rec (Name, Rec, getRec, type (#), type (.|))
 import Language.Spectacle.Exception.RuntimeException
   ( RuntimeException (VariableException),
     VariableException (CyclicReference),
   )
 import Language.Spectacle.Lang
   ( Effect,
-    EffectK,
     Lang (Op, Pure, Scoped),
     Member,
     Members,
+    Op (OHere, OThere),
+    Scoped (SHere, SThere),
     decomposeOp,
     decomposeS,
     runLang,
@@ -47,22 +44,22 @@ import Language.Spectacle.RTS.Registers
     Thunk (Evaluated, Thunk, Unchanged),
     getRegister,
     setRegister,
+    type RelationTermSyntax,
+  )
+import Language.Spectacle.Syntax.Env
+  ( Env,
+    get,
+    gets,
+    modify,
+    put,
+    runEnv,
   )
 import Language.Spectacle.Syntax.Error (Error, runError, throwE)
 import Language.Spectacle.Syntax.NonDet (NonDet, oneOf, runNonDetA)
-import Language.Spectacle.Syntax.Plain (Plain, runPlain)
-import Language.Spectacle.Syntax.Prime.Internal
-  ( Effect (PrimeVar),
-    Prime (Prime),
-  )
+import Language.Spectacle.Syntax.Plain (runPlain)
+import Language.Spectacle.Syntax.Prime.Internal (Effect (PrimeVar), Prime (Prime))
 
 -- -------------------------------------------------------------------------------------------------
-
-type RelationTerm :: [Ascribe Symbol Type] -> Type -> Type
-type RelationTerm ctx a = Lang ctx RelationTermSyntax a
-
-type RelationTermSyntax :: [EffectK]
-type RelationTermSyntax = '[Prime, Plain, NonDet, Error RuntimeException]
 
 -- | 'prime' for a variable named @s@ is the value of @s@ in the next time frame.
 --
@@ -76,30 +73,35 @@ prime name = scope (PrimeVar name)
 --
 -- @since 0.1.0.0
 runPrime ::
-  Members '[Error RuntimeException, NonDet] effs =>
-  RuntimeState RelationTermSyntax ctx ->
+  forall ctx effs a.
+  Members '[Env, Error RuntimeException, NonDet] effs =>
   Lang ctx (Prime ': effs) a ->
-  Lang ctx effs (RuntimeState RelationTermSyntax ctx, a)
-runPrime rst = \case
-  Pure x -> pure (rst, x)
+  Lang ctx effs a
+runPrime = \case
+  Pure x -> pure x
   Op op k -> case decomposeOp op of
-    Left other -> Op other (runPrime rst . k)
+    Left other -> Op other (runPrime . k)
     Right bottom -> absurd (coerce bottom)
-  Scoped scoped loom -> case decomposeS scoped of
-    Left other -> Scoped other (loom' rst)
-    Right (PrimeVar name) -> case getRegister name (primes rst) of
-      Thunk expr ->
-        if show name `elem` callStack rst
-          then throwE (VariableException (CyclicReference (callStack rst)))
-          else do
-            (rst', x) <- substitute rst name expr
-            runLoom (loom' rst') (pure x)
-      Evaluated x -> runLoom (loom' rst) (pure x)
-      Unchanged -> do
-        let x = getRec name (plains rst)
-        runLoom (loom' rst) (pure x)
+  Scoped scoped loom -> do
+    case decomposeS scoped of
+      Left other -> Scoped other loomPrime
+      Right (PrimeVar name) -> do
+        rst <- get
+        case getRegister name (primes rst) of
+          Thunk expr ->
+            if show name `elem` callStack rst
+              then throwE (VariableException (CyclicReference (callStack rst)))
+              else do
+                x <- substitute name expr
+                modify \rst' ->
+                  rst' {primes = setRegister name x (primes rst')}
+                runLoom loomPrime (pure x)
+          Evaluated x -> runLoom loomPrime (pure x)
+          Unchanged -> do
+            rst' <- gets (getRec name . plains)
+            runLoom loomPrime (pure rst')
     where
-      loom' rst' = loom ~>~ weave (rst', ()) (uncurry runPrime)
+      loomPrime = loom ~>~ hoist runPrime
 
 -- | Alternative interpreter for 'Prime' that substitutes with a 'Rec' rather than a record of
 -- thunks.
@@ -112,40 +114,51 @@ substPrime vars = \case
     Left other -> Op other (substPrime vars . k)
     Right bottom -> absurd (coerce bottom)
   Scoped scoped loom -> case decomposeS scoped of
-    Left other -> Scoped other loom'
+    Left other -> Scoped other loomSubstPrime
     Right (PrimeVar name) -> do
       let x = getRec name vars
-      runLoom loom' (pure x)
+      runLoom loomSubstPrime (pure x)
     where
-      loom' = loom ~>~ hoist (substPrime vars)
+      loomSubstPrime = loom ~>~ hoist (substPrime vars)
 
 -- | Evaluates the thunk for a primed variable.
 --
 -- @since 0.1.0.0
 substitute ::
-  (Members '[NonDet, Error RuntimeException] effs, s # a .| ctx) =>
-  RuntimeState RelationTermSyntax ctx ->
+  (Members '[Env, NonDet, Error RuntimeException] effs, s # a .| ctx) =>
   Name s ->
   Lang ctx RelationTermSyntax a ->
-  Lang ctx effs (RuntimeState RelationTermSyntax ctx, a)
-substitute rst name expr =
-  case runRelationExpr (rst {callStack = show name : callStack rst}) expr of
+  Lang ctx effs a
+substitute name expr = do
+  rst <- get
+  let result =
+        expr
+          & introduceState
+          & runPrime
+          & runEnv rst
+          & runPlain (plains rst)
+          & runNonDetA @[]
+          & runError
+          & runLang
+  case result of
     Left e -> throwE e
     Right results -> do
       (rst', x) <- oneOf results
-      return (rst {primes = setRegister name x (primes rst')}, x)
-
--- | Run an expression on the right-hand side of a primed variable relation.
---
--- @since 0.1.0.0
-runRelationExpr ::
-  RuntimeState RelationTermSyntax ctx ->
-  RelationTerm ctx a ->
-  Either RuntimeException [(RuntimeState RelationTermSyntax ctx, a)]
-runRelationExpr rst rvalue =
-  rvalue
-    & runPrime rst
-    & runPlain (plains rst)
-    & runNonDetA @[]
-    & runError
-    & runLang
+      put (rst' {primes = setRegister name x (primes rst')})
+      pure x
+  where
+    introduceState ::
+      Lang ctx (Prime : effs) a ->
+      Lang ctx (Prime ': Env ': effs) a
+    introduceState = \case
+      Pure x -> pure x
+      Op op k
+        | OHere op' <- op -> Op (OHere op') k'
+        | OThere op' <- op -> Op (OThere (OThere op')) k'
+        where
+          k' = introduceState . k
+      Scoped scoped loom
+        | SHere scoped' <- scoped -> Scoped (SHere scoped') loom'
+        | SThere scoped' <- scoped -> Scoped (SThere (SThere scoped')) loom'
+        where
+          loom' = loom ~>~ hoist introduceState
