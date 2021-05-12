@@ -1,10 +1,9 @@
-
 module Spectacle.Syntax.Modal
   ( tests,
   )
 where
 
-import Test.Tasty
+import Test.Tasty (TestTree, testGroup)
 
 import qualified Spectacle.Syntax.Modal.Properties
 

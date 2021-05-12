@@ -5,26 +5,40 @@ module Spectacle.Syntax.Modal.Properties
   )
 where
 
-import Control.Arrow
-import Control.Monad
 import Data.Function ((&))
 import Hedgehog
-import qualified Hedgehog.Gen as Gen
-import qualified Hedgehog.Range as Range
-import Test.Tasty
-import Test.Tasty.Hedgehog
+  ( Property,
+    PropertyT,
+    annotate,
+    annotateShow,
+    failure,
+    property,
+    success,
+    withTests,
+  )
+import Test.Tasty (TestTree, testGroup)
+import Test.Tasty.Hedgehog (testProperty)
 
-import Data.Type.Rec
-import Language.Spectacle.Exception.RuntimeException
-import Language.Spectacle.Lang
-import Language.Spectacle.Syntax.Error
-import Language.Spectacle.Syntax.Logic
-import Language.Spectacle.Syntax.Modal
+import Data.Type.Rec (RecT (RNil))
+import Language.Spectacle.Exception.RuntimeException (RuntimeException)
+import Language.Spectacle.Lang (Lang, Member, Members, runLang)
+import Language.Spectacle.Syntax.Error (Error, runError)
+import Language.Spectacle.Syntax.Logic (Logic, complement, conjunct, disjunct)
+import Language.Spectacle.Syntax.Modal (Modal, always, eventually)
 import Language.Spectacle.Syntax.Modal.Preterm
-import Language.Spectacle.Syntax.Modal.Internal
-import Language.Spectacle.Syntax.NonDet
-import Language.Spectacle.Syntax.Plain
-import Language.Spectacle.Syntax.Prime
+  ( Preterm
+      ( PreAlways,
+        PreComplement,
+        PreConjunct,
+        PreConst,
+        PreDisjunct,
+        PreUpUntil
+      ),
+    materialize,
+    rewritePreterm,
+  )
+import Language.Spectacle.Syntax.Plain (Plain, runPlain)
+import Language.Spectacle.Syntax.Prime (Prime, substPrime)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -37,7 +51,10 @@ pretermsOf effs matches = do
         effs
           & materialize
           & fmap rewritePreterm
-          & getPreterms RNil RNil
+          & substPrime RNil
+          & runPlain RNil
+          & runError
+          & runLang
   case preterms of
     Right expr ->
       if matches == expr
