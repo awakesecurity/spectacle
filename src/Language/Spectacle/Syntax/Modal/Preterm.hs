@@ -1,3 +1,5 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 -- | This module houses 'Preterm's and their supporting functions. 'Preterm's serve as an intermediate representation
 -- for manipulating temporal formula and are isomorphic to their effectful representation in the 'Modal' and 'Logic'
 -- effects.
@@ -31,7 +33,16 @@
 --
 -- @since 0.1.0.0
 module Language.Spectacle.Syntax.Modal.Preterm
-  ( Preterm (PreConst, PreConjunct, PreDisjunct, PreComplement, PreAlways, PreUpUntil),
+  ( Preterm
+      ( PreConst,
+        PreConjunct,
+        PreDisjunct,
+        PreImplies,
+        PreNotImplies,
+        PreComplement,
+        PreAlways,
+        PreUpUntil
+      ),
     materialize,
     abstract,
     normalizePreterm,
@@ -44,8 +55,7 @@ import Data.Void (absurd)
 
 import Data.Functor.Loom (hoist, runLoom, (~>~))
 import Language.Spectacle.Lang
-  ( Lang (Pure, Op, Scoped),
-    Member,
+  ( Lang (Op, Pure, Scoped),
     Members,
     decomposeOp,
     decomposeS,
@@ -54,7 +64,6 @@ import Language.Spectacle.Lang
   )
 import Language.Spectacle.Syntax.Logic.Internal (Effect (Complement, Conjunct, Disjunct), Logic (Logic))
 import Language.Spectacle.Syntax.Modal.Internal (Effect (Always, UpUntil), Modal (Modal))
-import Language.Spectacle.Syntax.NonDet.Internal (NonDet)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -79,10 +88,17 @@ data Preterm a where
   PreConst :: a -> Preterm a
   PreConjunct :: Preterm a -> Preterm a -> Preterm a
   PreDisjunct :: Preterm a -> Preterm a -> Preterm a
+  PreImplies :: Preterm a -> Preterm a -> Preterm a
+  PreNotImplies :: Preterm a -> Preterm a -> Preterm a
   PreComplement :: Preterm a -> Preterm a
   PreAlways :: Preterm a -> Preterm a
   PreUpUntil :: Preterm a -> Preterm a -> Preterm a
   deriving (Functor, Eq, Show)
+
+isComplement :: Preterm a -> Bool
+isComplement PreComplement {} = True
+isComplement _ = False
+{-# INLINE CONLIKE isComplement #-}
 
 -- | 'materialize' takes a 'Lang' with 'Modal' and 'Logic' effects and converts their representation to 'Preterm's.
 --
@@ -99,10 +115,16 @@ materialize = \case
     Left scoped' -> case decomposeS scoped' of
       Left other -> Scoped other loom'
       Right eff
-        | Conjunct lhs rhs <- eff -> do
-          lhs' <- runLoom loom' lhs
-          rhs' <- runLoom loom' rhs
-          return (PreConjunct lhs' rhs')
+        | Conjunct lhs rhs <- eff ->
+          runLoom loom' lhs >>= \case
+            PreComplement lhs' -> do
+              rhs' <- runLoom loom' rhs
+              if isComplement rhs'
+                then return (PreConjunct lhs' rhs')
+                else return (PreImplies lhs' rhs')
+            lhs' -> do
+              rhs' <- runLoom loom' rhs
+              return (PreConjunct lhs' rhs')
         | Disjunct lhs rhs <- eff -> do
           lhs' <- runLoom loom' lhs
           rhs' <- runLoom loom' rhs
@@ -124,21 +146,42 @@ materialize = \case
 -- | 'abstract' reintroduces the 'Preterm's in a 'Lang' of 'Preterms' as their corresponding effects.
 --
 -- @since 0.1.0.0
-abstract :: Member NonDet effs => Lang ctx effs (Preterm Bool) -> Lang ctx (Modal ': Logic ': effs) Bool
+abstract :: Lang ctx effs (Preterm Bool) -> Lang ctx (Modal ': Logic ': effs) Bool
 abstract preterms =
   preterms
     & weaken
     & weaken
     & (>>= fromPreterm)
   where
-    fromPreterm :: Members '[Modal, Logic, NonDet] effs => Preterm Bool -> Lang ctx effs Bool
+    fromPreterm :: Members '[Modal, Logic] effs => Preterm Bool -> Lang ctx effs Bool
     fromPreterm = \case
       PreConst x -> Pure x
-      PreConjunct lhs rhs -> scope (Conjunct (fromPreterm lhs) (fromPreterm rhs))
-      PreDisjunct lhs rhs -> scope (Disjunct (fromPreterm lhs) (fromPreterm rhs))
-      PreComplement expr -> scope (Complement (fromPreterm expr))
-      PreUpUntil lhs rhs -> scope (UpUntil (fromPreterm lhs) (fromPreterm rhs))
-      PreAlways expr -> scope (Always (fromPreterm expr))
+      PreConjunct lhs rhs ->
+        let lhs' = fromPreterm lhs
+            rhs' = fromPreterm rhs
+         in scope (Conjunct lhs' rhs')
+      PreDisjunct lhs rhs ->
+        let lhs' = fromPreterm lhs
+            rhs' = fromPreterm rhs
+         in scope (Disjunct lhs' rhs')
+      PreImplies lhs rhs ->
+        let lhs' = scope (Complement (fromPreterm lhs))
+            rhs' = fromPreterm rhs
+         in scope (Conjunct lhs' rhs')
+      PreNotImplies lhs rhs ->
+        let lhs' = fromPreterm lhs
+            rhs' = scope (Complement (fromPreterm rhs))
+         in scope (Disjunct lhs' rhs')
+      PreComplement term ->
+        let term' = fromPreterm term
+         in scope (Complement term')
+      PreUpUntil lhs rhs ->
+        let lhs' = fromPreterm lhs
+            rhs' = fromPreterm rhs
+         in scope (UpUntil lhs' rhs')
+      PreAlways term ->
+        let term' = fromPreterm term
+         in scope (Always term')
 {-# INLINE abstract #-}
 
 -- | Sends a tree of 'Preterm's to a normal form which can be easily recognized by the model checker.
@@ -149,7 +192,7 @@ normalizePreterm preterm =
   let preterm' = rewritePreterm preterm
    in if preterm' == preterm
         then preterm'
-        else preterm
+        else rewritePreterm preterm'
 
 -- | Simplifies temporal formula by rewriting a tree of preterms using tautologies for the modal operators:
 --
@@ -207,41 +250,67 @@ rewritePreterm = \case
   PreConjunct lhs rhs
     | PreAlways lhs' <- lhs
       , PreAlways rhs' <- rhs ->
+      -- ◻p ∧ ◻q ≡ ◻(p ∧ q)
       rewritePreterm (PreAlways (PreConjunct lhs' rhs'))
     | otherwise -> PreConjunct (rewritePreterm lhs) (rewritePreterm rhs)
   PreDisjunct lhs rhs
     | PreUpUntil (PreConst True) lhs' <- lhs
       , PreUpUntil (PreConst True) rhs' <- rhs ->
+      -- ◇ p ∨ ◇ q ≡ ◇(p ∨ q)
       rewritePreterm (PreUpUntil (PreConst True) (PreDisjunct lhs' rhs'))
     | otherwise -> PreDisjunct (rewritePreterm lhs) (rewritePreterm rhs)
+  PreImplies lhs rhs ->
+    let lhs' = rewritePreterm lhs
+        rhs' = rewritePreterm rhs
+     in PreImplies lhs' rhs'
+  PreNotImplies lhs rhs ->
+    let lhs' = rewritePreterm lhs
+        rhs' = rewritePreterm rhs
+     in PreNotImplies lhs' rhs'
   PreComplement expr
     | PreComplement expr' <- expr ->
+      -- ¬ (¬ p) ≡ p
       rewritePreterm expr'
     | PreConjunct lhs rhs <- expr ->
+      -- ¬(p ∧ q) ≡ ¬ p ∧ ¬ q
       let lhs' = rewritePreterm (PreComplement lhs)
           rhs' = rewritePreterm (PreComplement rhs)
        in PreDisjunct lhs' rhs'
     | PreDisjunct lhs rhs <- expr ->
+      -- ¬(p ∨ q) ≡ ¬ p ∧ ¬ q
       let lhs' = rewritePreterm (PreComplement lhs)
           rhs' = rewritePreterm (PreComplement rhs)
        in PreConjunct lhs' rhs'
+    | PreImplies lhs rhs <- expr ->
+      -- ¬(p ⇒ q) ≡ ¬(¬p ∧ q) ≡ ¬¬p ∨ ¬q ≡ p ∨ ¬q ≡ p ⇏ q
+      PreNotImplies lhs rhs
+    | PreNotImplies lhs rhs <- expr ->
+      -- ¬(p ⇏ q) ≡ ¬(p ∨ ¬ q) ≡ ¬p ∧ ¬¬q ≡ ¬p ∧ q ≡ p ⇒ q
+      PreImplies rhs lhs
     | PreAlways expr' <- expr ->
+      -- ¬◻p ≡ ◇¬p
       PreUpUntil (PreConst True) (rewritePreterm (PreComplement expr'))
     | PreUpUntil (PreConst True) expr' <- expr ->
+      -- ¬◇p ≡ ◻¬p
       PreAlways (rewritePreterm (PreComplement expr'))
     | otherwise -> PreComplement (rewritePreterm expr)
   PreAlways expr
     | PreAlways expr' <- expr ->
+      -- ◻◻p ≡ ◻p
       rewritePreterm (PreAlways expr')
     | PreUpUntil (PreConst True) expr' <- expr
       , PreAlways {} <- expr' ->
-      rewritePreterm (PreUpUntil (PreConst True) expr')
+      -- ◻◇◻p ≡ ◇◻p
+      rewritePreterm expr
     | otherwise -> PreAlways (rewritePreterm expr)
   PreUpUntil (PreConst True) expr
     | PreAlways expr' <- expr
       , PreUpUntil (PreConst True) _ <- expr' ->
+      -- ◇◻◇p ≡ ◻◇p
       rewritePreterm (PreAlways expr')
-    | expr'@(PreUpUntil (PreConst True) _) <- expr -> rewritePreterm expr'
+    | expr'@(PreUpUntil (PreConst True) _) <- expr ->
+      -- ◇◇p ≡ ◇p
+      rewritePreterm expr'
     | otherwise -> PreUpUntil (PreConst True) (rewritePreterm expr)
   PreUpUntil lhs rhs -> PreUpUntil (rewritePreterm lhs) (rewritePreterm rhs)
 {-# INLINE rewritePreterm #-}
