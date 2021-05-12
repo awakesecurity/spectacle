@@ -115,20 +115,20 @@ materialize = \case
     Left scoped' -> case decomposeS scoped' of
       Left other -> Scoped other loom'
       Right eff
-        | Conjunct lhs rhs <- eff ->
-          runLoom loom' lhs >>= \case
+        | Conjunct lhs rhs <- eff -> do
+          lhs' <- runLoom loom' lhs
+          rhs' <- runLoom loom' rhs
+          return (PreConjunct lhs' rhs')
+        | Disjunct lhs rhs <- eff -> do
+           runLoom loom' lhs >>= \case
             PreComplement lhs' -> do
               rhs' <- runLoom loom' rhs
               if isComplement rhs'
-                then return (PreConjunct lhs' rhs')
+                then return (PreDisjunct lhs' rhs')
                 else return (PreImplies lhs' rhs')
             lhs' -> do
               rhs' <- runLoom loom' rhs
-              return (PreConjunct lhs' rhs')
-        | Disjunct lhs rhs <- eff -> do
-          lhs' <- runLoom loom' lhs
-          rhs' <- runLoom loom' rhs
-          return (PreDisjunct lhs' rhs')
+              return (PreDisjunct lhs' rhs')
         | Complement expr <- eff -> do
           expr' <- runLoom loom' expr
           return (PreComplement expr')
@@ -167,11 +167,11 @@ abstract preterms =
       PreImplies lhs rhs ->
         let lhs' = scope (Complement (fromPreterm lhs))
             rhs' = fromPreterm rhs
-         in scope (Conjunct lhs' rhs')
+         in scope (Disjunct lhs' rhs')
       PreNotImplies lhs rhs ->
         let lhs' = fromPreterm lhs
             rhs' = scope (Complement (fromPreterm rhs))
-         in scope (Disjunct lhs' rhs')
+         in scope (Conjunct lhs' rhs')
       PreComplement term ->
         let term' = fromPreterm term
          in scope (Complement term')
