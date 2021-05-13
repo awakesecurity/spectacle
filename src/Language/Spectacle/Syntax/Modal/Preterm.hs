@@ -81,7 +81,7 @@ import Language.Spectacle.Syntax.Modal.Internal (Effect (Always, UpUntil), Modal
 -- @
 --
 -- 'Preterm's are rewritten in the normalization process rather than the effects directly since interposing effect
--- translations directly would be extremely complicated for the set of tautologies used to normalize temporal formula.
+-- translations directly would be extremely complicated for the set of tautologies used to normalize temporal formulas.
 --
 -- @since 0.1.0.0
 data Preterm a where
@@ -113,35 +113,35 @@ materialize = \case
     Right (Modal b) -> absurd b
   Scoped scoped loom -> case decomposeS scoped of
     Left scoped' -> case decomposeS scoped' of
-      Left other -> Scoped other loom'
+      Left other -> Scoped other loomReify
       Right eff
         | Conjunct lhs rhs <- eff -> do
-          lhs' <- runLoom loom' lhs
-          rhs' <- runLoom loom' rhs
+          lhs' <- runLoom loomReify lhs
+          rhs' <- runLoom loomReify rhs
           return (PreConjunct lhs' rhs')
         | Disjunct lhs rhs <- eff -> do
-           runLoom loom' lhs >>= \case
+           runLoom loomReify lhs >>= \case
             PreComplement lhs' -> do
-              rhs' <- runLoom loom' rhs
+              rhs' <- runLoom loomReify rhs
               if isComplement rhs'
                 then return (PreDisjunct lhs' rhs')
                 else return (PreImplies lhs' rhs')
             lhs' -> do
-              rhs' <- runLoom loom' rhs
+              rhs' <- runLoom loomReify rhs
               return (PreDisjunct lhs' rhs')
         | Complement expr <- eff -> do
-          expr' <- runLoom loom' expr
+          expr' <- runLoom loomReify expr
           return (PreComplement expr')
     Right eff
       | Always expr <- eff -> do
-        expr' <- runLoom loom' expr
+        expr' <- runLoom loomReify expr
         return (PreAlways expr')
       | UpUntil lhs rhs <- eff -> do
-        lhs' <- runLoom loom' lhs
-        rhs' <- runLoom loom' rhs
+        lhs' <- runLoom loomReify lhs
+        rhs' <- runLoom loomReify rhs
         return (PreUpUntil lhs' rhs')
     where
-      loom' = loom ~>~ hoist materialize
+      loomReify = loom ~>~ hoist materialize
 
 -- | 'abstract' reintroduces the 'Preterm's in a 'Lang' of 'Preterms' as their corresponding effects.
 --
@@ -272,7 +272,7 @@ rewritePreterm = \case
       -- ¬ (¬ p) ≡ p
       rewritePreterm expr'
     | PreConjunct lhs rhs <- expr ->
-      -- ¬(p ∧ q) ≡ ¬ p ∧ ¬ q
+      -- ¬(p ∧ q) ≡ ¬ p ∨ ¬ q
       let lhs' = rewritePreterm (PreComplement lhs)
           rhs' = rewritePreterm (PreComplement rhs)
        in PreDisjunct lhs' rhs'

@@ -55,7 +55,7 @@ always m = scope (Always m)
 {-# INLINE always #-}
 
 -- | The modal operator 'eventually' qualifies a formula @p@ such that @p@ must be true /now/, or some time in the
--- future. 'eventually' is equivalent to 'upUntil' with a trivial formula on the left-hand side:
+-- future. 'eventually' is equivalent to:
 --
 -- @
 -- 'eventually' p = 'upUntil' ('pure' 'True') p
@@ -143,23 +143,23 @@ applyModality = \case
   Pure x -> pure x
   Op op k -> Op op (applyModality . k)
   Scoped scoped loom -> case projectS scoped of
-    Nothing -> Scoped scoped loom'
+    Nothing -> Scoped scoped loomModal
     Just (Always expr) -> do
-      let expr' = runLoom loom' expr
+      let expr' = runLoom loomModal expr
       scope (Always expr')
     Just (UpUntil lhs rhs) -> do
-      let lhs' = runLoom loom' lhs
-          rhs' = runLoom (loom' ~>~ hoist replacePrimes) rhs
+      let lhs' = runLoom loomModal lhs
+          rhs' = runLoom (loomModal ~>~ hoist replacePrimes) rhs
       scope (UpUntil lhs' rhs')
     where
-      loom' = loom ~>~ hoist applyModality
+      loomModal = loom ~>~ hoist applyModality
   where
     replacePrimes :: Members '[Plain, Prime] effs => Lang ctx effs a -> Lang ctx effs a
     replacePrimes = \case
       Pure x -> pure x
       Op op k -> Op op (replacePrimes . k)
       Scoped scoped loom -> case projectS scoped of
-        Nothing -> Scoped scoped loom'
-        Just (PlainVar name) -> Scoped (injectS (PrimeVar name)) loom'
+        Nothing -> Scoped scoped loomPrimed
+        Just (PlainVar name) -> Scoped (injectS (PrimeVar name)) loomPrimed
         where
-          loom' = loom ~>~ hoist replacePrimes
+          loomPrimed = loom ~>~ hoist replacePrimes
