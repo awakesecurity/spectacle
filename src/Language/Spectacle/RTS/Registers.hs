@@ -21,7 +21,7 @@ import Data.Kind (Type)
 import GHC.TypeLits (Symbol)
 
 import Data.Ascript (Ascribe, type (#))
-import Data.Type.Rec (HasSel (getRecT, setRecT), Name, Rec, RecT, fieldMap, type (#), type (.|))
+import Data.Type.Rec (HasSel (getRecT, setRecT), Name, Rec, RecT, fieldMap, type (.|))
 import Language.Spectacle.Exception.RuntimeException (RuntimeException)
 import Language.Spectacle.Lang (EffectK, Lang)
 import Language.Spectacle.Syntax.Error.Internal (Error)
@@ -29,7 +29,7 @@ import Language.Spectacle.Syntax.NonDet.Internal (NonDet)
 import Language.Spectacle.Syntax.Plain.Internal (Plain)
 import Language.Spectacle.Syntax.Prime.Internal (Prime)
 
--- -------------------------------------------------------------------------------------------------
+-- ---------------------------------------------------------------------------------------------------------------------
 
 type RelationTerm :: [Ascribe Symbol Type] -> Type -> Type
 type RelationTerm ctx a = Lang ctx RelationTermSyntax a

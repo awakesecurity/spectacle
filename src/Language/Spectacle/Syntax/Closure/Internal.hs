@@ -12,7 +12,7 @@ import Data.Ascript (type (#))
 import Data.Name (Name)
 import Data.Type.Rec (type (.|))
 import Language.Spectacle.Lang (Effect, EffectK, Lang, ScopeK)
-import Language.Spectacle.RTS.Registers
+import Language.Spectacle.RTS.Registers (RelationTermSyntax)
 
 -- -------------------------------------------------------------------------------------------------
 

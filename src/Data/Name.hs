@@ -2,6 +2,7 @@
 
 module Data.Name
   ( Name (Name),
+    inferName,
   )
 where
 
@@ -39,3 +40,7 @@ instance Show (Name s) where
 instance Eq (Name s) where
   -- Nominal equality
   _ == _ = True
+
+inferName :: KnownSymbol s => Name s
+inferName = Name Proxy
+{-# INLINE CONLIKE inferName #-}

@@ -59,46 +59,61 @@ library
   hs-source-dirs:      src
 
   build-depends:
-      containers >= 0.6
-    , hashable >= 1.3.0.0
-    , natural-transformation
+      hashable >= 1.3.0.0
     , primitive
 
   exposed-modules:
-      Data.FTCQueue
+      Control.Natural
+    , Data.Ascript
     , Data.Fingerprint
     , Data.Fingerprint.Array
     , Data.Fingerprint.Binary
-    , Data.Type.HList
-    , Data.Type.HList.Class
-    , Data.Type.HList.Internal
-    , Data.Type.Induction
+    , Data.Functor.Loom
+    , Data.Name
+    , Data.Type.Rec
+    , Language.Spectacle.AST.Action
+    , Language.Spectacle.AST.Action.Internal
+    , Language.Spectacle.Exception.RuntimeException
     , Language.Spectacle.Lang
-    , Language.Spectacle.Lang.Control
     , Language.Spectacle.Lang.Internal
-    , Language.Spectacle.Lang.Interpreters
-    , Language.Spectacle.Lang.Sum
-    , Language.Spectacle.RTS
-    , Language.Spectacle.RTS.Callstack
-    , Language.Spectacle.RTS.Exception
-    , Language.Spectacle.Syntax.Ascript
-    , Language.Spectacle.Syntax.Name
-    , Language.Spectacle.Type.Rec
+    , Language.Spectacle.Lang.Member
+    , Language.Spectacle.Lang.Op
+    , Language.Spectacle.Lang.Scoped
+    , Language.Spectacle.RTS.Registers
+    , Language.Spectacle.Syntax.Closure
+    , Language.Spectacle.Syntax.Closure.Internal
+    , Language.Spectacle.Syntax.Env
+    , Language.Spectacle.Syntax.Env.Internal
+    , Language.Spectacle.Syntax.Error
+    , Language.Spectacle.Syntax.Error.Internal
+    , Language.Spectacle.Syntax.Fresh
+    , Language.Spectacle.Syntax.Fresh.Internal
+    , Language.Spectacle.Syntax.Modal
+    , Language.Spectacle.Syntax.Modal.Preterm
+    , Language.Spectacle.Syntax.Modal.Internal
+    , Language.Spectacle.Syntax.NonDet
+    , Language.Spectacle.Syntax.NonDet.Internal
+    , Language.Spectacle.Syntax.Plain
+    , Language.Spectacle.Syntax.Plain.Internal
+    , Language.Spectacle.Syntax.Prime
+    , Language.Spectacle.Syntax.Prime.Internal
+    , Language.Spectacle.Syntax.Quantifier
+    , Language.Spectacle.Syntax.Quantifier.Internal
+    , Language.Spectacle.Syntax.Logic
+    , Language.Spectacle.Syntax.Logic.Internal
 
 test-suite unit-tests
   import:              common
   type:                exitcode-stdio-1.0
-  hs-source-dirs:      test
+  hs-source-dirs:      test/unit-tests
   main-is:             Main.hs
 
   other-modules:
-      Fingerprint
-    , Fingerprint.Array
-
+      Spectacle.Syntax.Modal
+    , Spectacle.Syntax.Modal.Properties
 
   build-depends:
-      hashable
-    , spectacle
+      spectacle
     , hedgehog
     , tasty
     , tasty-hedgehog

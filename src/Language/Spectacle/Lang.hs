@@ -34,7 +34,8 @@ module Language.Spectacle.Lang
   )
 where
 
-import Language.Spectacle.Lang.Internal (Lang (Pure, Op, Scoped), scope, send)
+import Data.Functor.Loom (hoist, (~>~))
+import Language.Spectacle.Lang.Internal (Lang (Op, Pure, Scoped), scope, send)
 import Language.Spectacle.Lang.Member (Member (inject, injectS, project, projectS), type Members)
 import Language.Spectacle.Lang.Op (Op (OHere, OThere), decomposeOp, extractOp)
 import Language.Spectacle.Lang.Scoped
@@ -46,7 +47,6 @@ import Language.Spectacle.Lang.Scoped
     decomposeS,
     extractS,
   )
-import Data.Functor.Loom
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

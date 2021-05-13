@@ -66,6 +66,12 @@ instance {-# OVERLAPS #-} (Show a, Show (Rec ctx)) => Show (Rec (s # a ': ctx)) 
 instance (Show (f a), Show (RecT f ctx)) => Show (RecT f (s # a ': ctx)) where
   show (RConT name x r) = show name ++ "=" ++ show x ++ " " ++ show r
 
+instance Eq (RecT f '[]) where
+  RNil == RNil = True
+
+instance (Eq (f a), Eq (RecT f ctx)) => Eq (RecT f (s # a ': ctx)) where
+  RConT _ x r1 == RConT _ y r2 = x == y && r1 == r2
+
 fieldMap :: (f ~> g) -> RecT f ctx -> RecT g ctx
 fieldMap _ RNil = RNil
 fieldMap f (RConT name x r) = RConT name (f x) (fieldMap f r)

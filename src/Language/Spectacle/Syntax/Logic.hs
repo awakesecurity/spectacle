@@ -21,14 +21,14 @@ import Data.Functor.Loom (hoist, runLoom, (~>~))
 import Language.Spectacle.Exception.RuntimeException (RuntimeException)
 import Language.Spectacle.Lang
   ( Lang (Op, Pure, Scoped),
-    Members,
     Member,
+    Members,
     decomposeOp,
     decomposeS,
     scope,
   )
 import Language.Spectacle.Syntax.Error (Error)
-import Language.Spectacle.Syntax.Logic.Internal (Effect (..), Logic (Logic))
+import Language.Spectacle.Syntax.Logic.Internal (Effect (Complement, Conjunct, Disjunct), Logic (Logic))
 import Language.Spectacle.Syntax.NonDet (NonDet)
 
 -- ---------------------------------------------------------------------------------------------------------------------
