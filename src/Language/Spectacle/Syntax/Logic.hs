@@ -18,9 +18,7 @@ import Data.Coerce (coerce)
 import Data.Void (absurd)
 
 import Data.Functor.Loom (hoist, runLoom, (~>~))
-import Language.Spectacle.Exception.RuntimeException
-  ( RuntimeException (QuantifierException),
-  )
+import Language.Spectacle.Exception.RuntimeException (RuntimeException)
 import Language.Spectacle.Lang
   ( Lang (Op, Pure, Scoped),
     Members,
