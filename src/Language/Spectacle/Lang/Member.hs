@@ -84,11 +84,13 @@ instance Member eff effs => Member eff (eff' ': effs) where
   inject = OThere . inject
   {-# INLINE CONLIKE inject #-}
 
+  project (OThere op) = project op
   project _ = Nothing
   {-# INLINE CONLIKE project #-}
 
   injectS = SThere . injectS
   {-# INLINE CONLIKE injectS #-}
 
+  projectS (SThere scoped) = projectS scoped
   projectS _ = Nothing
   {-# INLINE CONLIKE projectS #-}

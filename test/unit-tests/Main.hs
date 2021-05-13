@@ -1,13 +1,11 @@
 import Test.Tasty (defaultMain, testGroup)
 
-import qualified Fingerprint
-import qualified Fingerprint.Array
+import qualified Spectacle.Syntax.Modal
 
 main :: IO ()
 main =
   defaultMain $
     testGroup
       "unit tests"
-      [ Fingerprint.tests
-      , Fingerprint.Array.tests
+      [ Spectacle.Syntax.Modal.tests
       ]

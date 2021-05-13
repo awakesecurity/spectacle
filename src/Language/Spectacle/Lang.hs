@@ -8,16 +8,16 @@
 -- @since 0.1.0.0
 module Language.Spectacle.Lang
   ( -- * Lang
-    Lang (Pure, Yield),
+    Lang (Pure, Op, Scoped),
     runLang,
     send,
     scope,
+    weaken,
 
     -- * Effects
     type EffectK,
     type ScopeK,
     FirstOrder,
-    HigherOrder,
     Effect,
 
     -- ** Membership
@@ -25,7 +25,6 @@ module Language.Spectacle.Lang
     Member (inject, project, injectS, projectS),
 
     -- ** Unions
-    Union (Op, Scoped),
     Op (OHere, OThere),
     Scoped (SHere, SThere),
     decomposeOp,
@@ -35,21 +34,21 @@ module Language.Spectacle.Lang
   )
 where
 
-import Language.Spectacle.Lang.Internal (Lang (Pure, Yield), Union (Op, Scoped), scope, send)
+import Data.Functor.Loom (hoist, (~>~))
+import Language.Spectacle.Lang.Internal (Lang (Op, Pure, Scoped), scope, send)
 import Language.Spectacle.Lang.Member (Member (inject, injectS, project, projectS), type Members)
 import Language.Spectacle.Lang.Op (Op (OHere, OThere), decomposeOp, extractOp)
 import Language.Spectacle.Lang.Scoped
   ( Effect,
     EffectK,
     FirstOrder,
-    HigherOrder,
     ScopeK,
     Scoped (SHere, SThere),
     decomposeS,
     extractS,
   )
 
--- -------------------------------------------------------------------------------------------------
+-- ---------------------------------------------------------------------------------------------------------------------
 
 -- | Used to unwrap the pure value in 'Lang' after all of its effects have been discharged.
 --
@@ -72,3 +71,13 @@ runLang _ =
   error
     "internal error: Lang match against Yield, this means that an effect escaped the scope of Lang \
     \and was left unhandled. This should be impossible."
+
+-- | Appends an effect label @eff@ to the head of a 'Lang's effect signature by the weakening rule
+-- for sum types.
+--
+-- @since 0.1.0.0
+weaken :: forall eff effs ctx a. Lang ctx effs a -> Lang ctx (eff ': effs) a
+weaken = \case
+  Pure x -> pure x
+  Op op k -> Op (OThere op) (weaken . k)
+  Scoped scoped loom -> Scoped (SThere scoped) (loom ~>~ hoist weaken)
