@@ -16,5 +16,5 @@ newtype Modal :: EffectK where
   Modal :: Void -> Modal a
 
 data instance Effect Modal m b where
-  Always :: m Bool -> Effect Modal m Bool
-  UpUntil :: m Bool -> m Bool -> Effect Modal m Bool
+  Always :: Int -> m Bool -> Effect Modal m Bool
+  UpUntil :: Int -> m Bool -> m Bool -> Effect Modal m Bool
