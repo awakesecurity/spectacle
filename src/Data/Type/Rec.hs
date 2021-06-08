@@ -13,6 +13,7 @@ module Data.Type.Rec
     fields,
     type (.|),
     HasSel (..),
+    ReflectRow (repeatRow),
 
     -- * Re-exports
     Ascribe,
@@ -23,11 +24,12 @@ where
 
 import Control.Natural (type (~>))
 import Data.Functor.Identity (Identity (Identity, runIdentity))
+import Data.Hashable
 import Data.Kind (Constraint, Type)
-import GHC.TypeLits (Symbol)
+import GHC.TypeLits (KnownSymbol, Symbol)
 
 import Data.Ascript (Ascribe, AscriptName, AscriptType, type (#))
-import Data.Name (Name (Name))
+import Data.Name (Name (Name), inferName)
 
 -- -------------------------------------------------------------------------------------------------
 
@@ -72,6 +74,20 @@ instance Eq (RecT f '[]) where
 instance (Eq (f a), Eq (RecT f ctx)) => Eq (RecT f (s # a ': ctx)) where
   RConT _ x r1 == RConT _ y r2 = x == y && r1 == r2
 
+instance Hashable (RecT f '[]) where
+  hashWithSalt salt RNil = salt
+
+instance (Hashable (f x), Hashable (RecT f xs)) => Hashable (RecT f (s # x ': xs)) where
+  hashWithSalt salt (RConT _ x xs) = hashWithSalt (hashWithSalt salt x) xs
+
+instance Ord (RecT f '[]) where
+  compare RNil RNil = EQ
+
+instance (Ord (f x), Ord (RecT f xs)) => Ord (RecT f (s # x ': xs)) where
+  compare (RConT _ x xs) (RConT _ y ys) = case compare x y of
+    EQ -> compare xs ys
+    order -> order
+
 fieldMap :: (f ~> g) -> RecT f ctx -> RecT g ctx
 fieldMap _ RNil = RNil
 fieldMap f (RConT name x r) = RConT name (f x) (fieldMap f r)
@@ -110,3 +126,12 @@ instance HasSel ctx s a => HasSel (t # b ': ctx) s a where
 
   setRecT name x (RConT name' y r) = RConT name' y (setRecT name x r)
   {-# INLINE setRecT #-}
+
+class ReflectRow ctx where
+  repeatRow :: (forall a. f a) -> RecT f ctx
+
+instance ReflectRow '[] where
+  repeatRow _ = RNil
+
+instance (KnownSymbol s, ReflectRow xs) => ReflectRow (s # x ': xs) where
+  repeatRow x = RConT inferName x (repeatRow x)
