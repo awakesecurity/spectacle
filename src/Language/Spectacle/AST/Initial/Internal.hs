@@ -23,9 +23,9 @@ import Data.Type.Rec
     type (#),
     type (.|),
   )
-import Language.Spectacle.Exception.RuntimeException ( RuntimeException )
+import Language.Spectacle.Exception.RuntimeException (RuntimeException)
 import Language.Spectacle.Lang (EffectK, Lang)
-import Language.Spectacle.Syntax.Closure.Internal ( Closure, ClosureKind(InitialClosure) )
+import Language.Spectacle.Syntax.Closure.Internal (Closure, ClosureKind (InitialClosure))
 import Language.Spectacle.Syntax.Error.Internal (Error)
 import Language.Spectacle.Syntax.NonDet.Internal (NonDet)
 

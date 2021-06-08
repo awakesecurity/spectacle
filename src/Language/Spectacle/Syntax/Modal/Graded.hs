@@ -53,7 +53,7 @@ import Language.Spectacle.Syntax.Modal.Preterm
 -- @since 0.1.0.0
 data Level = L1 | L2 | L3 | L4
 
--- | Class of syntactic levels that 'Preterm' can be converted into.
+-- | The class of representations for well-formed temporal formula.
 --
 -- @since 0.1.0.0
 type SyntaxLevel :: Level -> Constraint
@@ -113,8 +113,7 @@ instance SyntaxLevel 'L3 where
   fromPreterm = \case
     PreComplement {} ->
       -- At the level of modal expressions complement/negation is valid; however, it should be factored by the dual laws
-      -- and distributive laws so we rebuild the expression in rewriting preterms. We could rebuild the expression,
-      -- rewrite, and try again but this is a questionable approach since complement should be here in the first place.
+      -- and distributive laws when preterms are rewritten.
       Left ComplementInL3
     PreEventually name terms
       | PreAlways _ terms' <- terms -> StaysAsL3 name <$> fromPreterm @ 'L2 terms'

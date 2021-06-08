@@ -7,17 +7,14 @@ where
 import Data.Kind (Type)
 import GHC.TypeLits (Symbol)
 
-import Data.Type.Rec
-import Language.Spectacle.Exception.RuntimeException
-import Language.Spectacle.Lang
-import Language.Spectacle.Syntax.Error.Internal
-import Language.Spectacle.Syntax.Logic.Internal
-import Language.Spectacle.Syntax.Modal.Graded
-import Language.Spectacle.Syntax.Modal.Internal
-import Language.Spectacle.Syntax.Modal.Preterm
-import Language.Spectacle.Syntax.Plain.Internal
-import Language.Spectacle.Syntax.Prime.Internal
-import Language.Spectacle.Syntax.Fresh.Internal
+import Data.Type.Rec (Ascribe)
+import Language.Spectacle.Exception.RuntimeException (RuntimeException)
+import Language.Spectacle.Lang (EffectK, Lang)
+import Language.Spectacle.Syntax.Error.Internal (Error)
+import Language.Spectacle.Syntax.Fresh.Internal (Fresh)
+import Language.Spectacle.Syntax.Logic.Internal (Logic)
+import Language.Spectacle.Syntax.Modal.Internal (Modal)
+import Language.Spectacle.Syntax.Plain.Internal (Plain)
 
 -- -------------------------------------------------------------------------------------------------
 
@@ -28,7 +25,7 @@ type InvariantSyntax :: [Ascribe Symbol Type] -> [EffectK]
 type InvariantSyntax ctx =
   '[ Modal
    , Logic
-   , Plain 
+   , Plain
    , Fresh
    , Error RuntimeException
    ]
