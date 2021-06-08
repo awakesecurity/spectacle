@@ -1,30 +1,39 @@
 {-# LANGUAGE DeriveAnyClass #-}
 
 module Language.Spectacle.Exception.RuntimeException
-  ( RuntimeException (VariableException, QuantifierException),
-    VariableException (CyclicReference),
-    QuantifierException (ForallViolated, ExistsViolated)
+  ( RuntimeException (VariableException, QuantifierException, SyntaxException),
+    VariableException (CyclicReference, Uninitialized),
+    QuantifierException (ForallViolated, ExistsViolated),
+    SyntaxException (LevelMismatch, ComplementInL3),
   )
 where
 
 import Control.Exception (Exception)
 import Type.Reflection (Typeable)
 
--- -------------------------------------------------------------------------------------------------
+-- ---------------------------------------------------------------------------------------------------------------------
 
 data RuntimeException where
   VariableException :: VariableException -> RuntimeException
   QuantifierException :: QuantifierException -> RuntimeException
+  SyntaxException :: SyntaxException -> RuntimeException
   deriving stock (Show, Typeable)
   deriving anyclass Exception
 
 data VariableException where
   CyclicReference :: [String] -> VariableException
+  Uninitialized :: String -> VariableException
   deriving stock (Show, Typeable)
   deriving anyclass Exception
 
 data QuantifierException where
   ForallViolated :: QuantifierException
   ExistsViolated :: QuantifierException
+  deriving stock (Show, Typeable)
+  deriving anyclass Exception
+
+data SyntaxException where
+  LevelMismatch :: Int -> [Int] -> SyntaxException
+  ComplementInL3 :: SyntaxException
   deriving stock (Show, Typeable)
   deriving anyclass Exception

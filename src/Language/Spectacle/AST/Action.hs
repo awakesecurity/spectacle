@@ -1,7 +1,13 @@
 module Language.Spectacle.AST.Action
-  ( type Action,
+  ( -- * Temporal Actions
+    type Action,
     type ActionSyntax,
+
+    -- ** Interpreters
     runAction,
+    rewriteLogic,
+    applyComplement,
+    introduceEnv,
   )
 where
 
@@ -12,7 +18,7 @@ import Data.Type.Rec (Rec)
 import Language.Spectacle.AST.Action.Internal (Action, ActionSyntax)
 import Language.Spectacle.Exception.RuntimeException (RuntimeException)
 import Language.Spectacle.Lang
-  ( Lang (Pure, Op, Scoped),
+  ( Lang (Op, Pure, Scoped),
     Member (projectS),
     Members,
     Op (OHere, OThere),
@@ -20,7 +26,11 @@ import Language.Spectacle.Lang
     runLang,
   )
 import Language.Spectacle.RTS.Registers (RuntimeState, emptyRuntimeState)
-import Language.Spectacle.Syntax.Closure (Closure, runClosure)
+import Language.Spectacle.Syntax.Closure
+  ( Closure,
+    ClosureKind (ActionClosure),
+    runActionClosure,
+  )
 import Language.Spectacle.Syntax.Env (Env, runEnv)
 import Language.Spectacle.Syntax.Error (runError)
 import Language.Spectacle.Syntax.Logic
@@ -43,12 +53,16 @@ import Language.Spectacle.Syntax.Quantifier
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
+-- | Completely evaluate a temporal action yielding either a 'RuntimeException' or a collection of new worlds accessible
+-- by the action given.
+--
+-- @since 0.1.0.0
 runAction :: Rec ctx -> Action ctx Bool -> Either RuntimeException [(RuntimeState ctx, Bool)]
 runAction knowns nextState =
   nextState
-    & introduceState
+    & introduceEnv
     & rewriteLogic
-    & runClosure
+    & runActionClosure
     & runQuantifier
     & runLogic
     & runEnv (emptyRuntimeState knowns)
@@ -56,7 +70,11 @@ runAction knowns nextState =
     & runNonDetA
     & runError
     & runLang
+{-# INLINE runAction #-}
 
+-- | Traverses the effects in an action, rewriting all logical operators and quantifiers scoped within a negation.
+--
+-- @since 0.1.0.0
 rewriteLogic :: Members '[Logic, Quantifier, NonDet] effs => Lang ctx effs Bool -> Lang ctx effs Bool
 rewriteLogic = \case
   Pure x -> pure x
@@ -68,7 +86,12 @@ rewriteLogic = \case
       | otherwise -> Scoped scoped loom'
     where
       loom' = loom ~>~ hoist rewriteLogic
+{-# INLINE rewriteLogic #-}
 
+-- | Reduces logical negation by applying the usual rewrite rules to quantifiers and other logical operators scoped
+-- within the negation.
+--
+-- @since 0.1.0.0
 applyComplement :: Members '[Logic, Quantifier, NonDet] effs => Lang ctx effs Bool -> Lang ctx effs Bool
 applyComplement = \case
   Pure x -> pure x
@@ -94,11 +117,15 @@ applyComplement = \case
        in conjunct (complement lhs') (complement rhs')
     where
       loom' = loom ~>~ hoist applyComplement
+{-# INLINE applyComplement #-}
 
-introduceState ::
-  Lang ctx (Closure ': Quantifier ': Logic ': effs) a ->
-  Lang ctx (Closure ': Quantifier ': Logic ': Env ': effs) a
-introduceState = \case
+-- | Introduces the variable environment to an 'Action' "underneath" the 'Closure' effect.
+--
+-- @since 0.1.0.0
+introduceEnv ::
+  Lang ctx (Closure 'ActionClosure ': Quantifier ': Logic ': effs) a ->
+  Lang ctx (Closure 'ActionClosure ': Quantifier ': Logic ': Env ': effs) a
+introduceEnv = \case
   Pure x -> pure x
   Op op k
     | OHere op' <- op -> Op (OHere op') k'
@@ -106,11 +133,11 @@ introduceState = \case
     | OThere (OThere (OHere op')) <- op -> Op (OThere (OThere (OHere op'))) k'
     | OThere (OThere (OThere op')) <- op -> Op (OThere (OThere (OThere (OThere op')))) k'
     where
-      k' = introduceState . k
+      k' = introduceEnv . k
   Scoped scoped loom
     | SHere scoped' <- scoped -> Scoped (SHere scoped') loom'
     | SThere (SHere scoped') <- scoped -> Scoped (SThere (SHere scoped')) loom'
     | SThere (SThere (SHere scoped')) <- scoped -> Scoped (SThere (SThere (SHere scoped'))) loom'
     | SThere (SThere (SThere scoped')) <- scoped -> Scoped (SThere (SThere (SThere (SThere scoped')))) loom'
     where
-      loom' = loom ~>~ hoist introduceState
+      loom' = loom ~>~ hoist introduceEnv
