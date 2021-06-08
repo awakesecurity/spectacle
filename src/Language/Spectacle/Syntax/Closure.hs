@@ -1,14 +1,13 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE RecordWildCards #-}
-
 -- | Closures and variable relations.
 --
 -- @since 0.1.0.0
 module Language.Spectacle.Syntax.Closure
-  ( Closure (Closure),
-    Effect (Close),
+  ( ClosureKind (ActionClosure, InitialClosure),
+    Closure (Closure),
+    Effect (CloseAction, CloseInitial),
+    define,
     (.=),
-    runClosure,
+    runActionClosure,
   )
 where
 
@@ -34,7 +33,11 @@ import Language.Spectacle.RTS.Registers
     getRegister,
     setThunk,
   )
-import Language.Spectacle.Syntax.Closure.Internal (Closure (Closure), Effect (Close))
+import Language.Spectacle.Syntax.Closure.Internal
+  ( Closure (Closure),
+    ClosureKind (ActionClosure, InitialClosure),
+    Effect (CloseAction, CloseInitial),
+  )
 import Language.Spectacle.Syntax.Env (Env, gets, modify)
 import Language.Spectacle.Syntax.Error (Error)
 import Language.Spectacle.Syntax.NonDet (NonDet)
@@ -42,28 +45,39 @@ import Language.Spectacle.Syntax.Prime (RuntimeState (primes), substitute)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
--- | Determines the value of a primed value in the next time frame. The following example allows for
--- the new value of "x" to be any 'Int' in the range @[1 .. 5]@.
---
--- >>> #x .= oneOf [1 :: Int .. 5 :: Int]
--- >>> prime #x
---
--- @since 0.1.0.0
-(.=) :: (s # a .| ctx, Member Closure effs) => Name s -> RelationTerm ctx a -> Lang ctx effs ()
-name .= expr = scope (Close name expr)
+define ::
+  (s # a .| ctx, Member (Closure 'InitialClosure) effs') =>
+  Name s ->
+  Lang ctx '[NonDet] a ->
+  Lang ctx effs' ()
+define name expr = scope (CloseInitial name expr)
+{-# INLINE define #-}
+
+(.=) ::
+  (s # a .| ctx, Member (Closure 'ActionClosure) effs') =>
+  Name s ->
+  RelationTerm ctx a ->
+  Lang ctx effs' ()
+name .= expr = scope (CloseAction name expr)
 {-# INLINE (.=) #-}
 
 -- | Discharges a 'Closure' effect, returning a 'Rec' new values for each variable in @ctx@.
 --
 -- @since 0.1.0.0
-runClosure :: Members '[NonDet, Env, Error RuntimeException] effs => Lang ctx (Closure ': effs) a -> Lang ctx effs a
-runClosure m = evaluateThunks (makeThunks m)
-{-# INLINE runClosure #-}
+runActionClosure ::
+  Members '[NonDet, Env, Error RuntimeException] effs =>
+  Lang ctx (Closure 'ActionClosure ': effs) a ->
+  Lang ctx effs a
+runActionClosure m = evaluateThunks (makeThunks m)
+{-# INLINE runActionClosure #-}
 
 -- | Evaluates all unevaluated closures in a specification.
 --
 -- @since 0.1.0.0
-evaluateThunks :: Members '[NonDet, Env, Error RuntimeException] effs => Lang ctx (Closure ': effs) a -> Lang ctx effs a
+evaluateThunks ::
+  Members '[NonDet, Env, Error RuntimeException] effs =>
+  Lang ctx (Closure 'ActionClosure ': effs) a ->
+  Lang ctx effs a
 evaluateThunks = \case
   Pure x -> pure x
   Op op k -> case decomposeOp op of
@@ -73,7 +87,7 @@ evaluateThunks = \case
       k' = evaluateThunks . k
   Scoped scoped loom -> case decomposeS scoped of
     Left other -> Scoped other loom'
-    Right (Close name _) ->
+    Right (CloseAction name _) ->
       gets (getRegister name . primes) >>= \case
         Thunk expr -> do
           x <- substitute name expr
@@ -91,20 +105,23 @@ evaluateThunks = \case
 -- primed variables takes place.
 --
 -- @since 0.1.0.0
-makeThunks :: Members '[Closure, Env, Error RuntimeException] effs => Lang ctx effs a -> Lang ctx effs a
+makeThunks ::
+  Members '[Closure 'ActionClosure, Env, Error RuntimeException] effs =>
+  Lang ctx effs a ->
+  Lang ctx effs a
 makeThunks = \case
   Pure x -> pure x
   Op op k -> case project op of
     Nothing -> Op op k'
-    Just (Closure bottom) -> absurd bottom
+    Just (Closure bottom :: Closure 'ActionClosure x) -> absurd bottom
     where
       k' = makeThunks . k
   Scoped scoped loom -> case projectS scoped of
     Nothing -> Scoped scoped loom'
-    Just (Close name expr) -> do
+    Just (CloseAction name expr) -> do
       x <- runLoom loom' (pure ())
       modify \rtst -> rtst {primes = setThunk name expr (primes rtst)}
-      scope (Close name expr)
+      scope (CloseAction name expr)
       return x
     where
       loom' = loom ~>~ hoist makeThunks
