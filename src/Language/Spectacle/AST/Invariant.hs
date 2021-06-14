@@ -16,6 +16,7 @@ import Language.Spectacle.AST.Invariant.Internal
   )
 import Language.Spectacle.Exception.RuntimeException (RuntimeException (SyntaxException))
 import Language.Spectacle.Lang (Lang, Member, runLang)
+import Language.Spectacle.Syntax.Enabled (runEnabled)
 import Language.Spectacle.Syntax.Error (Error, runError, throwE)
 import Language.Spectacle.Syntax.Fresh (Fresh, runFresh)
 import Language.Spectacle.Syntax.Logic (Logic)
@@ -30,18 +31,21 @@ import Language.Spectacle.Syntax.Modal
     normalizePreterm,
   )
 import Language.Spectacle.Syntax.Plain (runPlain)
+import Language.Spectacle.Syntax.Prime (substPrime)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
 -- | 'runInvariant' sends an 'Invariant' to its equivalent, reduced 'LTerm' representation.
 --
 -- @since 0.1.0.0
-runInvariant :: Rec ctx -> Invariant ctx Bool -> Either RuntimeException (LTerm 'L4 Bool)
-runInvariant st formula =
+runInvariant :: Bool -> Rec ctx -> Rec ctx -> Invariant ctx Bool -> Either RuntimeException (LTerm 'L4 Bool)
+runInvariant isEnabled worldHere worldThere formula =
   formula
     & materialize
     & (>>= getL4Terms)
-    & runPlain st
+    & runEnabled isEnabled
+    & substPrime worldThere
+    & runPlain worldHere
     & runFresh 0
     & runError
     & runLang
