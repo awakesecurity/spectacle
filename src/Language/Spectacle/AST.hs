@@ -19,11 +19,22 @@ module Language.Spectacle.AST
 
     -- ** Interpreters
     runInvariant,
+
+    -- ** Rewriting
+    applyRewrites,
+
+    -- * Termination
+    type Terminate,
+    type TerminateSyntax,
+
+    -- ** Interpreters
+    runTerminate,
   )
 where
 
 import Language.Spectacle.AST.Action (Action, ActionSyntax, runAction)
 import Language.Spectacle.AST.Initial (Initial, InitialSyntax, runInitial)
-import Language.Spectacle.AST.Invariant (Invariant, InvariantSyntax, runInvariant)
+import Language.Spectacle.AST.Invariant (Invariant, InvariantSyntax, applyRewrites, runInvariant)
+import Language.Spectacle.AST.Terminate (Terminate, TerminateSyntax, runTerminate)
 
 -- ---------------------------------------------------------------------------------------------------------------------

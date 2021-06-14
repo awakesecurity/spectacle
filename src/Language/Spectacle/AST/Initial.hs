@@ -51,7 +51,7 @@ import Language.Spectacle.Syntax.NonDet (NonDet, foldMapA, runNonDetA)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
--- | Runs an 'Initial' expression type, producing the initial values a model will can be checked from.
+-- | Runs an 'Initial' expression type, producing the initial values we can check a model with.
 --
 -- @since 0.1.0.0
 runInitial :: ReflectRow ctx => Initial ctx a -> Either RuntimeException [Rec ctx]
