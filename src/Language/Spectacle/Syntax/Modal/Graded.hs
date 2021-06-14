@@ -22,6 +22,8 @@ module Language.Spectacle.Syntax.Modal.Graded
         AlwaysL3,
         EventuallyL3,
         UpUntilL3,
+        InfinitelyOftenL3,
+        StaysAsL3,
         ModalL4,
         ConjunctL4,
         DisjunctL4
@@ -92,7 +94,13 @@ instance SyntaxLevel 'L2 where
 
   fromPreterm = \case
     PreConst x -> return (EmbedL1 (ValueL1 x))
-    PreImplies lhs rhs -> ImpliesL2 <$> fromPreterm lhs <*> fromPreterm rhs
+    PreImplies lhs rhs
+      | PreAlways {} <- rhs -> ImpliesL2 <$> fromPreterm lhs <*> fromPreterm rhs
+      | PreUpUntil {} <- rhs -> ImpliesL2 <$> fromPreterm lhs <*> fromPreterm rhs
+      | otherwise -> do
+          lhs' <- fromPreterm lhs
+          rhs' <- fromPreterm rhs
+          return (DisjunctL2 (ComplementL2 lhs') rhs')
     PreNotImplies lhs rhs -> NotImpliesL2 <$> fromPreterm lhs <*> fromPreterm rhs
     PreConjunct lhs rhs -> ConjunctL2 <$> fromPreterm lhs <*> fromPreterm rhs
     PreDisjunct lhs rhs -> DisjunctL2 <$> fromPreterm lhs <*> fromPreterm rhs

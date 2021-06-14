@@ -104,6 +104,12 @@ data Preterm a where
 pattern PreEventually :: Int -> Preterm Bool -> Preterm Bool
 pattern PreEventually name term = PreUpUntil name (PreConst True) term
 
+pattern PreStaysAs :: Int -> Int -> Preterm Bool -> Preterm Bool
+pattern PreStaysAs leftName rightName term = PreEventually leftName (PreAlways rightName term)
+
+pattern PreInfinitelyOften :: Int -> Int -> Preterm Bool -> Preterm Bool
+pattern PreInfinitelyOften leftName rightName term = PreAlways leftName (PreEventually rightName term)
+
 -- | Pattern synonym for material implication.
 --
 -- @
@@ -266,6 +272,14 @@ rewritePreterm :: forall ctx effs. Member Fresh effs => Preterm Bool -> Lang ctx
 rewritePreterm = \case
   PreConst x -> return (PreConst x)
   PreConjunct lhs rhs
+    | PreInfinitelyOften leftName rightName terms <- lhs -> do
+      lhs' <- PreInfinitelyOften leftName rightName <$> rewritePreterm terms
+      rhs' <- rewritePreterm rhs
+      return (PreConjunct lhs' rhs')
+    | PreInfinitelyOften leftName rightName terms <- rhs -> do
+      lhs' <- rewritePreterm lhs
+      rhs' <- PreInfinitelyOften leftName rightName <$> rewritePreterm terms
+      return (PreConjunct lhs' rhs')
     | PreAlways _ lhs' <- lhs
       , PreAlways _ rhs' <- rhs -> do
       -- ◻p ∧ ◻q ≡ ◻(p ∧ q)
@@ -276,6 +290,14 @@ rewritePreterm = \case
       rhs' <- rewritePreterm rhs
       return (PreConjunct lhs' rhs')
   PreDisjunct lhs rhs
+    | PreStaysAs leftName rightName terms <- lhs -> do
+      lhs' <- PreStaysAs leftName rightName <$> rewritePreterm terms
+      rhs' <- rewritePreterm rhs
+      return (PreDisjunct lhs' rhs')
+    | PreStaysAs leftName rightName terms <- rhs -> do
+      lhs' <- rewritePreterm lhs
+      rhs' <- PreStaysAs leftName rightName <$> rewritePreterm terms
+      return (PreDisjunct lhs' rhs')
     | PreUpUntil _ (PreConst True) lhs' <- lhs
       , PreUpUntil _ (PreConst True) rhs' <- rhs -> do
       -- ◇ p ∨ ◇ q ≡ ◇(p ∨ q)

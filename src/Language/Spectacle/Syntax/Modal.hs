@@ -23,6 +23,8 @@ module Language.Spectacle.Syntax.Modal
         AlwaysL3,
         EventuallyL3,
         UpUntilL3,
+        InfinitelyOftenL3,
+        StaysAsL3,
         ModalL4,
         ConjunctL4,
         DisjunctL4
@@ -69,8 +71,10 @@ import Language.Spectacle.Syntax.Modal.Graded
         EmbedL1,
         EventuallyL3,
         ImpliesL2,
+        InfinitelyOftenL3,
         ModalL4,
         NotImpliesL2,
+        StaysAsL3,
         UpUntilL3,
         ValueL1
       ),
