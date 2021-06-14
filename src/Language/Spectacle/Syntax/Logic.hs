@@ -59,7 +59,7 @@ disjunct m n = scope (Disjunct m n)
 --
 -- @since 0.1.0.0
 implies :: Member Logic effs => Lang ctx effs Bool -> Lang ctx effs Bool -> Lang ctx effs Bool
-implies m n = complement (conjunct m (complement n))
+implies m n = disjunct (complement m) n
 {-# INLINE implies #-}
 
 -- | If and only if.
