@@ -45,6 +45,9 @@ import Language.Spectacle.Syntax.Prime (RuntimeState (primes), substitute)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
+-- | A synonym for ('.=') which can only be used in initial actions.
+--
+-- @since 0.1.0.0
 define ::
   (s # a .| ctx, Member (Closure 'InitialClosure) effs') =>
   Name s ->
@@ -53,6 +56,20 @@ define ::
 define name expr = scope (CloseInitial name expr)
 {-# INLINE define #-}
 
+-- | The ('.=') operator relates the variable @s@ to the primed values it can access in the next temporal frame. For
+-- example, a relation which increments a variable named "x" with any number 1 through 5 each frame of time would be
+-- written as:
+--
+-- @
+-- increment :: Action IncrementSpec Bool
+-- increment = do
+--   x <- plain #x -- retrieve the value of "x" from the previous frame
+--   exists [1 .. 5] \n -> do
+--     #x .= return (x + n) -- set the value of "x" in the next value to x + n for some number 1 <= n <= 5
+--     return True -- relate the value to the next frame, @return (odd n)@ could be written to exclude even n.
+-- @
+--
+-- @since 0.1.0.0
 (.=) ::
   (s # a .| ctx, Member (Closure 'ActionClosure) effs') =>
   Name s ->
