@@ -130,14 +130,6 @@ pattern PreImplies lhs rhs = PreDisjunct (PreComplement lhs) rhs
 pattern PreNotImplies :: Preterm a -> Preterm a -> Preterm a
 pattern PreNotImplies lhs rhs = PreConjunct lhs (PreComplement rhs)
 
--- | Predicate for whether a given preterm is complement/negation.
---
--- @since 0.1.0.0
-isComplement :: Preterm a -> Bool
-isComplement PreComplement {} = True
-isComplement _ = False
-{-# INLINE CONLIKE isComplement #-}
-
 -- | 'materialize' takes a 'Lang' with 'Modal' and 'Logic' effects and converts their representation to 'Preterm's.
 --
 -- @since 0.1.0.0

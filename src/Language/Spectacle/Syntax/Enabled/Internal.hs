@@ -8,7 +8,7 @@ where
 
 import Data.Void (Void)
 
-import Language.Spectacle.Lang (Effect, EffectK, Lang, ScopeK)
+import Language.Spectacle.Lang (Effect, EffectK, ScopeK)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

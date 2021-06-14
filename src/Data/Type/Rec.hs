@@ -24,7 +24,7 @@ where
 
 import Control.Natural (type (~>))
 import Data.Functor.Identity (Identity (Identity, runIdentity))
-import Data.Hashable
+import Data.Hashable (Hashable (hashWithSalt))
 import Data.Kind (Constraint, Type)
 import GHC.TypeLits (KnownSymbol, Symbol)
 
