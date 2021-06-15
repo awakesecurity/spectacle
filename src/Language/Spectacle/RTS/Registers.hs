@@ -32,10 +32,10 @@ import Language.Spectacle.Syntax.Prime.Internal (Prime)
 -- ---------------------------------------------------------------------------------------------------------------------
 
 type RelationTerm :: [Ascribe Symbol Type] -> Type -> Type
-type RelationTerm ctx a = Lang ctx RelationTermSyntax a
+type RelationTerm ctx a = Lang ctx (RelationTermSyntax ctx) a
 
-type RelationTermSyntax :: [EffectK]
-type RelationTermSyntax = '[Prime, Plain, NonDet, Error RuntimeException]
+type RelationTermSyntax :: [Ascribe Symbol Type] -> [EffectK]
+type RelationTermSyntax ctx = '[Prime, Plain, NonDet, Error RuntimeException]
 
 -- | Internal state used by variable substitution and variable relations.
 --
@@ -93,7 +93,7 @@ setRegister n x (Registers rs) = Registers (setRecT n (Evaluated x) rs)
 -- | Sets the value of the variable named @s@ in 'Registers' to an unevaluated expression.
 --
 -- @since 0.1.0.0
-setThunk :: s # a .| ctx => Name s -> Lang ctx RelationTermSyntax a -> Registers ctx -> Registers ctx
+setThunk :: s # a .| ctx => Name s -> RelationTerm ctx a -> Registers ctx -> Registers ctx
 setThunk n m (Registers rs) = Registers (setRecT n (Thunk m) rs)
 
 -- | A 'Thunk' is the state of a primed variable in @ctx@.
@@ -104,7 +104,7 @@ setThunk n m (Registers rs) = Registers (setRecT n (Thunk m) rs)
 --
 -- @since 0.1.0.0
 data Thunk ctx a
-  = Thunk (Lang ctx RelationTermSyntax a)
+  = Thunk (Lang ctx (RelationTermSyntax ctx) a)
   | Evaluated a
   | Unchanged
 

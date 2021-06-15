@@ -29,20 +29,19 @@
 --                 p₂    p₄
 -- @
 --
---
---
 -- @since 0.1.0.0
 module Language.Spectacle.Syntax.Modal.Preterm
   ( Preterm
       ( PreConst,
         PreConjunct,
         PreDisjunct,
-        PreImplies,
-        PreNotImplies,
         PreComplement,
         PreAlways,
         PreUpUntil
       ),
+    pattern PreEventually,
+    pattern PreImplies,
+    pattern PreNotImplies,
     materialize,
     abstract,
     normalizePreterm,
@@ -63,7 +62,7 @@ import Language.Spectacle.Lang
     scope,
     weaken,
   )
-import Language.Spectacle.Syntax.Fresh
+import Language.Spectacle.Syntax.Fresh (Fresh, fresh)
 import Language.Spectacle.Syntax.Logic.Internal (Effect (Complement, Conjunct, Disjunct), Logic (Logic))
 import Language.Spectacle.Syntax.Modal.Internal (Effect (Always, UpUntil), Modal (Modal))
 
@@ -90,8 +89,6 @@ data Preterm a where
   PreConst :: a -> Preterm a
   PreConjunct :: Preterm a -> Preterm a -> Preterm a
   PreDisjunct :: Preterm a -> Preterm a -> Preterm a
-  PreImplies :: Preterm a -> Preterm a -> Preterm a
-  PreNotImplies :: Preterm a -> Preterm a -> Preterm a
   PreComplement :: Preterm a -> Preterm a
   PreAlways :: Int -> Preterm a -> Preterm a
   PreUpUntil :: Int -> Preterm a -> Preterm a -> Preterm a
@@ -106,6 +103,32 @@ data Preterm a where
 -- @since 0.1.0.0
 pattern PreEventually :: Int -> Preterm Bool -> Preterm Bool
 pattern PreEventually name term = PreUpUntil name (PreConst True) term
+
+pattern PreStaysAs :: Int -> Int -> Preterm Bool -> Preterm Bool
+pattern PreStaysAs leftName rightName term = PreEventually leftName (PreAlways rightName term)
+
+pattern PreInfinitelyOften :: Int -> Int -> Preterm Bool -> Preterm Bool
+pattern PreInfinitelyOften leftName rightName term = PreAlways leftName (PreEventually rightName term)
+
+-- | Pattern synonym for material implication.
+--
+-- @
+-- PreImplies lhs rhs == PreDisjunct (PreComplement lhs) rhs
+-- @
+--
+-- @since 0.1.0.0
+pattern PreImplies :: Preterm a -> Preterm a -> Preterm a
+pattern PreImplies lhs rhs = PreDisjunct (PreComplement lhs) rhs
+
+-- | Pattern synonym for the negation of material implication.
+--
+-- @
+-- PreNotImplies lhs rhs == PreConjunct lhs (PreComplement rhs)
+-- @
+--
+-- @since 0.1.0.0
+pattern PreNotImplies :: Preterm a -> Preterm a -> Preterm a
+pattern PreNotImplies lhs rhs = PreConjunct lhs (PreComplement rhs)
 
 -- | Predicate for whether a given preterm is complement/negation.
 --
@@ -135,15 +158,9 @@ materialize = \case
           rhs' <- runLoom loomReify rhs
           return (PreConjunct lhs' rhs')
         | Disjunct lhs rhs <- eff -> do
-          runLoom loomReify lhs >>= \case
-            PreComplement lhs' -> do
-              rhs' <- runLoom loomReify rhs
-              if isComplement rhs'
-                then return (PreDisjunct lhs' rhs')
-                else return (PreImplies lhs' rhs')
-            lhs' -> do
-              rhs' <- runLoom loomReify rhs
-              return (PreDisjunct lhs' rhs')
+          lhs' <- runLoom loomReify lhs
+          rhs' <- runLoom loomReify rhs
+          return (PreDisjunct lhs' rhs')
         | Complement expr <- eff -> do
           expr' <- runLoom loomReify expr
           return (PreComplement expr')
@@ -179,14 +196,6 @@ abstract preterms =
         let lhs' = fromPreterm lhs
             rhs' = fromPreterm rhs
          in scope (Disjunct lhs' rhs')
-      PreImplies lhs rhs ->
-        let lhs' = scope (Complement (fromPreterm lhs))
-            rhs' = fromPreterm rhs
-         in scope (Disjunct lhs' rhs')
-      PreNotImplies lhs rhs ->
-        let lhs' = fromPreterm lhs
-            rhs' = scope (Complement (fromPreterm rhs))
-         in scope (Conjunct lhs' rhs')
       PreComplement term ->
         let term' = fromPreterm term
          in scope (Complement term')
@@ -259,10 +268,18 @@ normalizePreterm preterm = do
 -- @
 --
 -- @since 0.1.0.0
-rewritePreterm :: Member Fresh effs => Preterm Bool -> Lang ctx effs (Preterm Bool)
+rewritePreterm :: forall ctx effs. Member Fresh effs => Preterm Bool -> Lang ctx effs (Preterm Bool)
 rewritePreterm = \case
   PreConst x -> return (PreConst x)
   PreConjunct lhs rhs
+    | PreInfinitelyOften leftName rightName terms <- lhs -> do
+      lhs' <- PreInfinitelyOften leftName rightName <$> rewritePreterm terms
+      rhs' <- rewritePreterm rhs
+      return (PreConjunct lhs' rhs')
+    | PreInfinitelyOften leftName rightName terms <- rhs -> do
+      lhs' <- rewritePreterm lhs
+      rhs' <- PreInfinitelyOften leftName rightName <$> rewritePreterm terms
+      return (PreConjunct lhs' rhs')
     | PreAlways _ lhs' <- lhs
       , PreAlways _ rhs' <- rhs -> do
       -- ◻p ∧ ◻q ≡ ◻(p ∧ q)
@@ -273,6 +290,14 @@ rewritePreterm = \case
       rhs' <- rewritePreterm rhs
       return (PreConjunct lhs' rhs')
   PreDisjunct lhs rhs
+    | PreStaysAs leftName rightName terms <- lhs -> do
+      lhs' <- PreStaysAs leftName rightName <$> rewritePreterm terms
+      rhs' <- rewritePreterm rhs
+      return (PreDisjunct lhs' rhs')
+    | PreStaysAs leftName rightName terms <- rhs -> do
+      lhs' <- rewritePreterm lhs
+      rhs' <- PreStaysAs leftName rightName <$> rewritePreterm terms
+      return (PreDisjunct lhs' rhs')
     | PreUpUntil _ (PreConst True) lhs' <- lhs
       , PreUpUntil _ (PreConst True) rhs' <- rhs -> do
       -- ◇ p ∨ ◇ q ≡ ◇(p ∨ q)
@@ -282,40 +307,21 @@ rewritePreterm = \case
       lhs' <- rewritePreterm lhs
       rhs' <- rewritePreterm rhs
       return (PreDisjunct lhs' rhs')
-  PreImplies lhs rhs -> do
-    lhs' <- rewritePreterm lhs
-    rhs' <- rewritePreterm rhs
-    return (PreImplies lhs' rhs')
-  PreNotImplies lhs rhs -> do
-    lhs' <- rewritePreterm lhs
-    rhs' <- rewritePreterm rhs
-    return (PreNotImplies lhs' rhs')
   PreComplement expr
     | PreComplement expr' <- expr ->
-      -- ¬ (¬ p) ≡ p
       rewritePreterm expr'
     | PreConjunct lhs rhs <- expr -> do
-      -- ¬(p ∧ q) ≡ ¬ p ∨ ¬ q
       lhs' <- rewritePreterm (PreComplement lhs)
       rhs' <- rewritePreterm (PreComplement rhs)
       return (PreDisjunct lhs' rhs')
     | PreDisjunct lhs rhs <- expr -> do
-      -- ¬(p ∨ q) ≡ ¬ p ∧ ¬ q
       lhs' <- rewritePreterm (PreComplement lhs)
       rhs' <- rewritePreterm (PreComplement rhs)
       return (PreConjunct lhs' rhs')
-    | PreImplies lhs rhs <- expr ->
-      -- ¬(p ⇒ q) ≡ ¬(¬p ∧ q) ≡ ¬¬p ∨ ¬q ≡ p ∨ ¬q ≡ p ⇏ q
-      return (PreNotImplies lhs rhs)
-    | PreNotImplies lhs rhs <- expr ->
-      -- ¬(p ⇏ q) ≡ ¬(p ∨ ¬ q) ≡ ¬p ∧ ¬¬q ≡ ¬p ∧ q ≡ p ⇒ q
-      return (PreImplies rhs lhs)
     | PreAlways _ expr' <- expr -> do
-      -- ¬◻p ≡ ◇¬p
       newName <- fresh
       return (PreEventually newName (PreComplement expr'))
     | PreEventually _ expr' <- expr -> do
-      -- ¬◇p ≡ ◻¬p
       newName <- fresh
       return (PreAlways newName (PreComplement expr'))
     | otherwise -> do
