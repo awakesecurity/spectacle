@@ -48,6 +48,8 @@ import Language.Spectacle.Syntax.Prime (RuntimeState (primes), substitute)
 -- | A synonym for ('.=') which can only be used in initial actions.
 --
 -- @since 0.1.0.0
+infix 4 `define`
+
 define ::
   (s # a .| ctx, Member (Closure 'InitialClosure) effs') =>
   Name s ->
@@ -70,6 +72,8 @@ define name expr = scope (CloseInitial name expr)
 -- @
 --
 -- @since 0.1.0.0
+infix 4 .=
+
 (.=) ::
   (s # a .| ctx, Member (Closure 'ActionClosure) effs') =>
   Name s ->

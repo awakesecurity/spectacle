@@ -96,7 +96,6 @@ library
     , Language.Spectacle.Lang.Member
     , Language.Spectacle.Lang.Op
     , Language.Spectacle.Lang.Scoped
-    , Language.Spectacle.Rewrite.Rule
     , Language.Spectacle.RTS.Registers
     , Language.Spectacle.Spec
     , Language.Spectacle.Spec.Base
