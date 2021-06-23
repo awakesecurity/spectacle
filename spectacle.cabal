@@ -69,7 +69,8 @@ library
     , unordered-containers
 
   exposed-modules:
-      Control.Natural
+      Control.Monad.Fresh
+    , Control.Natural
     , Data.Ascript
     , Data.Fingerprint
     , Data.Fingerprint.Array
@@ -95,6 +96,7 @@ library
     , Language.Spectacle.Lang.Member
     , Language.Spectacle.Lang.Op
     , Language.Spectacle.Lang.Scoped
+    , Language.Spectacle.Rewrite.Rule
     , Language.Spectacle.RTS.Registers
     , Language.Spectacle.Spec
     , Language.Spectacle.Spec.Base
@@ -105,6 +107,7 @@ library
     , Language.Spectacle.Spec.Model
     , Language.Spectacle.Spec.Model.Base
     , Language.Spectacle.Spec.Prop
+    , Language.Spectacle.Spec.Prop.Base
     , Language.Spectacle.Spec.Zipper
     , Language.Spectacle.Syntax
     , Language.Spectacle.Syntax.Closure
@@ -115,12 +118,11 @@ library
     , Language.Spectacle.Syntax.Env.Internal
     , Language.Spectacle.Syntax.Error
     , Language.Spectacle.Syntax.Error.Internal
-    , Language.Spectacle.Syntax.Fresh
-    , Language.Spectacle.Syntax.Fresh.Internal
     , Language.Spectacle.Syntax.Modal
-    , Language.Spectacle.Syntax.Modal.Graded
+    , Language.Spectacle.Syntax.Modal.Level
     , Language.Spectacle.Syntax.Modal.Preterm
     , Language.Spectacle.Syntax.Modal.Internal
+    , Language.Spectacle.Syntax.Modal.Term
     , Language.Spectacle.Syntax.NonDet
     , Language.Spectacle.Syntax.NonDet.Internal
     , Language.Spectacle.Syntax.Plain
@@ -140,6 +142,7 @@ test-suite unit-tests
 
   other-modules:
       Spectacle.Syntax.Modal
+    , Spectacle.Syntax.Modal.Preterm
     , Spectacle.Syntax.Modal.Properties
 
   build-depends:
@@ -147,6 +150,28 @@ test-suite unit-tests
     , hedgehog
     , tasty
     , tasty-hedgehog
+
+test-suite integration-tests
+  import:              common
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test/integration
+  main-is:             Main.hs
+
+  other-modules:
+      Specifications.Diehard
+    , Specifications.DijkstraMutex
+    , Specifications.DijkstraMutex.Process
+    , Specifications.SimpleClock
+    , Specifications.SpanningTree
+
+  build-depends:
+      spectacle
+    , containers
+    , hashable
+    , hedgehog
+    , tasty
+    , tasty-hedgehog
+    , unordered-containers
 
 benchmark benchmark
   import:         common
