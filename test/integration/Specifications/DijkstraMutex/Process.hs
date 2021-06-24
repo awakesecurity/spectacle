@@ -4,10 +4,9 @@
 
 module Specifications.DijkstraMutex.Process where
 
-import Data.Hashable
-import Data.List
-import GHC.Generics
-import Numeric.Natural
+import Data.Hashable (Hashable)
+import GHC.Generics (Generic) 
+import Numeric.Natural (Natural)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
