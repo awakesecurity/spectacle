@@ -149,15 +149,16 @@ except name (k, v) = HashMap.insert k v <$> plain name
 invariant :: (?constants :: Constants) => Invariant DijkstraMutexSpec Bool
 invariant = do
   let Constants {..} = ?constants
+  -- starvationFree
   mutualExclusion
-    \/ starvationFree
-    \/ always do
-      and <$> forM processSet \pid -> do
-        p <- (HashMap.! pid) <$> plain #procs
-        return (procStep p == Done)
+  --   \/ starvationFree
+  --   \/ always do
+  --     and <$> forM processSet \pid -> do
+  --       p <- (HashMap.! pid) <$> plain #procs
+  --       return (procStep p == Done)
   where
     mutualExclusion :: (?constants :: Constants) => Invariant DijkstraMutexSpec Bool
-    mutualExclusion = do
+    mutualExclusion = always do
       let Constants {..} = ?constants
       and <$> forM processSet \i ->
         and <$> forM processSet \j -> do

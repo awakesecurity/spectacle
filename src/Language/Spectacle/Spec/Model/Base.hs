@@ -34,9 +34,6 @@ module Language.Spectacle.Spec.Model.Base
 
     -- *** Construction
     emptyModelCtx,
-
-    -- ** Model Results
-    ModelResult (ModelFailure, ModelSuccess),
   )
 where
 
@@ -173,11 +170,3 @@ emptyModelCtx world action invariant terminate junctions fairness =
     , _worldHere = world
     , _compositeChecks = Set.empty
     }
-
--- ---------------------------------------------------------------------------------------------------------------------
-
-data ModelResult ctx
-  = ModelFailure SpecException
-  | ModelSuccess [Behavior ctx] (ModelState ctx)
-
-deriving instance Show (Rec ctx) => Show (ModelResult ctx)

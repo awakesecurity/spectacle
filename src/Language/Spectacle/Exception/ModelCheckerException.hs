@@ -17,7 +17,8 @@ module Language.Spectacle.Exception.ModelCheckerException
     FormulaException
       ( UnsatisfiedInvariant,
         PropertyViolated,
-        CyclicException
+        CyclicException,
+        EvaluatorException
       ),
     TerminationException
       ( UnsatisfiedImplication
@@ -58,6 +59,7 @@ data ImpassException where
 deriving instance Show ImpassException
 
 data FormulaException where
+  EvaluatorException :: FormulaException
   UnsatisfiedInvariant :: Show (Rec ctx) => Rec ctx -> Rec ctx -> FormulaException
   PropertyViolated :: Show (Rec ctx) => Int -> Modality -> Rec ctx -> FormulaException
   CyclicException :: CyclicCheckException -> FormulaException
