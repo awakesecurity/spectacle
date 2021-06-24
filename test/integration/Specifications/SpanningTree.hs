@@ -14,7 +14,7 @@ import Language.Spectacle
     Invariant,
     Terminate,
     define,
-    doModelCheck,
+    modelCheck,
     enabled,
     exists,
     plain,
@@ -154,4 +154,4 @@ check = do
           , maxCardinality = 2
           }
 
-  print (doModelCheck initial next invariant (Just terminate) Unfair)
+  print (modelCheck initial next invariant (Just terminate) Unfair)

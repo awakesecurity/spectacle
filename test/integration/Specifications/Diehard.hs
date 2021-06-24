@@ -6,7 +6,7 @@ import Data.Type.Rec (type (#))
 import Language.Spectacle
   ( always,
     define,
-    doModelCheck,
+    modelCheck,
     plain,
     prime,
     (.=),
@@ -81,7 +81,7 @@ terminate = do
   return (bigJug == 4)
 
 check :: IO ()
-check = case doModelCheck initial next invariant (Just terminate) Unfair of
+check = case modelCheck initial next invariant (Just terminate) Unfair of
   (Left exc, _) -> do
     putStrLn "model check failed:"
     print exc

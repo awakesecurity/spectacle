@@ -7,7 +7,7 @@ import Data.Type.Rec (type (#))
 import Language.Spectacle
   ( always,
     define,
-    doModelCheck,
+    modelCheck,
     eventually,
     plain,
     prime,
@@ -59,6 +59,6 @@ invariant = do
 
 check :: IO ()
 check = do
-  case doModelCheck initial action invariant Nothing WeaklyFair of
+  case modelCheck initial action invariant Nothing WeaklyFair of
     (Left exc, _) -> putStrLn $ "failed with: " ++ show exc
     _ -> putStrLn "success"

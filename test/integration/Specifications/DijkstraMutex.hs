@@ -17,7 +17,7 @@ import Language.Spectacle
     Invariant,
     always,
     define,
-    doModelCheck,
+    modelCheck,
     eventually,
     exists,
     oneOf,
@@ -176,7 +176,7 @@ starvationFree = do
 check :: IO ()
 check = do
   let ?constants = mkProcesses 2
-  case doModelCheck initial next invariant Nothing WeaklyFair of
+  case modelCheck initial next invariant Nothing WeaklyFair of
     (Left (ModelCheckerException ws exc), _) -> do
       putStrLn "model check failed with checker exception:"
       print ws
