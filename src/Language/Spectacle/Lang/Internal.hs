@@ -1,131 +1,106 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE UndecidableInstances #-}
 
--- | An internal module defining the 'Lang' machine and its instances.
+-- | The 'Lang' monad.
 --
 -- @since 0.1.0.0
 module Language.Spectacle.Lang.Internal
-  ( -- * CEK Machine
-    Lang (..),
+  ( Lang (Pure, Op, Scoped),
     send,
-    queueApp,
-    queueCompose,
-
-    -- * Internal Effects
-    NonDet (..),
+    scope,
   )
 where
 
 import Control.Applicative (Alternative (empty, (<|>)))
+import Control.Monad (MonadPlus (mplus, mzero), (>=>))
 import Data.Bool (bool)
 import Data.Kind (Type)
 import GHC.TypeLits (Symbol)
 
-import Data.FTCQueue
-  ( FTCQueue,
-    ViewL (ViewL),
-    viewl,
-    (|><|),
-    pattern (:<|),
-    pattern (:|>),
-  )
-import Language.Spectacle.Lang.Control
-  ( Control (Done, Next),
-    Frame (Frame),
-    Store (Store),
-    pushSyntax,
-  )
-import Language.Spectacle.Lang.Sum (Syntax, inject, type (|>))
-import Language.Spectacle.Type.Rec (Ascribe, Rec)
+import Data.Ascript (Ascribe)
+import Data.Functor.Loom (bind, (~>~), Loom (Loom))
+import qualified Data.Functor.Loom as Loom
+import Language.Spectacle.Lang.Member (Member (inject, injectS))
+import Language.Spectacle.Lang.Op (Op)
+import Language.Spectacle.Lang.Scoped (Effect, EffectK, Scoped)
+import Language.Spectacle.Syntax.NonDet.Internal (NonDet (Choose, Empty))
 
--- -----------------------------------------------------------------------------
+-- -------------------------------------------------------------------------------------------------
 
--- | 'Lang' is a CESK machine which hosts a set of effect kinds that represent
--- spectacle syntax along with their interpreters assigning each syntactic unit
--- an operational semantics.
+-- | 'Lang' is a CEK-style interpreter for the set of effects behind Spectacles syntax and is based
+-- on Oleg's Eff monad. 'Lang' differs from Eff in it's @ctx@ parameter and its ability to support
+-- higher-order effects.
 --
--- * @sig@ - is label set of effect kinds a 'Lang' machine holds.
+-- * The type parameter @ctx@ is a type row associating variable names to their respective types.
+-- This includes plain values from the previous frame as well as primed variables in the next frame.
 --
--- * @cxt@ - is a context for typed variables in the scope of a 'Lang' machines
--- store.
---
--- * @a@ - is type of value resulting after all effects in the scope of @sig@
--- have been discharged.
+-- * The type parameter @effs@ is the set of effects a 'Lang' is capable of performing.
 --
 -- @since 0.1.0.0
-type Lang :: [Syntax] -> [Ascribe Symbol Type] -> Type -> Type
-newtype Lang sig cxt a = Lang
-  { unLang ::
-      Rec cxt ->
-      Control sig cxt a
-  }
+type Lang :: [Ascribe Symbol Type] -> [EffectK] -> Type -> Type
+data Lang ctx effs a where
+  Pure ::
+    a ->
+    Lang ctx effs a
+  Op ::
+    Op effs a ->
+    (a -> Lang ctx effs b) ->
+    Lang ctx effs b
+  Scoped ::
+    Scoped effs (Lang ctx effs') a ->
+    Loom (Lang ctx effs') (Lang ctx effs) a b ->
+    Lang ctx effs b
 
--- | 'send' pushes an identity continuation frame of the syntax @m@ into
--- 'Lang'.
+-- | Sends a constructor for the effect @eff@ for 'Lang' to handle.
 --
 -- @since 0.1.0.0
-send :: m |> sig => m (Lang sig cxt) a -> Lang sig cxt a
-send m = Lang . const . Next $ pushSyntax (inject m)
+send :: Member eff effs => eff a -> Lang ctx effs a
+send eff = Op (inject eff) pure
 {-# INLINE send #-}
 
--- | Reduces the head of a queue of 'Lang' continuations and enqueues the tail
--- if it exists.
+-- | Like 'send', but sends a constructor for the 'Effect' instance of @eff@.
 --
 -- @since 0.1.0.0
-queueApp :: FTCQueue (Control sig) cxt a b -> a -> Lang sig cxt b
-queueApp q x = Lang \store -> case viewl q of
-  ViewL f -> f store x
-  f :<| t -> case f store x of
-    Done (Store store' x') -> unLang (queueApp t x') store'
-    Next (Frame hdl q') -> Next (Frame hdl (q' |><| t))
-{-# INLINE queueApp #-}
-
--- | Builds a new 'Lang' by fully evaluating the current continuation.
---
--- @since 0.1.0.0
-queueCompose ::
-  FTCQueue (Control sig) cxt a b ->
-  (Lang sig cxt b -> Lang sig' cxt c) ->
-  (a -> Lang sig' cxt c)
-queueCompose g h = h . queueApp g
-{-# INLINE queueCompose #-}
+scope :: Member eff effs => Effect eff (Lang ctx effs) a -> Lang ctx effs a
+scope eff = Scoped (injectS eff) Loom.identity
+{-# INLINE scope #-}
 
 -- | @since 0.1.0.0
-instance Functor (Lang sig cxt) where
-  fmap f (Lang m) = Lang (fmap f . m)
+instance Functor (Lang ctx effs) where
+  fmap f (Pure x) = Pure (f x)
+  fmap f (Op u k) = Op u (fmap f . k)
+  fmap f (Scoped u loom) = Scoped u (fmap f loom)
   {-# INLINE fmap #-}
 
 -- | @since 0.1.0.0
-instance Applicative (Lang sig cxt) where
-  pure x = Lang \store -> Done (Store store x)
-  {-# INLINE pure #-}
+instance Applicative (Lang ctx effs) where
+  pure = Pure
+  {-# INLINE CONLIKE pure #-}
 
-  Lang m <*> Lang k = Lang \store -> case m store of
-    Done (Store store' f) -> fmap f (k store')
-    Next (Frame hdl q) -> Next (Frame hdl (q :|> \store' -> (`fmap` k store')))
+  Pure f <*> m = fmap f m
+  Op u k <*> m = Op u ((<*> m) . k)
+  Scoped u (Loom ctx eta) <*> m = Scoped u (Loom ctx ((<*> m) . eta))
   {-# INLINE (<*>) #-}
 
 -- | @since 0.1.0.0
-instance Monad (Lang sig cxt) where
-  Lang m >>= k = Lang \store -> case m store of
-    Done (Store store' x) -> unLang (k x) store'
-    Next (Frame hdl q) ->
-      Next (Frame hdl (q :|> \store' x -> unLang (k x) store'))
+instance Monad (Lang ctx effs) where
+  Pure x >>= f = f x
+  Op u k >>= f = Op u (k >=> f)
+  Scoped u loom >>= f = Scoped u (loom ~>~ bind f)
+
   {-# INLINE (>>=) #-}
 
--- -----------------------------------------------------------------------------
-
--- | Nondeterministic action.
---
--- @since 0.1.0.0
-data NonDet :: Syntax where
-  Empty :: NonDet m a
-  Choose :: NonDet m Bool
-
 -- | @since 0.1.0.0
-instance NonDet |> sig => Alternative (Lang sig cxt) where
+instance Member NonDet effs => Alternative (Lang ctx effs) where
   empty = send Empty
   {-# INLINE empty #-}
 
   a <|> b = send Choose >>= bool b a
   {-# INLINE (<|>) #-}
+
+-- | @since 0.1.0.0
+instance Member NonDet effs => MonadPlus (Lang ctx effs) where
+  mzero = empty
+  {-# INLINE mzero #-}
+
+  mplus = (<|>)
+  {-# INLINE mplus #-}
