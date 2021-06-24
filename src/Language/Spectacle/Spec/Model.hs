@@ -68,13 +68,11 @@ import Language.Spectacle.Spec.Prop.Base
     infoThere,
     runProp,
   )
-import Debug.Trace
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
 stepModel :: forall ctx. Specifiable ctx => Rec ctx -> Model ctx [Behavior ctx]
 stepModel world = do
-  trace (show world) (pure ())
   worldsThere <- takeQuotient world
   case worldsThere of
     Left exc -> do

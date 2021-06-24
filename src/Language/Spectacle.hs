@@ -1,6 +1,6 @@
 module Language.Spectacle
   ( -- * Model Checking
-    doModelCheck,
+    modelCheck,
 
     -- * Syntax
     type Initial,
@@ -48,7 +48,7 @@ import Language.Spectacle.AST
     Invariant,
     Terminate,
   )
-import Language.Spectacle.Spec (doModelCheck)
+import Language.Spectacle.Spec (modelCheck)
 import Language.Spectacle.Syntax
   ( always,
     catchE,
