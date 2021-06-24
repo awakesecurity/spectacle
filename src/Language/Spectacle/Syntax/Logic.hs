@@ -13,7 +13,7 @@ module Language.Spectacle.Syntax.Logic
   )
 where
 
-import Control.Applicative (Alternative ((<|>)), Applicative (liftA2))
+import Control.Applicative (Alternative ((<|>)), Applicative (liftA2), empty)
 import Data.Coerce (coerce)
 import Data.Void (absurd)
 
@@ -27,7 +27,7 @@ import Language.Spectacle.Lang
     decomposeS,
     scope,
   )
-import Language.Spectacle.Syntax.Error (Error)
+import Language.Spectacle.Syntax.Error (Error, catchE)
 import Language.Spectacle.Syntax.Logic.Internal (Effect (Complement, Conjunct, Disjunct), Logic (Logic))
 import Language.Spectacle.Syntax.NonDet (NonDet)
 
@@ -59,7 +59,7 @@ disjunct m n = scope (Disjunct m n)
 --
 -- @since 0.1.0.0
 implies :: Member Logic effs => Lang ctx effs Bool -> Lang ctx effs Bool -> Lang ctx effs Bool
-implies m n = complement (conjunct m (complement n))
+implies m n = disjunct (complement m) n
 {-# INLINE implies #-}
 
 -- | If and only if.
@@ -86,6 +86,8 @@ runLogic = \case
     Left other -> Scoped other loom'
     Right (Complement m) -> runLoom loom' (fmap not m)
     Right (Conjunct m n) -> liftA2 (&&) (runLoom loom' m) (runLoom loom' n)
-    Right (Disjunct m n) -> runLoom loom' m <|> runLoom loom' n
+    Right (Disjunct m n) ->
+      (runLoom loom' m `catchE` \(_ :: RuntimeException) -> empty)
+        <|> (runLoom loom' n `catchE` \(_ :: RuntimeException) -> empty)
     where
       loom' = loom ~>~ hoist runLogic

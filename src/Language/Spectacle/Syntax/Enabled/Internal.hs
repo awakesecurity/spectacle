@@ -1,8 +1,8 @@
 {-# LANGUAGE TypeFamilies #-}
 
-module Language.Spectacle.Syntax.Fresh.Internal
-  ( Fresh (Fresh),
-    Effect (FreshH),
+module Language.Spectacle.Syntax.Enabled.Internal
+  ( Enabled (Enabled),
+    Effect (EnabledS),
   )
 where
 
@@ -12,8 +12,8 @@ import Language.Spectacle.Lang (Effect, EffectK, ScopeK)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
-data Fresh :: EffectK where
-  Fresh :: Fresh Int
+data Enabled :: EffectK where
+  Enabled :: Enabled Bool
 
-newtype instance Effect Fresh :: ScopeK where
-  FreshH :: Void -> Effect Fresh m a
+newtype instance Effect Enabled :: ScopeK where
+  EnabledS :: Void -> Effect Enabled m a

@@ -40,11 +40,11 @@ import Language.Spectacle.Lang
     scope,
   )
 import Language.Spectacle.RTS.Registers
-  ( RuntimeState (RuntimeState, callStack, plains, primes),
+  ( RelationTerm,
+    RuntimeState (RuntimeState, callStack, plains, primes),
     Thunk (Evaluated, Thunk, Unchanged),
     getRegister,
     setRegister,
-    type RelationTermSyntax,
   )
 import Language.Spectacle.Syntax.Env
   ( Env,
@@ -127,7 +127,7 @@ substPrime vars = \case
 substitute ::
   (Members '[Env, NonDet, Error RuntimeException] effs, s # a .| ctx) =>
   Name s ->
-  Lang ctx RelationTermSyntax a ->
+  RelationTerm ctx a ->
   Lang ctx effs a
 substitute name expr = do
   rst <- get

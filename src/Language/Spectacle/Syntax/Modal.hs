@@ -11,26 +11,62 @@ module Language.Spectacle.Syntax.Modal
     eventually,
     upUntil,
 
-    -- * Interpreters
-    introducePrimes,
-    applyModality,
+    -- * Syntactic Levels
+    ExprLevel (L1, L2, L3, L4),
+
+    -- * Preterms
+    Preterm
+      ( PreConst,
+        PreConjunct,
+        PreDisjunct,
+        PreComplement,
+        PreAlways,
+        PreUpUntil
+      ),
+    pretermFromModal,
+    pretermToModal,
+    normalForm,
   )
 where
 
+import Data.Function ((&))
+import Data.Void (absurd)
+
 import Data.Functor.Loom (hoist, runLoom, (~>~))
 import Language.Spectacle.Lang
-  ( Lang (Op, Pure, Scoped),
-    Member (injectS, projectS),
+  ( Effect,
+    Lang (Op, Pure, Scoped),
+    Member,
     Members,
-    Op (OHere, OThere),
-    Scoped (SHere, SThere),
+    decomposeOp,
+    decomposeS,
     scope,
+    weaken,
   )
-import Language.Spectacle.Syntax.Logic.Internal (Logic)
-import Language.Spectacle.Syntax.Modal.Internal (Effect (Always, UpUntil), Modal (Modal))
-import Language.Spectacle.Syntax.Plain (Effect (PlainVar))
-import Language.Spectacle.Syntax.Plain.Internal (Plain)
-import Language.Spectacle.Syntax.Prime (Effect (PrimeVar), Prime)
+import Language.Spectacle.Syntax.Logic
+  ( Effect (Complement, Conjunct, Disjunct),
+    Logic (Logic),
+    complement,
+    conjunct,
+    disjunct,
+  )
+import Language.Spectacle.Syntax.Modal.Internal
+  ( Effect (Always, UpUntil),
+    Modal (Modal),
+  )
+import Language.Spectacle.Syntax.Modal.Level (ExprLevel (L1, L2, L3, L4))
+import Language.Spectacle.Syntax.Modal.Preterm
+  ( Preterm
+      ( PreAlways,
+        PreComplement,
+        PreConjunct,
+        PreConst,
+        PreDisjunct,
+        PreEventually,
+        PreUpUntil
+      ),
+    normalForm,
+  )
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -80,6 +116,7 @@ always m = scope (Always m)
 -- @since 0.1.0.0
 eventually :: Member Modal effs => Lang ctx effs Bool -> Lang ctx effs Bool
 eventually = upUntil (pure True)
+{-# INLINE eventually #-}
 
 -- | The modal operator 'upUntil' (strong) says that for some formula @p `upUntil` q@, @p@ must be true up until the
 -- point where @q@ is true, and that @q@ /must/ be true some time in the future.
@@ -107,59 +144,66 @@ eventually = upUntil (pure True)
 -- @since 0.1.0.0
 upUntil :: Member Modal effs => Lang ctx effs Bool -> Lang ctx effs Bool -> Lang ctx effs Bool
 upUntil m n = scope (UpUntil m n)
+{-# INLINE upUntil #-}
 
--- | Introduces a prime effect underneath the 'Logic' and 'Modal' effects in a temporal formula. The prime effect is
--- used to replace the plain variable usage on the right-hand side of 'upUntil' with prime variables. This is so we can
--- substitute the new values obtained by running an action to check if a 'upUntil' is satisfied.
---
--- 'Prime' is introduced only when needed to avoid giving users access to the 'prime' syntax in temporal formula.
+-- | Discharges the 'Modal' and 'Logic' effects to an equivalent preterm expression.
 --
 -- @since 0.1.0.0
-introducePrimes :: Lang ctx (Modal ': Logic ': effs) a -> Lang ctx (Modal ': Logic ': Prime ': effs) a
-introducePrimes = \case
-  Pure x -> pure x
-  Op op k -> Op (extendOp op) (introducePrimes . k)
-  Scoped scoped loom -> Scoped (extendS scoped) (loom ~>~ hoist introducePrimes)
-  where
-    extendOp :: Op (Modal ': Logic ': effs) a -> Op (Modal ': Logic ': Prime ': effs) a
-    extendOp = \case
-      OHere op -> OHere op
-      OThere (OHere op) -> OThere (OHere op)
-      OThere (OThere op) -> OThere (OThere (OThere op))
-
-    extendS :: Scoped (Modal ': Logic ': effs) m a -> Scoped (Modal ': Logic ': Prime ': effs) m a
-    extendS = \case
-      SHere scoped -> SHere scoped
-      SThere (SHere scoped) -> SThere (SHere scoped)
-      SThere (SThere scoped) -> SThere (SThere (SThere scoped))
-{-# INLINE introducePrimes #-}
-
--- | 'applyModality' is run after 'introducePrimes'. It replaces all occurances of 'plain' enclosed by the right-hand
--- side of 'upUntil' with 'prime'.
---
--- @since 0.1.0.0
-applyModality :: Members '[Modal, Logic, Plain, Prime] effs => Lang ctx effs Bool -> Lang ctx effs Bool
-applyModality = \case
-  Pure x -> pure x
-  Op op k -> Op op (applyModality . k)
-  Scoped scoped loom -> case projectS scoped of
-    Nothing -> Scoped scoped loomModal
-    Just (Always expr) -> do
-      let expr' = runLoom loomModal expr
-      scope (Always expr')
-    Just (UpUntil lhs rhs) -> do
-      let lhs' = runLoom loomModal lhs
-          rhs' = runLoom (loomModal ~>~ hoist replacePrimes) rhs
-      scope (UpUntil lhs' rhs')
+pretermFromModal :: Lang ctx (Modal ': Logic ': effs) a -> Lang ctx effs (Preterm a)
+pretermFromModal = \case
+  Pure x -> pure (PreConst x)
+  Op op k -> case decomposeOp op of
+    Left op' -> case decomposeOp op' of
+      Left other -> Op other (pretermFromModal . k)
+      Right (Logic b) -> absurd b
+    Right (Modal b) -> absurd b
+  Scoped scoped loom -> case decomposeS scoped of
+    Left scoped' -> case decomposeS scoped' of
+      Left other -> Scoped other loomReify
+      Right eff
+        | Conjunct lhs rhs <- eff -> do
+          lhs' <- runLoom loomReify lhs
+          rhs' <- runLoom loomReify rhs
+          return (PreConjunct lhs' rhs')
+        | Disjunct lhs rhs <- eff -> do
+          lhs' <- runLoom loomReify lhs
+          rhs' <- runLoom loomReify rhs
+          return (PreDisjunct lhs' rhs')
+        | Complement expr <- eff -> do
+          expr' <- runLoom loomReify expr
+          return (PreComplement expr')
+    Right eff
+      | Always expr <- eff -> do
+        expr' <- runLoom loomReify expr
+        return (PreAlways expr')
+      | UpUntil Pure {} expr <- eff -> do
+        expr' <- runLoom loomReify expr
+        return (PreEventually expr')
+      | UpUntil lhs rhs <- eff -> do
+        lhs' <- runLoom loomReify lhs
+        rhs' <- runLoom loomReify rhs
+        return (PreUpUntil lhs' rhs')
     where
-      loomModal = loom ~>~ hoist applyModality
+      loomReify = loom ~>~ hoist pretermFromModal
+{-# INLINE pretermFromModal #-}
+
+-- | Sends a preterm expressin to the corresponding effects.
+--
+-- @since 0.1.0.0
+pretermToModal :: Lang ctx effs (Preterm Bool) -> Lang ctx (Modal ': Logic ': effs) Bool
+pretermToModal terms =
+  terms
+    & weaken
+    & weaken
+    & (>>= sendModal)
   where
-    replacePrimes :: Members '[Plain, Prime] effs => Lang ctx effs a -> Lang ctx effs a
-    replacePrimes = \case
-      Pure x -> pure x
-      Op op k -> Op op (replacePrimes . k)
-      Scoped scoped loom -> case projectS scoped of
-        Nothing -> Scoped scoped loomPrimed
-        Just (PlainVar name) -> Scoped (injectS (PrimeVar name)) loomPrimed
-        where
-          loomPrimed = loom ~>~ hoist replacePrimes
+    sendModal :: Members '[Modal, Logic] effs => Preterm Bool -> Lang ctx effs Bool
+    sendModal = \case
+      PreConst x -> pure x
+      PreConjunct e1 e2 -> conjunct (sendModal e1) (sendModal e2)
+      PreDisjunct e1 e2 -> disjunct (sendModal e1) (sendModal e2)
+      PreComplement e -> complement (sendModal e)
+      PreUpUntil e1 e2 -> upUntil (sendModal e1) (sendModal e2)
+      PreEventually e -> upUntil (pure True) (sendModal e)
+      PreAlways e -> always (sendModal e)
+{-# INLINE pretermToModal #-}
