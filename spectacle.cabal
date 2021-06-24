@@ -59,20 +59,33 @@ library
   hs-source-dirs:      src
 
   build-depends:
-      hashable >= 1.3.0.0
-    , primitive
+      containers >= 0.6
+    , hashable >= 1.3.0.0
+    , microlens
+    , microlens-mtl
+    , mtl >= 2.2
+    , transformers >= 0.5
+    , unordered-containers
 
   exposed-modules:
-      Control.Natural
+      Control.Monad.Fresh
+    , Control.Natural
     , Data.Ascript
-    , Data.Fingerprint
-    , Data.Fingerprint.Array
-    , Data.Fingerprint.Binary
     , Data.Functor.Loom
     , Data.Name
     , Data.Type.Rec
+    , Language.Spectacle
+    , Language.Spectacle.AST
     , Language.Spectacle.AST.Action
     , Language.Spectacle.AST.Action.Internal
+    , Language.Spectacle.AST.Initial
+    , Language.Spectacle.AST.Initial.Internal
+    , Language.Spectacle.AST.Invariant
+    , Language.Spectacle.AST.Invariant.Internal
+    , Language.Spectacle.AST.Terminate
+    , Language.Spectacle.AST.Terminate.Internal
+    , Language.Spectacle.Exception
+    , Language.Spectacle.Exception.ModelCheckerException
     , Language.Spectacle.Exception.RuntimeException
     , Language.Spectacle.Lang
     , Language.Spectacle.Lang.Internal
@@ -80,17 +93,30 @@ library
     , Language.Spectacle.Lang.Op
     , Language.Spectacle.Lang.Scoped
     , Language.Spectacle.RTS.Registers
+    , Language.Spectacle.Spec
+    , Language.Spectacle.Spec.Base
+    , Language.Spectacle.Spec.Behavior
+    , Language.Spectacle.Spec.CheckResult
+    , Language.Spectacle.Spec.Coverage
+    , Language.Spectacle.Spec.Model
+    , Language.Spectacle.Spec.Model.Base
+    , Language.Spectacle.Spec.Prop
+    , Language.Spectacle.Spec.Prop.Base
+    , Language.Spectacle.Spec.Zipper
+    , Language.Spectacle.Syntax
     , Language.Spectacle.Syntax.Closure
     , Language.Spectacle.Syntax.Closure.Internal
+    , Language.Spectacle.Syntax.Enabled
+    , Language.Spectacle.Syntax.Enabled.Internal
     , Language.Spectacle.Syntax.Env
     , Language.Spectacle.Syntax.Env.Internal
     , Language.Spectacle.Syntax.Error
     , Language.Spectacle.Syntax.Error.Internal
-    , Language.Spectacle.Syntax.Fresh
-    , Language.Spectacle.Syntax.Fresh.Internal
     , Language.Spectacle.Syntax.Modal
+    , Language.Spectacle.Syntax.Modal.Level
     , Language.Spectacle.Syntax.Modal.Preterm
     , Language.Spectacle.Syntax.Modal.Internal
+    , Language.Spectacle.Syntax.Modal.Term
     , Language.Spectacle.Syntax.NonDet
     , Language.Spectacle.Syntax.NonDet.Internal
     , Language.Spectacle.Syntax.Plain
@@ -117,6 +143,25 @@ test-suite unit-tests
     , hedgehog
     , tasty
     , tasty-hedgehog
+
+test-suite integration-tests
+  import:              common
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test/integration
+  main-is:             Main.hs
+
+  other-modules:
+      Specifications.Diehard
+    , Specifications.DijkstraMutex
+    , Specifications.DijkstraMutex.Process
+    , Specifications.SimpleClock
+    , Specifications.SpanningTree
+
+  build-depends:
+      spectacle
+    , hashable
+    , tasty
+    , unordered-containers
 
 benchmark benchmark
   import:         common
