@@ -21,9 +21,17 @@ import Language.Spectacle.Syntax.Enabled (runEnabled)
 import Language.Spectacle.Syntax.Error (Error, runError, throwE)
 import Language.Spectacle.Syntax.Logic (Logic)
 import Language.Spectacle.Syntax.Modal
+  ( Modal,
+    Preterm,
+    normalForm,
+    pretermFromModal,
+    pretermToModal,
+  )
 import Language.Spectacle.Syntax.Modal.Term
-import Language.Spectacle.Syntax.Modal.Preterm
-import Language.Spectacle.Syntax.Modal.Level
+  ( Term,
+    runNameSupply,
+    termFromPreterm,
+  )
 import Language.Spectacle.Syntax.Plain (runPlain)
 import Language.Spectacle.Syntax.Prime (substPrime)
 

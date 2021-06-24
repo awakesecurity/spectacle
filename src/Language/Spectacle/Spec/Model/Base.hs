@@ -58,7 +58,7 @@ import Language.Spectacle.Spec.Base (Fairness, HasImpliedFormula (impliedFormula
 import Language.Spectacle.Spec.Behavior (Behavior)
 import Language.Spectacle.Spec.Coverage (CoverageInfo, HasCoverageMap (coverageMap))
 import Language.Spectacle.Spec.Implication (Implication, Modality)
-import Language.Spectacle.Spec.Zipper (Junctions (Junctions))
+import Language.Spectacle.Spec.Zipper (Junctions )
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -170,14 +170,15 @@ emptyModelCtx ::
   Action ctx Bool ->
   Invariant ctx Bool ->
   Maybe (Terminate ctx Bool) ->
+  Junctions ->
   Fairness ->
   ModelCtx ctx
-emptyModelCtx world action invariant terminate fairness =
+emptyModelCtx world action invariant terminate junctions fairness =
   ModelCtx
     { _modelAction = action
     , _modelFormula = applyRewrites invariant
     , _modelTerminate = terminate
-    , _modelJunctions = Junctions []
+    , _modelJunctions = junctions
     , _modelFairness = fairness
     , _modelTrace = Seq.singleton world
     , _worldHere = world
@@ -188,7 +189,7 @@ emptyModelCtx world action invariant terminate fairness =
 -- ---------------------------------------------------------------------------------------------------------------------
 
 data ModelResult ctx
-  = ModelFailure SpecException
+  = ModelFailure SpecException 
   | ModelSuccess [Behavior ctx] (ModelState ctx)
 
 deriving instance Show (Rec ctx) => Show (ModelResult ctx)

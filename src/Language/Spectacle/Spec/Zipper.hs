@@ -5,7 +5,6 @@ module Language.Spectacle.Spec.Zipper
     -- ** Construction
     consLeft,
     consRight,
-    zipJunctions,
     paveJunctions,
 
     -- ** Representation
@@ -13,20 +12,55 @@ module Language.Spectacle.Spec.Zipper
   )
 where
 
-import Data.Type.Rec (Rec)
-import Language.Spectacle.Syntax.Modal.Graded
-  ( LTerm (ConjunctL4, DisjunctL4, ModalL4),
-    Level (L4),
+import Language.Spectacle.Syntax.Modal.Term
+  ( Term
+      ( Always,
+        Complement,
+        Conjunct,
+        Disjunct,
+        Eventually,
+        InfinitelyOften,
+        StaysAs,
+        UpUntil,
+        Value
+      ),
   )
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
--- | 'Junctions' is a ordered list of 'DisjunctZipper'.
+-- | The 'Junctions' data type is a derivative type(or zipper) that indexes into disjunctions in a 'Term' expression.
+--
+-- [Example]
+--
+-- For any formula containing a disjunction, a set of 'Junctions' is constructed for all branches of disjunction in the
+-- formula that could be satisfied to show that the whole formula has been satisfied.
+--
+-- @
+-- formula :: Invariant ctx Bool
+-- formula = always (p ∨ q) ∨ eventually p'
+-- @
+--
+-- for example, would produce the following set of 'Junctions' with the correspondng satisfaction commitments:
+--
+-- @
+-- [LeftBranch, LeftBranch] -- attempts to satisfy always p
+-- [LeftBranch, RightBranch] -- attempts to satisfy always q
+-- [RightBranch] -- attempts to satisfy eventually p'
+-- @
 --
 -- @since 0.1.0.0
 newtype Junctions = Junctions
   {getJunctions :: [DisjunctZipper]}
   deriving (Eq, Show)
+
+-- | Enumeration of possible branches in a disjunction. For a disjunction @p ∨ q@ 'LeftBranch' corresponds to p and
+-- 'RightBranch' to q.
+--
+-- @since 0.1.0.0
+data DisjunctZipper
+  = LeftBranch
+  | RightBranch
+  deriving (Eq, Enum, Show)
 
 -- | @since 0.1.0.0
 instance Semigroup Junctions where
@@ -38,47 +72,36 @@ instance Monoid Junctions where
   mempty = Junctions []
   {-# INLINE CONLIKE mempty #-}
 
--- | Cons a left branch onto a 'Junctions'.
+-- | Appends a 'LeftBranch' to the head of given 'Junctions'.
 --
 -- @since 0.1.0.0
 consLeft :: Junctions -> Junctions
 consLeft (Junctions xs) = Junctions (LeftBranch : xs)
 {-# INLINE CONLIKE consLeft #-}
 
--- | Cons a right branch onto a 'Junctions'.
+-- | Appends a 'RightBranch' to the head of a given 'Junctions'.
 --
 -- @since 0.1.0.0
 consRight :: Junctions -> Junctions
 consRight (Junctions xs) = Junctions (RightBranch : xs)
 {-# INLINE CONLIKE consRight #-}
 
--- | Prepares an initial world with the set of possible 'Junctions', given by 'paveJunctions'.
+-- | Constructs a set of 'Junctions' where every element is unique root-to-leaf path with respect to disjunction
+-- branches of the given 'Term' expression.
 --
 -- @since 0.1.0.0
-zipJunctions :: Rec ctx -> LTerm 'L4 a -> [(Rec ctx, Junctions)]
-zipJunctions world formula = do
-  junction <- paveJunctions formula
-  return (world, junction)
-{-# INLINE zipJunctions #-}
-
--- | Traverses an 'LTerm' for all 'L4' nodes and returns the corresponding set of possible 'Junctions' which can be
--- taken for terms in the tree.
---
--- @since 0.1.0.0
-paveJunctions :: LTerm 'L4 a -> [Junctions]
+paveJunctions :: Term a -> [Junctions]
 paveJunctions = \case
-  ModalL4 {} -> return mempty
-  ConjunctL4 lhs rhs -> paveJunctions lhs <> paveJunctions rhs
-  DisjunctL4 lhs rhs ->
-    let leftPath = fmap consLeft (paveJunctions lhs)
-        rightPath = fmap consRight (paveJunctions rhs)
-     in leftPath <> rightPath
+  Value _ -> return mempty
+  Disjunct e1 e2 ->
+    let leftPath = fmap consLeft (paveJunctions e1)
+        rightPath = fmap consRight (paveJunctions e2)
+     in leftPath ++ rightPath
+  Conjunct e1 e2 -> paveJunctions e1 ++ paveJunctions e2
+  Complement e -> paveJunctions e
+  Always _ e -> paveJunctions e
+  Eventually _ e -> paveJunctions e
+  UpUntil _ e1 e2 -> paveJunctions e1 ++ paveJunctions e2
+  StaysAs _ e -> paveJunctions e
+  InfinitelyOften _ e -> paveJunctions e
 {-# INLINE paveJunctions #-}
-
--- | Zipper representation for level 4 (modal) disjunctions.
---
--- @since 0.1.0.0
-data DisjunctZipper
-  = LeftBranch
-  | RightBranch
-  deriving (Eq, Enum, Show)
