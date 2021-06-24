@@ -6,6 +6,7 @@ module Spectacle.Syntax.Modal.Properties
 where
 
 import Data.Function ((&))
+import Data.Functor ((<&>))
 import Hedgehog
   ( Property,
     PropertyT,
@@ -21,42 +22,39 @@ import Test.Tasty.Hedgehog (testProperty)
 
 import Data.Type.Rec (RecT (RNil))
 import Language.Spectacle.Exception.RuntimeException (RuntimeException)
-import Language.Spectacle.Lang (Lang, Members, runLang)
+import Language.Spectacle.Lang (Lang, Member, Members, runLang)
 import Language.Spectacle.Syntax.Error (Error, runError)
-import Language.Spectacle.Syntax.Fresh (Fresh, runFresh)
 import Language.Spectacle.Syntax.Logic (Logic, complement, conjunct, disjunct)
-import Language.Spectacle.Syntax.Modal (Modal, always, eventually)
+import Language.Spectacle.Syntax.Modal (Modal, always, eventually, pretermFromModal)
 import Language.Spectacle.Syntax.Modal.Preterm
   ( Preterm
       ( PreAlways,
         PreComplement,
         PreConjunct,
         PreConst,
-        PreDisjunct
+        PreDisjunct,
+        PreEventually
       ),
-    materialize,
-    rewritePreterm,
-    pattern PreEventually,
+    normalForm,
   )
 import Language.Spectacle.Syntax.Plain (Plain, runPlain)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
 pretermsOf ::
-  Lang '[] '[Modal, Logic, Plain, Fresh, Error RuntimeException] Bool ->
+  Lang '[] '[Modal, Logic, Plain, Error RuntimeException] Bool ->
   Preterm Bool ->
   PropertyT IO ()
 pretermsOf effs matches = do
   let preterms =
         effs
-          & materialize
-          & (>>= rewritePreterm)
+          & pretermFromModal
+          <&> normalForm
           & runPlain RNil
-          & runFresh 0
           & runError
           & runLang
   case preterms of
-    Right (_, expr) ->
+    Right expr ->
       if matches == expr
         then success
         else do
@@ -77,9 +75,9 @@ pretermsOf effs matches = do
 prop_alwaysIdempotent :: Property
 prop_alwaysIdempotent =
   withTests 1 . property $
-    pretermsOf alwaysAlways (PreAlways 2 (PreConst True))
+    pretermsOf alwaysAlways (PreAlways (PreConst True))
   where
-    alwaysAlways :: Members '[Fresh, Modal] effs => Lang ctx effs Bool
+    alwaysAlways :: Member Modal effs => Lang ctx effs Bool
     alwaysAlways = always (always (pure True))
 
 -- | Eventually and always absorb always
@@ -90,9 +88,9 @@ prop_alwaysIdempotent =
 prop_alwaysAbsorption :: Property
 prop_alwaysAbsorption =
   withTests 1 . property $
-    pretermsOf alwaysEventuallyAlways (PreEventually 3 (PreAlways 2 (PreConst True)))
+    pretermsOf alwaysEventuallyAlways (PreEventually (PreAlways (PreConst True)))
   where
-    alwaysEventuallyAlways :: Members '[Fresh, Modal] effs => Lang ctx effs Bool
+    alwaysEventuallyAlways :: Member Modal effs => Lang ctx effs Bool
     alwaysEventuallyAlways = always (eventually (always (pure True)))
 
 -- | Eventually is idempotent.
@@ -103,9 +101,9 @@ prop_alwaysAbsorption =
 prop_eventuallyIdempotent :: Property
 prop_eventuallyIdempotent =
   withTests 1 . property $
-    pretermsOf eventuallyEventually (PreEventually 2 (PreConst True))
+    pretermsOf eventuallyEventually (PreEventually (PreConst True))
   where
-    eventuallyEventually :: Members '[Fresh, Modal] effs => Lang ctx effs Bool
+    eventuallyEventually :: Member Modal effs => Lang ctx effs Bool
     eventuallyEventually = eventually (eventually (pure True))
 
 -- | Always and eventually absorb eventually.
@@ -116,9 +114,9 @@ prop_eventuallyIdempotent =
 prop_eventuallyAbsorption :: Property
 prop_eventuallyAbsorption =
   withTests 1 . property $
-    pretermsOf eventuallyAlwaysEventually (PreAlways 3 (PreEventually 2 (PreConst True)))
+    pretermsOf eventuallyAlwaysEventually (PreAlways (PreEventually (PreConst True)))
   where
-    eventuallyAlwaysEventually :: Members '[Fresh, Modal] effs => Lang ctx effs Bool
+    eventuallyAlwaysEventually :: Member Modal effs => Lang ctx effs Bool
     eventuallyAlwaysEventually = eventually (always (eventually (pure True)))
 
 -- | Eventually is the dual of always.
@@ -129,9 +127,9 @@ prop_eventuallyAbsorption =
 prop_alwaysDual :: Property
 prop_alwaysDual =
   withTests 1 . property $
-    pretermsOf complementAlways (PreEventually 1 (PreComplement (PreConst True)))
+    pretermsOf complementAlways (PreEventually (PreComplement (PreConst True)))
   where
-    complementAlways :: Members '[Fresh, Logic, Modal] effs => Lang ctx effs Bool
+    complementAlways :: Members '[Logic, Modal] effs => Lang ctx effs Bool
     complementAlways = complement (always (pure True))
 
 -- | Always is the dual of eventually.
@@ -142,9 +140,9 @@ prop_alwaysDual =
 prop_eventuallyDual :: Property
 prop_eventuallyDual =
   withTests 1 . property $
-    pretermsOf complementEventually (PreAlways 1 (PreComplement (PreConst True)))
+    pretermsOf complementEventually (PreAlways (PreComplement (PreConst True)))
   where
-    complementEventually :: Members '[Fresh, Logic, Modal] effs => Lang ctx effs Bool
+    complementEventually :: Members '[Logic, Modal] effs => Lang ctx effs Bool
     complementEventually = complement (eventually (pure True))
 
 -- | Negation distributes over conjunction.
@@ -157,7 +155,7 @@ prop_negDistributesAnd =
   withTests 1 . property $
     pretermsOf complementConjunct (PreDisjunct (PreComplement (PreConst True)) (PreComplement (PreConst True)))
   where
-    complementConjunct :: Members '[Fresh, Logic] effs => Lang ctx effs Bool
+    complementConjunct :: Member Logic effs => Lang ctx effs Bool
     complementConjunct = complement (pure True `conjunct` pure True)
 
 -- | Negation distributes over disjunction.
@@ -170,7 +168,7 @@ prop_negDistributesOr =
   withTests 1 . property $
     pretermsOf complementDisjunct (PreConjunct (PreComplement (PreConst True)) (PreComplement (PreConst True)))
   where
-    complementDisjunct :: Members '[Fresh, Logic] effs => Lang ctx effs Bool
+    complementDisjunct :: Member Logic effs => Lang ctx effs Bool
     complementDisjunct = complement (pure True `disjunct` pure True)
 
 -- | Negation is involutional.
@@ -183,7 +181,7 @@ prop_negInvolute =
   withTests 1 . property $
     pretermsOf complementComplement (PreConst True)
   where
-    complementComplement :: Members '[Fresh, Logic] effs => Lang ctx effs Bool
+    complementComplement :: Member Logic effs => Lang ctx effs Bool
     complementComplement = complement (complement (pure True))
 
 tests :: TestTree

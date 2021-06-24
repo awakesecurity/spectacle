@@ -141,7 +141,6 @@ test-suite unit-tests
 
   other-modules:
       Spectacle.Syntax.Modal
-    , Spectacle.Syntax.Modal.Preterm
     , Spectacle.Syntax.Modal.Properties
 
   build-depends:
@@ -165,11 +164,8 @@ test-suite integration-tests
 
   build-depends:
       spectacle
-    , containers
     , hashable
-    , hedgehog
     , tasty
-    , tasty-hedgehog
     , unordered-containers
 
 benchmark benchmark
