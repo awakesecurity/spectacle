@@ -2,19 +2,19 @@
 
 module Specifications.Diehard where
 
-import Data.Foldable
-import qualified Data.HashMap.Strict as HashMap
-
-import Data.Type.Rec
-import Language.Spectacle.AST.Action
-import Language.Spectacle.AST.Initial
-import Language.Spectacle.AST.Invariant
-import Language.Spectacle.AST.Terminate
-import Language.Spectacle.Exception
-import Language.Spectacle.Spec
-import Language.Spectacle.Spec.Base
-import Language.Spectacle.Spec.Model.Base
-import Language.Spectacle.Syntax
+import Data.Type.Rec (type (#))
+import Language.Spectacle
+  ( always,
+    define,
+    doModelCheck,
+    plain,
+    prime,
+    (.=),
+    (/\),
+    (\/),
+  )
+import Language.Spectacle.AST (Action, Initial, Invariant, Terminate)
+import Language.Spectacle.Spec.Base (Fairness (Unfair))
 
 -- -------------------------------------------------------------------------------------------------
 
@@ -22,7 +22,7 @@ type Diehard =
   '[ "smallJug" # Int
    , "bigJug" # Int
    ]
-  
+
 initial :: Initial Diehard ()
 initial = do
   #smallJug `define` pure 0
@@ -85,7 +85,5 @@ check = case doModelCheck initial next invariant (Just terminate) Unfair of
   (Left exc, _) -> do
     putStrLn "model check failed:"
     print exc
-  (Right _, st) -> do
-    putStrLn "model success, final state:"
-    forM_ (HashMap.toList (_coverageMap st)) \(world, info) ->
-      putStrLn (show world ++ ", info: " ++ show info)
+  (Right _, _) -> do
+    putStrLn "model success"

@@ -10,7 +10,7 @@ import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import Data.Hashable (Hashable)
 import qualified Data.List as List
-import Data.Type.Rec (type (#), type (.|), Name)
+import Data.Type.Rec (Name, type (#), type (.|))
 import Language.Spectacle
   ( Action,
     Initial,

@@ -8,7 +8,6 @@ import Control.Monad (forM)
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 
-import Language.Spectacle.Spec.Base (Fairness(WeaklyFair))
 import Language.Spectacle
   ( Action,
     Initial,
@@ -24,6 +23,7 @@ import Language.Spectacle
     (\/),
     type (#),
   )
+import Language.Spectacle.Spec.Base (Fairness (WeaklyFair))
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
