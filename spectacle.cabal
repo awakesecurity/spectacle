@@ -64,7 +64,6 @@ library
     , microlens
     , microlens-mtl
     , mtl >= 2.2
-    , primitive
     , transformers >= 0.5
     , unordered-containers
 
@@ -72,9 +71,6 @@ library
       Control.Monad.Fresh
     , Control.Natural
     , Data.Ascript
-    , Data.Fingerprint
-    , Data.Fingerprint.Array
-    , Data.Fingerprint.Binary
     , Data.Functor.Loom
     , Data.Name
     , Data.Type.Rec
