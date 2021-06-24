@@ -7,12 +7,12 @@ module Language.Spectacle.Exception.ModelCheckerException
         FormulaException,
         FormulaInfiniteStutter,
         TerminationException,
-        ImpassException
+        ImpasseException
       ),
-    ImpassException
-      ( ImpassNoTermination,
-        ImpassFailedTerminate,
-        ImpassInfiniteStutter
+    ImpasseException
+      ( ImpasseNoTermination,
+        ImpasseFailedTerminate,
+        ImpasseInfiniteStutter
       ),
     FormulaException
       ( UnsatisfiedInvariant,
@@ -43,20 +43,20 @@ data ModelCheckerException where
   FormulaException :: FormulaException -> ModelCheckerException
   FormulaInfiniteStutter :: FormulaException -> ModelCheckerException
   TerminationException :: TerminationException -> ModelCheckerException
-  ImpassException :: ImpassException -> ModelCheckerException
+  ImpasseException :: ImpasseException -> ModelCheckerException
   deriving stock (Typeable)
   deriving anyclass (Exception)
 
 deriving instance Show ModelCheckerException
 
-data ImpassException where
-  ImpassNoTermination :: Show (Rec ctx) => Rec ctx -> ImpassException
-  ImpassFailedTerminate :: Show (Rec ctx) => Rec ctx -> ImpassException
-  ImpassInfiniteStutter :: Show (Rec ctx) => Rec ctx -> ImpassException
+data ImpasseException where
+  ImpasseNoTermination :: Show (Rec ctx) => Rec ctx -> ImpasseException
+  ImpasseFailedTerminate :: Show (Rec ctx) => Rec ctx -> ImpasseException
+  ImpasseInfiniteStutter :: Show (Rec ctx) => Rec ctx -> ImpasseException
   deriving stock (Typeable)
   deriving anyclass (Exception)
 
-deriving instance Show ImpassException
+deriving instance Show ImpasseException
 
 data FormulaException where
   EvaluatorException :: FormulaException

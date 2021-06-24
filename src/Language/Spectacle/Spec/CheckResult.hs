@@ -50,7 +50,7 @@ class Additive a where
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
--- | 'CheckResult' carries the information obtained by checking model's invariant that is relevant for deciding if a
+-- | 'CheckResult' carries the information obtained by a checking model's invariant that is relevant for deciding if a
 -- model checking should continue.
 --
 -- @since 0.1.0.0

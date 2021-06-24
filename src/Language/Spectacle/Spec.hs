@@ -49,7 +49,7 @@ runChecker checker =
     & runExceptT
     & flip runState (ModelState mempty)
 
-doModelCheck ::
+modelCheck ::
   forall ctx.
   Specifiable ctx =>
   Initial ctx () ->
@@ -58,17 +58,17 @@ doModelCheck ::
   Maybe (Terminate ctx Bool) ->
   Fairness ->
   (Either SpecException [Behavior ctx], ModelState ctx)
-doModelCheck initial action invariant terminate fairness = runChecker do
-  initialWorlds <- doInitialAction initial
+modelCheck initial action invariant terminate fairness = runChecker do
+  initialWorlds <- generateInitialWorlds initial
   behaviors <- mapM (\w -> startModel w action invariant terminate fairness) initialWorlds
   return (concat behaviors)
 
--- | 'doInitialAction' expands the initial action provided to a model into a set of worlds the model checker will
+-- | 'generateInitialWorlds' expands the initial action provided to a model into a set of worlds the model checker will
 -- start from.
 --
 -- @since 0.1.0.0
-doInitialAction :: forall ctx. Specifiable ctx => Initial ctx () -> Checker ctx [Rec ctx]
-doInitialAction initial = case runInitial initial of
+generateInitialWorlds :: forall ctx. Specifiable ctx => Initial ctx () -> Checker ctx [Rec ctx]
+generateInitialWorlds initial = case runInitial initial of
   Left exc -> throwError (RuntimeException (mempty :: Behavior ctx) exc)
   Right worlds
     | null worlds -> throwError (ModelCheckerException (mempty :: Behavior ctx) NoInitialStates)

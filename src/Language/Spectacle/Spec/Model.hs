@@ -26,10 +26,10 @@ import Language.Spectacle.AST
 import Language.Spectacle.Exception (SpecException (ModelCheckerException, RuntimeException))
 import Language.Spectacle.Exception.ModelCheckerException
   ( FormulaException (UnsatisfiedInvariant),
-    ImpassException (ImpassInfiniteStutter, ImpassNoTermination),
+    ImpasseException (ImpasseInfiniteStutter, ImpasseNoTermination),
     ModelCheckerException
       ( FormulaException,
-        ImpassException
+        ImpasseException
       ),
   )
 import Language.Spectacle.Exception.RuntimeException (RuntimeException)
@@ -68,11 +68,13 @@ import Language.Spectacle.Spec.Prop.Base
     infoThere,
     runProp,
   )
+import Debug.Trace
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
 stepModel :: forall ctx. Specifiable ctx => Rec ctx -> Model ctx [Behavior ctx]
 stepModel world = do
+  trace (show world) (pure ())
   worldsThere <- takeQuotient world
   case worldsThere of
     Left exc -> do
@@ -182,7 +184,7 @@ checkInfiniteStutter world = do
     Left exc -> throwFormulaException exc
     Right result
       | result ^. isSatisfied && result ^. isComplete -> return ()
-      | otherwise -> throwImpassException (ImpassInfiniteStutter world)
+      | otherwise -> throwImpasseException (ImpasseInfiniteStutter world)
 
 checkStutterInvariance :: Specifiable ctx => Rec ctx -> Model ctx (Either FormulaException CheckResult)
 checkStutterInvariance world =
@@ -217,7 +219,7 @@ checkTermination :: Specifiable ctx => Bool -> Model ctx Bool
 checkTermination isEnabled = do
   here <- view worldHere
   view modelTerminate >>= \case
-    Nothing -> throwImpassException (ImpassNoTermination here)
+    Nothing -> throwImpasseException (ImpasseNoTermination here)
     Just terminate -> return (runTerminate isEnabled here terminate)
 
 -- | Runs the next-state relation for this model to yield a set of worlds accessible from the given world.
@@ -261,6 +263,6 @@ throwFormulaException :: Show (Rec ctx) => FormulaException -> Model ctx a
 throwFormulaException = throwModelCheckerException . FormulaException
 {-# INLINE throwFormulaException #-}
 
-throwImpassException :: Show (Rec ctx) => ImpassException -> Model ctx a
-throwImpassException = throwModelCheckerException . ImpassException
-{-# INLINE throwImpassException #-}
+throwImpasseException :: Show (Rec ctx) => ImpasseException -> Model ctx a
+throwImpasseException = throwModelCheckerException . ImpasseException
+{-# INLINE throwImpasseException #-}
