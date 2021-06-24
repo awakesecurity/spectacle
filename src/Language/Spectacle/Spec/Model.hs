@@ -38,7 +38,7 @@ import Language.Spectacle.Spec.Base
   ( Fairness (StronglyFair, Unfair, WeaklyFair),
     Specifiable,
   )
-import Language.Spectacle.Spec.Behavior (Behavior)
+import Language.Spectacle.Spec.Behavior (Behavior, occursInPrefix)
 import Language.Spectacle.Spec.CheckResult
   ( CheckResult,
     isComplete,
@@ -48,7 +48,7 @@ import Language.Spectacle.Spec.Coverage
   ( HasCoverageMap (coverageMap),
     checksCompleted,
     emptyCoverageInfo,
-    subsequentWorlds
+    subsequentWorlds,
   )
 import Language.Spectacle.Spec.Model.Base
   ( Model,
@@ -60,7 +60,7 @@ import Language.Spectacle.Spec.Model.Base
     modelTrace,
     worldHere,
   )
-import Language.Spectacle.Spec.Prop ( interpretFormula )
+import Language.Spectacle.Spec.Prop (interpretFormula)
 import Language.Spectacle.Spec.Prop.Base
   ( PropCtx (PropCtx),
     PropState (PropState),
@@ -73,17 +73,18 @@ import Language.Spectacle.Spec.Prop.Base
 
 stepModel :: forall ctx. Specifiable ctx => Rec ctx -> Model ctx [Behavior ctx]
 stepModel world = do
-  worldsThere <- takeQuotient world 
+  worldsThere <- takeQuotient world
   case worldsThere of
     Left exc -> do
       canTerminate <- checkTerminationWithoutFailure False
       if canTerminate
         then pure <$> view modelTrace
         else throwError exc
-    Right worlds -> view modelFairness >>= \case
-      Unfair -> stepUnfair world worlds
-      WeaklyFair -> stepWeakFair world worlds
-      StronglyFair -> stepStrongFair world worlds
+    Right worlds ->
+      view modelFairness >>= \case
+        Unfair -> stepUnfair world worlds
+        WeaklyFair -> stepWeakFair world worlds
+        StronglyFair -> stepStrongFair world worlds
 
 stepUnfair :: Specifiable ctx => Rec ctx -> [Rec ctx] -> Model ctx [Behavior ctx]
 stepUnfair world worldsThere = do
@@ -118,7 +119,6 @@ stepUnfair world worldsThere = do
 stepWeakFair :: Specifiable ctx => Rec ctx -> [Rec ctx] -> Model ctx [Behavior ctx]
 stepWeakFair world worldsThere = do
   behavior <- view modelTrace
-
   if null worldsThere
     then do
       canTerminate <- checkTerminationWithoutFailure False
@@ -132,11 +132,7 @@ stepWeakFair world worldsThere = do
             | result ^. isSatisfied -> return (there, result)
             | otherwise -> throwFormulaException (UnsatisfiedInvariant world there)
       extensions <- forM results \(there, result) -> do
-        stopHere <-
-          use (coverageMap . to (HashMap.lookup there)) >>= \case
-            Nothing -> return False
-            Just info -> return (info ^. checksCompleted && result ^. isComplete)
-        if stopHere
+        if result ^. isComplete
           then return [behavior :|> world]
           else do
             newContext <- asks \oldContext ->
@@ -231,19 +227,23 @@ takeQuotient :: forall ctx. Specifiable ctx => Rec ctx -> Model ctx (Either Spec
 takeQuotient world =
   view (modelAction . to (runAction world)) >>= \case
     Left exc -> do
-      behavior <- view modelTrace 
+      behavior <- view modelTrace
       return (Left (RuntimeException behavior exc))
     Right xs -> do
-      let worlds = Set.fromList (filterUnrelated xs)
+      worlds <- Set.fromList <$> filterUnrelated xs
       coverageMap %= flip HashMap.adjust world \info ->
         info & subsequentWorlds <>~ worlds
       return (Right (Set.toList worlds))
   where
-    filterUnrelated :: [(RuntimeState ctx, Bool)] -> [Rec ctx]
-    filterUnrelated [] = []
-    filterUnrelated ((rst, isRelated) : xs)
-      | world /= newValues rst && isRelated = newValues rst : filterUnrelated xs
-      | otherwise = filterUnrelated xs
+    filterUnrelated :: [(RuntimeState ctx, Bool)] -> Model ctx [Rec ctx]
+    filterUnrelated [] = return []
+    filterUnrelated ((rst, isRelated) : xs) = do
+      let world' = newValues rst
+      behavior <- view  modelTrace
+      xs' <- filterUnrelated xs
+      if world /= world' && not (world' `occursInPrefix` behavior) && isRelated
+        then return (world' : xs')
+        else return xs'
 
 throwModelCheckerException :: Show (Rec ctx) => ModelCheckerException -> Model ctx a
 throwModelCheckerException exc = do

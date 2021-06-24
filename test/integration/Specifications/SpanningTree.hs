@@ -23,7 +23,7 @@ import Language.Spectacle
     (\/),
     type (#),
   )
-import Language.Spectacle.Spec.Base (Fairness (WeaklyFair))
+import Language.Spectacle.Spec.Base (Fairness (Unfair))
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -154,4 +154,4 @@ check = do
           , maxCardinality = 2
           }
 
-  print (doModelCheck initial next invariant (Just terminate) WeaklyFair)
+  print (doModelCheck initial next invariant (Just terminate) Unfair)

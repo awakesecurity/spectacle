@@ -19,7 +19,7 @@ import Data.Function ((&))
 import Data.List (nub)
 
 import Data.Type.Rec (Rec)
-import Language.Spectacle.AST (Action, Initial, Invariant, Terminate, runInitial, runInvariant)
+import Language.Spectacle.AST (Action, Initial, Invariant, Terminate, runInitial, runInvariant, applyRewrites)
 import Language.Spectacle.Exception (SpecException (ModelCheckerException, RuntimeException))
 import Language.Spectacle.Exception.ModelCheckerException (ModelCheckerException (NoInitialStates))
 import Language.Spectacle.Spec.Base (Fairness, Specifiable)
@@ -84,13 +84,14 @@ startModel ::
   Fairness ->
   Checker ctx [Behavior ctx]
 startModel world action invariant terminate fairness = do
-  terms <- case runInvariant True world world invariant of
+  let invariant' = applyRewrites invariant
+  terms <- case runInvariant True world world invariant' of
     Left exc -> throwError (RuntimeException (mempty :: Behavior ctx) exc)
     Right ts -> return ts
 
   case filter (/= Junctions []) (nub (paveJunctions terms)) of
     [] -> do
-      result <- sendModel world (emptyModelCtx world action invariant terminate mempty fairness)
+      result <- sendModel world (emptyModelCtx world action invariant' terminate mempty fairness)
       case result of
         Left exc -> throwError exc
         Right behavior -> return behavior

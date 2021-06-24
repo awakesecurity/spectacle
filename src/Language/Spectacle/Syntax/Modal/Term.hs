@@ -66,11 +66,11 @@ instance Show a => Show (Term a) where
     Conjunct e1 e2 -> "(" ++ show e1 ++ " ∧ " ++ show e2 ++ ")"
     Disjunct e1 e2 -> "(" ++ show e1 ++ " ∨ " ++ show e2 ++ ")"
     Complement e -> "¬" ++ show e
-    Always _ e -> "◻" ++ show e
-    Eventually _ e -> "◇" ++ show e
-    UpUntil _ e1 e2 -> show e1 ++ " U " ++ show e2
-    StaysAs _ e -> "◇◻" ++ show e
-    InfinitelyOften _ e -> "◻◇" ++ show e
+    Always n e -> "◻[" ++ show n ++ "]" ++ show e
+    Eventually n e -> "◇[" ++ show n ++ "]" ++ show e
+    UpUntil n e1 e2 -> show e1 ++ " U[" ++ show n ++ " " ++ show e2
+    StaysAs n e -> "◇◻[" ++ show n ++ "]" ++ show e
+    InfinitelyOften n e -> "◻◇[" ++ show n ++ "]" ++ show e
   {-# INLINE show #-}
 
 -- | The 'NameSupply' monad stack is used to convert 'Preterm's to 'Term's which requires a supply of unique names that

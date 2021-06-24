@@ -22,17 +22,17 @@ import Lens.Micro.Mtl (use, view, (.=))
 import Data.Type.Rec (Rec)
 import Language.Spectacle.Exception.ModelCheckerException
   ( CyclicCheckException (CyclicViolation),
-    FormulaException (CyclicException, PropertyViolated, EvaluatorException),
+    FormulaException (CyclicException, EvaluatorException, PropertyViolated),
   )
 import Language.Spectacle.Spec.Base (Modality (ModalAlways, ModalEventually, ModalUpUntil), Specifiable)
-import Language.Spectacle.Spec.Behavior (Behavior, cyclicSuffixOf, modelsEventually)
+import Language.Spectacle.Spec.Behavior (Behavior, cyclicSuffixOf, modelsEventually, occursInPrefix)
 import Language.Spectacle.Spec.CheckResult
   ( CheckResult (CheckResult),
     Multiplicative (unitOne, (>*<)),
     isComplete,
     isSatisfied,
   )
-import Language.Spectacle.Spec.Coverage (HasCoverageMap (coverageMap), checksCompleted, subformula)
+import Language.Spectacle.Spec.Coverage (HasCoverageMap (coverageMap), checksCompleted, subformula, subsequentWorlds)
 import Language.Spectacle.Spec.Prop.Base
   ( Prop,
     behaviorTrace,
@@ -61,7 +61,11 @@ interpretFormula formula = do
       <*> view behaviorTrace
   result <- case cyclicSuffix of
     Nothing -> checkFormula formula
-    Just suffix -> checkFormulaClosed suffix formula
+    Just suffix -> do
+      succedents <- use (infoHere . subsequentWorlds)
+      if all (`occursInPrefix` suffix) succedents
+        then checkFormulaClosed suffix formula
+        else checkFormula formula
   infoHere . checksCompleted .= result ^. isComplete
   return result
 
@@ -79,7 +83,7 @@ checkFormula = \case
         local (set disjunctionPath (Junctions js)) (checkFormula e1)
       Junctions (RightBranch : js) -> do
         local (set disjunctionPath (Junctions js)) (checkFormula e2)
-      Junctions [] -> undefined -- TODO
+      Junctions [] -> throwError EvaluatorException
   Complement e -> do
     result <- checkFormula e
     return (result & isSatisfied %~ not)
@@ -161,7 +165,7 @@ checkFormulaClosed closure = \case
     case branches of
       Junctions (LeftBranch : js) -> local (set disjunctionPath (Junctions js)) (checkFormulaClosed closure e1)
       Junctions (RightBranch : js) -> local (set disjunctionPath (Junctions js)) (checkFormulaClosed closure e2)
-      Junctions [] -> throwError EvaluatorException 
+      Junctions [] -> throwError EvaluatorException
   Complement e -> do
     result <- checkFormulaClosed closure e
     return (result & isSatisfied %~ not)
@@ -187,7 +191,8 @@ checkAlwaysClosed name = do
 checkEventuallyClosed :: Specifiable ctx => Int -> Behavior ctx -> Prop ctx CheckResult
 checkEventuallyClosed name closure = do
   satHere <- use (infoHere . subformula name)
-  if satHere
+  satThere <- use (infoThere . subformula name)
+  if satHere || satThere
     then return (unitOne & isComplete .~ True)
     else do
       sat <-
@@ -200,7 +205,8 @@ checkEventuallyClosed name closure = do
 checkUpUntilClosed :: Specifiable ctx => Int -> Term Bool -> Behavior ctx -> Prop ctx CheckResult
 checkUpUntilClosed name e closure = do
   satHere <- use (infoHere . subformula name)
-  if satHere
+  satThere <- use (infoThere . subformula name)
+  if satHere || satThere
     then return (unitOne & isComplete .~ True)
     else do
       result <- checkFormula e

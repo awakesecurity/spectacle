@@ -24,6 +24,7 @@ import Language.Spectacle
     oneOf,
     plain,
     (.=),
+    (/\),
     (==>),
     (\/),
   )
@@ -46,9 +47,9 @@ data Constants = Constants
   }
 
 type DijkstraMutexSpec =
-  '[ "isLooping" # HashMap ProcessLabel Bool -- #b
-   , "goCritical" # HashMap ProcessLabel Bool -- #c
-   , "procIx" # ProcessLabel -- #k
+  '[ "isLooping" # HashMap ProcessLabel Bool
+   , "goCritical" # HashMap ProcessLabel Bool
+   , "procIx" # ProcessLabel
    , "procs" # HashMap ProcessLabel Process
    ]
 
@@ -56,7 +57,7 @@ initial :: (?constants :: Constants) => Initial DijkstraMutexSpec ()
 initial = do
   let Constants {..} = ?constants
   procIx <- oneOf processSet
-
+  startSteps <- oneOf [Li0] -- Either we start at Li0 or at Done (the process never started).
   #isLooping `define` return (HashMap.fromList [(pid, True) | pid <- processSet])
 
   #goCritical `define` return (HashMap.fromList [(pid, True) | pid <- processSet])
@@ -68,13 +69,7 @@ initial = do
       return (pid, Process Li0 procIx processSet)
 
 next :: (?constants :: Constants) => Action DijkstraMutexSpec Bool
-next = nextProc \/ nextDone
-
-nextDone :: Action DijkstraMutexSpec Bool
-nextDone = do
-  procs <- plain #procs
-  #procs .= return (HashMap.map (\Process {..} -> Process {procStep = Done, ..}) procs)
-  return True
+next = nextProc
 
 nextProc :: (?constants :: Constants) => Action DijkstraMutexSpec Bool
 nextProc = do
@@ -149,13 +144,7 @@ except name (k, v) = HashMap.insert k v <$> plain name
 invariant :: (?constants :: Constants) => Invariant DijkstraMutexSpec Bool
 invariant = do
   let Constants {..} = ?constants
-  -- starvationFree
-  mutualExclusion
-  --   \/ starvationFree
-  --   \/ always do
-  --     and <$> forM processSet \pid -> do
-  --       p <- (HashMap.! pid) <$> plain #procs
-  --       return (procStep p == Done)
+  mutualExclusion /\ starvationFree
   where
     mutualExclusion :: (?constants :: Constants) => Invariant DijkstraMutexSpec Bool
     mutualExclusion = always do
@@ -171,7 +160,8 @@ invariant = do
 
 starvationFree :: (?constants :: Constants) => Invariant DijkstraMutexSpec Bool
 starvationFree = do
-  areAllFirstStep ==> willGoCritical
+  -- Every process must eventually go critical if its started, otherwise it must never start.
+  (areAllFirstStep ==> eventually willGoCritical) \/ always neverStarted
   where
     areAllFirstStep :: (?constants :: Constants) => Invariant DijkstraMutexSpec Bool
     areAllFirstStep = do
@@ -181,11 +171,18 @@ starvationFree = do
         return (procStep p == Li0)
 
     willGoCritical :: (?constants :: Constants) => Invariant DijkstraMutexSpec Bool
-    willGoCritical = eventually do
+    willGoCritical = do
       let Constants {..} = ?constants
       or <$> forM processSet \pid -> do
         p <- (HashMap.! pid) <$> plain #procs
         return (procStep p == Critical)
+
+    neverStarted :: (?constants :: Constants) => Invariant DijkstraMutexSpec Bool
+    neverStarted = do
+      let Constants {..} = ?constants
+      and <$> forM processSet \pid -> do
+        p <- (HashMap.! pid) <$> plain #procs
+        return (procStep p == Done)
 
 terminate :: Terminate DijkstraMutexSpec Bool
 terminate = do
@@ -194,14 +191,14 @@ terminate = do
 
 check :: IO ()
 check = do
-  let ?constants = mkProcesses 3
+  let ?constants = mkProcesses 2
   case doModelCheck initial next invariant (Just terminate) WeaklyFair of
     (Left (ModelCheckerException ws exc), _) -> do
-      putStrLn "model check failed:"
-      mapM_ print ws
+      putStrLn "model check failed with checker exception:"
+      print ws
       print exc
     (Left (RuntimeException ws exc), _) -> do
-      putStrLn "model check failed:"
+      putStrLn "model check failed with runtime exception:"
       mapM_ print ws
       print exc
     (Right _, _) -> do

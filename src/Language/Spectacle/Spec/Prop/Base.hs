@@ -101,7 +101,7 @@ worldHere = to _worldHere
 {-# INLINE CONLIKE worldHere #-}
 
 worldThere :: SimpleGetter (PropCtx ctx) (Rec ctx)
-worldThere = to _worldHere
+worldThere = to _worldThere
 {-# INLINE CONLIKE worldThere #-}
 
 behaviorTrace :: SimpleGetter (PropCtx ctx) (Behavior ctx)

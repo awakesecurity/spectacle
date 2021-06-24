@@ -63,11 +63,11 @@ applyRewrites formula =
     & pretermToModal
 {-# INLINE applyRewrites #-}
 
--- | Sends 'Preterm' to 'LTerm' in a 'Lang'.
+-- | Sends 'Preterm' to 'Term' in a 'Lang'.
 --
 -- @since 0.1.0.0
 getL4Terms :: Member (Error RuntimeException) effs => Preterm Bool -> Lang ctx effs (Term Bool)
 getL4Terms preterms = case runNameSupply (termFromPreterm preterms) of
   Left exc -> throwE (SyntaxException exc)
-  Right lterms -> return lterms
+  Right terms -> return terms
 {-# INLINE getL4Terms #-}

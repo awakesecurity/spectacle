@@ -166,7 +166,7 @@ emptyModelCtx world action invariant terminate junctions fairness =
     , _modelTerminate = terminate
     , _modelJunctions = junctions
     , _modelFairness = fairness
-    , _modelTrace = Seq.singleton world
+    , _modelTrace = Seq.empty
     , _worldHere = world
     , _compositeChecks = Set.empty
     }
