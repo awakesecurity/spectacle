@@ -41,6 +41,5 @@ data StepLabel
   | Li5
   | Li6
   | Noncritical
-  | Done
   deriving stock (Enum, Eq, Ord, Show, Generic)
   deriving anyclass (Hashable)
