@@ -24,23 +24,15 @@ import Language.Spectacle.Exception.ModelCheckerException
   ( CyclicCheckException (CyclicViolation),
     FormulaException (CyclicException, PropertyViolated),
   )
-import Language.Spectacle.Spec.Base (Specifiable)
+import Language.Spectacle.Spec.Base (Modality (ModalAlways, ModalEventually, ModalUpUntil), Specifiable)
 import Language.Spectacle.Spec.Behavior (Behavior, cyclicSuffixOf, modelsEventually)
 import Language.Spectacle.Spec.CheckResult
-  ( Additive (unitZero),
-    CheckResult (CheckResult),
+  ( CheckResult (CheckResult),
     Multiplicative (unitOne, (>*<)),
     isComplete,
     isSatisfied,
   )
-import Language.Spectacle.Spec.Coverage
-  ( HasCoverageMap (coverageMap),
-    checksCompleted,
-    subformula,
-  )
-import Language.Spectacle.Spec.Implication
-  ( Modality (ModalAlways, ModalEventually, ModalUpUntil),
-  )
+import Language.Spectacle.Spec.Coverage (HasCoverageMap (coverageMap), checksCompleted, subformula)
 import Language.Spectacle.Spec.Prop.Base
   ( Prop,
     behaviorTrace,
@@ -75,7 +67,7 @@ interpretFormula formula = do
 
 checkFormula :: Specifiable ctx => Term Bool -> Prop ctx CheckResult
 checkFormula = \case
-  Value x -> return (CheckResult x True unitZero)
+  Value x -> return (CheckResult x True)
   Conjunct e1 e2 -> do
     result1 <- checkFormula e1
     result2 <- checkFormula e2
@@ -159,7 +151,7 @@ checkUpUntil name e1 e2 = do
 
 checkFormulaClosed :: Specifiable ctx => Behavior ctx -> Term Bool -> Prop ctx CheckResult
 checkFormulaClosed closure = \case
-  Value x -> return (CheckResult x True unitZero)
+  Value x -> return (CheckResult x True)
   Conjunct e1 e2 -> do
     result1 <- checkFormulaClosed closure e1
     result2 <- checkFormulaClosed closure e2

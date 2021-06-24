@@ -1,22 +1,21 @@
 module Language.Spectacle.Spec.Implication
   ( -- * Implications
-    Implication (Implication, _implicationName, _implicatedModality, _expectedTruth),
-    complementImplication,
+    -- Implication (Implication, _implicationName, _implicatedModality, _expectedTruth),
+    -- complementImplication,
 
-    -- ** Lenses
-    implicationName,
-    implicatedModality,
-    expectedTruth,
+    -- -- ** Lenses
+    -- implicationName,
+    -- implicatedModality,
+    -- expectedTruth,
 
-    -- ** Construction
-    impliedAlways,
-    impliedEventually,
-    impliedUpUntil,
-    impliedStaysAs,
-    impliedInfinitelyOften,
+    -- -- ** Construction
+    -- impliedAlways,
+    -- impliedEventually,
+    -- impliedUpUntil,
+    -- impliedStaysAs,
+    -- impliedInfinitelyOften,
 
     -- * Modalities
-    Modality (ModalAlways, ModalEventually, ModalUpUntil, ModalStaysAs, ModalInfinitelyOften),
     hasPartialCorrectness,
   )
 where

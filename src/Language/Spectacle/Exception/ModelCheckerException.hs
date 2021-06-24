@@ -33,7 +33,7 @@ import Control.Exception (Exception)
 import Type.Reflection (Typeable)
 
 import Data.Type.Rec (Rec)
-import Language.Spectacle.Spec.Implication (Modality)
+import Language.Spectacle.Spec.Base (Modality)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

@@ -108,58 +108,7 @@ startModel world action invariant terminate fairness = do
         then mapM throwError errors
         else return results
 
--- sequence <$> forM junctions \junction -> do
---   let modelCtx = emptyModelCtx world' action invariant terminate junction fairness
---   trace (show junction) (pure ())
---   sendModel world' modelCtx
-
 sendModel :: Specifiable ctx => Rec ctx -> ModelCtx ctx -> Checker ctx (Either SpecException [Behavior ctx])
 sendModel initialWorld modelCtx = do
   let (result, _) = runModel (ModelState mempty) modelCtx (stepModel initialWorld)
   return result
-
---     let modelCtx world = emptyModelCtx world action invariant terminate fairness
---         (behaviors, modelState) =
---           mapM (\world -> foldContexts (modelCtx world) world) initialWorlds
---             & flip runState (ModelState HashMap.empty)
---         (excs, xs) = partitionEithers behaviors
---      in if null xs
---            then case excs of
---                   [] -> undefined
---                   x : xs -> trace (concat (map show excs)) (ModelFailure x)
---            else ModelSuccess (concat xs) modelState
---           -- case partitionEithers behaviors of
---           -- (_, x : xs) -> ModelSuccess (concat (x : xs)) modelState
---           -- (exc : _, []) -> ModelFailure exc
--- where
---   foldContexts :: ModelCtx ctx -> Rec ctx -> State (ModelState ctx) (Either SpecException [Behavior ctx])
---   foldContexts modelCtx world = do
---     modelState <- get
---     case runModel modelState modelCtx (modelCheck world) of
---       (Left exc, _) -> return (Left exc)
---       (Right behavior, modelState') -> do
---         put modelState'
---         return (Right behavior)
-
---   modelCheck :: Rec ctx -> Model ctx [Behavior ctx]
---   modelCheck world = do
---     modelCtx <- ask
---     terms <- view modelFormula >>= either throwRuntimeException pure . runInvariant True world world
---     trace (show terms) (pure ())
---     let junctions = nub (paveJunctions terms)
---         composites = compositeModalities terms
---     concat <$> forM junctions \junction -> do
---       trace (show junction ++ ", but: " ++ show junctions) (pure())
---       let ctx' =
---             modelCtx
---               & compositeChecks .~ composites
---               & modelJunctions .~ junction
---       local (const ctx') (stepModel world)
-
---   compositeModalities :: Term Bool -> Set (Int, Modality)
---   compositeModalities = \case
---     Conjunct lhs rhs -> compositeModalities lhs <> compositeModalities rhs
---     Disjunct lhs rhs -> compositeModalities lhs <> compositeModalities rhs
---     InfinitelyOften name _ -> Set.singleton (name, ModalInfinitelyOften)
---     StaysAs name _ -> Set.singleton (name, ModalStaysAs)
---     _ -> Set.empty

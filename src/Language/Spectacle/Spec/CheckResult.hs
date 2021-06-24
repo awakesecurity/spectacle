@@ -4,26 +4,16 @@ module Language.Spectacle.Spec.CheckResult
     Additive (unitZero, (>+<)),
 
     -- * Checker Results
-    CheckResult (CheckResult, _isSatisfied, _isComplete, _impliedFormula),
+    CheckResult (CheckResult, _isSatisfied, _isComplete),
 
     -- ** Lenses
     isSatisfied,
     isComplete,
-    impliedFormula,
-
-    -- * Implication Trees
-    ImplicationTree (Implied, ImpliedOr),
-    flattenImplicationTree,
   )
 where
 
-import Data.List (nub)
-import Data.Set (Set)
-import qualified Data.Set as Set
 import Lens.Micro (Lens', lens, (^.))
 
-import Language.Spectacle.Spec.Base (HasImpliedFormula (impliedFormula))
-import Language.Spectacle.Spec.Implication (Implication)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -75,42 +65,37 @@ data CheckResult = CheckResult
     --
     -- @since 0.1.0.0
     _isComplete :: Bool
-  , -- | Implied temporal properties that are accumulated in the process of checking a model's invariant.
-    --
-    -- @since 0.1.0.0
-    _impliedFormula :: ImplicationTree
   }
   deriving (Show)
 
 -- | @since 0.1.0.0
 instance Additive CheckResult where
-  unitZero = CheckResult False False unitZero
+  unitZero = CheckResult False False
   {-# INLINE CONLIKE unitZero #-}
 
   leftResult >+< rightResult =
     CheckResult
       (leftResult ^. isSatisfied || rightResult ^. isSatisfied)
       (leftResult ^. isComplete && rightResult ^. isComplete)
-      ((leftResult ^. impliedFormula) >+< (rightResult ^. impliedFormula))
+  -- ((leftResult ^. impliedFormula) >+< (rightResult ^. impliedFormula))
   {-# INLINE (>+<) #-}
 
 -- | @since 0.1.0.0
 instance Multiplicative CheckResult where
-  unitOne = CheckResult True False unitZero
+  unitOne = CheckResult True False
   {-# INLINE CONLIKE unitOne #-}
 
   leftResult >*< rightResult =
     CheckResult
       (leftResult ^. isSatisfied && rightResult ^. isSatisfied)
       (leftResult ^. isComplete && rightResult ^. isComplete)
-      ((leftResult ^. impliedFormula) >*< (rightResult ^. impliedFormula))
+  -- ((leftResult ^. impliedFormula) >*< (rightResult ^. impliedFormula))
   {-# INLINE (>*<) #-}
 
 -- | @since 0.1.0.0
-instance HasImpliedFormula CheckResult ImplicationTree where
-  impliedFormula = lens _impliedFormula \result x -> result {_impliedFormula = x}
-  {-# INLINE impliedFormula #-}
-
+-- instance HasImpliedFormula CheckResult ImplicationTree where
+--   impliedFormula = lens _impliedFormula \result x -> result {_impliedFormula = x}
+--   {\-# INLINE impliedFormula #-\}
 isSatisfied :: Lens' CheckResult Bool
 isSatisfied = lens _isSatisfied \result x -> result {_isSatisfied = x}
 {-# INLINE isSatisfied #-}
@@ -145,22 +130,22 @@ isComplete = lens _isComplete \result x -> result {_isComplete = x}
 -- which could be satisfied to show that the original formula is true.
 --
 -- @since 0.1.0.0
-data ImplicationTree
-  = Implied (Set Implication)
-  | ImpliedOr ImplicationTree ImplicationTree
-  deriving (Show)
+-- data ImplicationTree
+--   = Implied (Set Implication)
+--   | ImpliedOr ImplicationTree ImplicationTree
+--   deriving (Show)
 
 -- | Flattens a 'Implication' tree into a disjunction of many @'Set' 'Implication'@.
 --
 -- @since 0.1.0.0
-flattenImplicationTree :: ImplicationTree -> [Set Implication]
-flattenImplicationTree impl = nub (flatten impl)
-  where
-    flatten :: ImplicationTree -> [Set Implication]
-    flatten = \case
-      Implied xs -> return xs
-      ImpliedOr lhs rhs -> flattenImplicationTree lhs <> flattenImplicationTree rhs
-{-# INLINE flattenImplicationTree #-}
+-- flattenImplicationTree :: ImplicationTree -> [Set Implication]
+-- flattenImplicationTree impl = nub (flatten impl)
+--   where
+--     flatten :: ImplicationTree -> [Set Implication]
+--     flatten = \case
+--       Implied xs -> return xs
+--       ImpliedOr lhs rhs -> flattenImplicationTree lhs <> flattenImplicationTree rhs
+-- {\-# INLINE flattenImplicationTree #-\}
 
 -- | The addition of 'ImplicationTree's behaves like 'max' or ('||').
 --
@@ -173,12 +158,12 @@ flattenImplicationTree impl = nub (flatten impl)
 -- +---+---+---+
 --
 -- @since 0.1.0.0
-instance Additive ImplicationTree where
-  unitZero = Implied Set.empty
-  {-# INLINE CONLIKE unitZero #-}
+-- instance Additive ImplicationTree where
+--   unitZero = Implied Set.empty
+--   {\-# INLINE CONLIKE unitZero #-\}
 
-  (>+<) = ImpliedOr
-  {-# INLINE CONLIKE (>+<) #-}
+--   (>+<) = ImpliedOr
+--   {-# INLINE CONLIKE (>+<) #-}
 
 -- | The multiplication of 'ImplicationTree's behaves like 'min' or ('&&').
 --
@@ -191,11 +176,11 @@ instance Additive ImplicationTree where
 -- +---+---+---+
 --
 -- @since 0.1.0.0
-instance Multiplicative ImplicationTree where
-  unitOne = Implied Set.empty
-  {-# INLINE CONLIKE unitOne #-}
+-- instance Multiplicative ImplicationTree where
+--   unitOne = Implied Set.empty
+--   {\-# INLINE CONLIKE unitOne #-\}
 
-  Implied xs >*< Implied ys = Implied (xs <> ys)
-  xs >*< ImpliedOr lefts rights = ImpliedOr (xs >*< lefts) (xs >*< rights)
-  ImpliedOr lefts rights >*< xs = ImpliedOr (lefts >*< xs) (rights >*< xs)
-  {-# INLINE (>*<) #-}
+--   Implied xs >*< Implied ys = Implied (xs <> ys)
+--   xs >*< ImpliedOr lefts rights = ImpliedOr (xs >*< lefts) (xs >*< rights)
+--   ImpliedOr lefts rights >*< xs = ImpliedOr (lefts >*< xs) (rights >*< xs)
+--   {-# INLINE (>*<) #-}

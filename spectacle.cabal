@@ -102,7 +102,6 @@ library
     , Language.Spectacle.Spec.Behavior
     , Language.Spectacle.Spec.CheckResult
     , Language.Spectacle.Spec.Coverage
-    , Language.Spectacle.Spec.Implication
     , Language.Spectacle.Spec.Model
     , Language.Spectacle.Spec.Model.Base
     , Language.Spectacle.Spec.Prop

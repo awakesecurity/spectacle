@@ -19,7 +19,6 @@ module Language.Spectacle.Spec.Model.Base
         _modelFairness,
         _modelTrace,
         _worldHere,
-        _impliedFormula,
         _compositeChecks
       ),
 
@@ -31,7 +30,6 @@ module Language.Spectacle.Spec.Model.Base
     modelFairness,
     modelTrace,
     worldHere,
-    impliedFormula,
     compositeChecks,
 
     -- *** Construction
@@ -54,11 +52,10 @@ import Lens.Micro (Lens', SimpleGetter, lens, to, (&))
 import Data.Type.Rec (Rec)
 import Language.Spectacle.AST (Action, Invariant, Terminate, applyRewrites)
 import Language.Spectacle.Exception (SpecException)
-import Language.Spectacle.Spec.Base (Fairness, HasImpliedFormula (impliedFormula))
+import Language.Spectacle.Spec.Base (Fairness, Modality)
 import Language.Spectacle.Spec.Behavior (Behavior)
 import Language.Spectacle.Spec.Coverage (CoverageInfo, HasCoverageMap (coverageMap))
-import Language.Spectacle.Spec.Implication (Implication, Modality)
-import Language.Spectacle.Spec.Zipper (Junctions )
+import Language.Spectacle.Spec.Zipper (Junctions)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -109,12 +106,11 @@ data ModelCtx ctx = ModelCtx
   , _modelFairness :: Fairness
   , _modelTrace :: Behavior ctx
   , _worldHere :: Rec ctx
-  , _impliedFormula :: Set Implication
   , _compositeChecks :: Set (Int, Modality)
   }
 
 instance Show (Rec ctx) => Show (ModelCtx ctx) where
-  show (ModelCtx _ _ _ js fair p here impl composites) =
+  show (ModelCtx _ _ _ js fair p here composites) =
     "ModelCtx {_modelJunctions = " ++ show js
       ++ "; _modelFairness = "
       ++ show fair
@@ -122,16 +118,9 @@ instance Show (Rec ctx) => Show (ModelCtx ctx) where
       ++ show p
       ++ "; _worldHere = "
       ++ show here
-      ++ "; _implied = "
-      ++ show impl
       ++ "; _composites = "
       ++ show composites
       ++ "}"
-
--- | @since 0.1.0.0
-instance HasImpliedFormula (ModelCtx ctx) (Set Implication) where
-  impliedFormula = lens _impliedFormula \ctx x -> ctx {_impliedFormula = x}
-  {-# INLINE impliedFormula #-}
 
 modelAction :: SimpleGetter (ModelCtx ctx) (Action ctx Bool)
 modelAction = to _modelAction
@@ -182,14 +171,13 @@ emptyModelCtx world action invariant terminate junctions fairness =
     , _modelFairness = fairness
     , _modelTrace = Seq.singleton world
     , _worldHere = world
-    , _impliedFormula = Set.empty
     , _compositeChecks = Set.empty
     }
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
 data ModelResult ctx
-  = ModelFailure SpecException 
+  = ModelFailure SpecException
   | ModelSuccess [Behavior ctx] (ModelState ctx)
 
 deriving instance Show (Rec ctx) => Show (ModelResult ctx)

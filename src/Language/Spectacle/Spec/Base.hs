@@ -3,14 +3,13 @@
 module Language.Spectacle.Spec.Base
   ( Specifiable,
     Fairness (Unfair, WeaklyFair, StronglyFair),
-    HasImpliedFormula (impliedFormula),
+    Modality (ModalAlways, ModalEventually, ModalUpUntil, ModalStaysAs, ModalInfinitelyOften),
   )
 where
 
 import Data.Hashable (Hashable)
 
 import Data.Type.Rec (Rec, ReflectRow)
-import Lens.Micro (Lens')
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -27,5 +26,13 @@ data Fairness
   | StronglyFair
   deriving (Enum, Show, Eq)
 
-class HasImpliedFormula a b | a -> b where
-  impliedFormula :: Lens' a b
+-- | An enumeration of the modalities that can be expressed in a temporal formula.
+--
+-- @since 0.1.0.0
+data Modality
+  = ModalAlways
+  | ModalEventually
+  | ModalUpUntil
+  | ModalStaysAs
+  | ModalInfinitelyOften
+  deriving (Enum, Eq, Ord, Show)
