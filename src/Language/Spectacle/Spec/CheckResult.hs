@@ -76,7 +76,6 @@ instance Additive CheckResult where
     CheckResult
       (leftResult ^. isSatisfied || rightResult ^. isSatisfied)
       (leftResult ^. isComplete && rightResult ^. isComplete)
-  -- ((leftResult ^. impliedFormula) >+< (rightResult ^. impliedFormula))
   {-# INLINE (>+<) #-}
 
 -- | @since 0.1.0.0
@@ -88,13 +87,8 @@ instance Multiplicative CheckResult where
     CheckResult
       (leftResult ^. isSatisfied && rightResult ^. isSatisfied)
       (leftResult ^. isComplete && rightResult ^. isComplete)
-  -- ((leftResult ^. impliedFormula) >*< (rightResult ^. impliedFormula))
   {-# INLINE (>*<) #-}
 
--- | @since 0.1.0.0
--- instance HasImpliedFormula CheckResult ImplicationTree where
---   impliedFormula = lens _impliedFormula \result x -> result {_impliedFormula = x}
---   {\-# INLINE impliedFormula #-\}
 isSatisfied :: Lens' CheckResult Bool
 isSatisfied = lens _isSatisfied \result x -> result {_isSatisfied = x}
 {-# INLINE isSatisfied #-}
