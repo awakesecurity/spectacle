@@ -155,13 +155,17 @@ test-suite integration-tests
     , Specifications.DijkstraMutex
     , Specifications.DijkstraMutex.Process
     , Specifications.SimpleClock
+    , Specifications.BitClock
     , Specifications.SpanningTree
 
   build-depends:
       spectacle
     , hashable
     , tasty
+    , tasty-hunit
     , unordered-containers
+    , containers
+    , text
 
 benchmark benchmark
   import:         common
