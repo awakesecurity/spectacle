@@ -30,6 +30,7 @@ import Language.Spectacle.Exception (SpecException (ModelCheckerException, Runti
 import Language.Spectacle.RTS.Registers (RelationTerm)
 import Language.Spectacle.Spec.Base (Fairness (WeaklyFair))
 import Numeric.Natural (Natural)
+import Control.Exception (throwIO)
 
 import Specifications.DijkstraMutex.Process
   ( Process (Process, iterState, pix, procStep),
@@ -175,6 +176,18 @@ starvationFree = do
 
 check :: IO ()
 check = do
+  let ?constants = mkProcesses 2
+  case modelCheck initial next invariant Nothing WeaklyFair of
+    (Left exc, _)
+      -> throwIO exc
+    _ -> pure ()
+
+  where
+    mkProcesses :: Natural -> Constants
+    mkProcesses n = Constants n (ProcessLabel <$> [0 .. n - 1])
+
+ghciCheck :: IO ()
+ghciCheck = do
   let ?constants = mkProcesses 2
   case modelCheck initial next invariant Nothing WeaklyFair of
     (Left (ModelCheckerException ws exc), _) -> do

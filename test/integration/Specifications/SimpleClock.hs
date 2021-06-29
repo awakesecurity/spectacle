@@ -17,6 +17,7 @@ import Language.Spectacle
   )
 import Language.Spectacle.AST (Action, Initial, Invariant)
 import Language.Spectacle.Spec.Base (Fairness (WeaklyFair))
+import Control.Exception (throwIO)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -58,7 +59,8 @@ invariant = do
     /\ (return (minutes == 0) ==> eventually (return (hours == 23)))
 
 check :: IO ()
-check = do
+check =
   case modelCheck initial action invariant Nothing WeaklyFair of
-    (Left exc, _) -> putStrLn $ "failed with: " ++ show exc
-    _ -> putStrLn "success"
+    (Left exc, _)
+      -> throwIO exc
+    _ -> pure ()

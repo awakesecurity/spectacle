@@ -16,6 +16,7 @@ import Language.Spectacle
 import Language.Spectacle.AST (Action, Initial, Invariant, Terminate)
 import Language.Spectacle.Spec.Base (Fairness (Unfair))
 
+import Control.Exception (throwIO)
 -- -------------------------------------------------------------------------------------------------
 
 type Diehard =
@@ -82,8 +83,6 @@ terminate = do
 
 check :: IO ()
 check = case modelCheck initial next invariant (Just terminate) Unfair of
-  (Left exc, _) -> do
-    putStrLn "model check failed:"
-    print exc
-  (Right _, _) -> do
-    putStrLn "model success"
+  (Left exc, _)
+    -> throwIO exc
+  _ -> pure ()

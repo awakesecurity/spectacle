@@ -7,6 +7,7 @@ module Specifications.SpanningTree where
 import Control.Monad (forM)
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
+import Control.Exception (throwIO)
 
 import Language.Spectacle
   ( Action,
@@ -154,4 +155,7 @@ check = do
           , maxCardinality = 2
           }
 
-  print (modelCheck initial next invariant (Just terminate) Unfair)
+  case modelCheck initial next invariant (Just terminate) Unfair of
+    (Left exc, _)
+      -> throwIO exc
+    _ -> pure ()
