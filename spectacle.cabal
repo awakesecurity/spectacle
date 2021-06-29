@@ -165,7 +165,6 @@ test-suite integration-tests
     , tasty-hunit
     , unordered-containers
     , containers
-    , text
 
 benchmark benchmark
   import:         common
