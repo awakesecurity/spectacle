@@ -46,9 +46,9 @@ import Language.Spectacle.Syntax.NonDet (foldMapA)
 -- ---------------------------------------------------------------------------------------------------------------------
 
 data SearchEnv = SearchEnv
-  { _stateGraph :: {-# UNPACK #-} !CoverageMap
-  , _searchedWorlds :: {-# UNPACK #-} !IntSet
-  , _neededProperties :: {-# UNPACK #-} !IntSet
+  { _stateGraph :: CoverageMap
+  , _searchedWorlds :: IntSet
+  , _neededProperties :: IntSet
   }
 
 stateGraph :: SimpleGetter SearchEnv CoverageMap

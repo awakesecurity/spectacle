@@ -28,8 +28,8 @@ import Language.Spectacle.Checker.Truth (TruthMap)
 --
 -- @since 0.1.0.0
 data Universe = Universe
-  { _worldCoverage :: {-# UNPACK #-} !CoverageMap
-  , _truthCoverage :: {-# UNPACK #-} !TruthMap
+  { _worldCoverage :: CoverageMap
+  , _truthCoverage :: TruthMap
   , _modelDepth :: {-# UNPACK #-} !Int
   }
   deriving (Show)

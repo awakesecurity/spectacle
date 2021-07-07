@@ -25,24 +25,25 @@ import Lens.Micro ((^.))
 
 import Data.Type.Rec (Rec, ReflectRow)
 import Language.Spectacle.AST (applyRewrites, runInitial, runInvariant)
+import Language.Spectacle.Checker.CoverageMap (sizeCoverageMap)
 import Language.Spectacle.Checker.Fairness (Fairness (StrongFair))
 import Language.Spectacle.Checker.Metrics
   ( ModelMetrics (ModelMetrics),
   )
 import Language.Spectacle.Checker.Model (runModel, stepModel)
-import Language.Spectacle.Checker.Model.MCError (MCError (MCFormulaRuntimeError, MCInitialError))
+import Language.Spectacle.Checker.Model.MCError (MCError (MCFormulaRuntimeError, MCInitialError, MCNoInitialStatesError))
 import Language.Spectacle.Checker.Model.ModelEnv
   ( DisjunctZipper (LeftBranch, RightBranch),
     ModelEnv
       ( ModelEnv,
         _disjunctQueue,
         _livenessPropertyNames,
-        _modelTrace,
-        _modelTerminate,
-        _modelFairness,
         _modelAction,
+        _modelFairness,
         _modelFormula,
         _modelInitialWorld,
+        _modelTerminate,
+        _modelTrace,
         _srcLocMap
       ),
     makeDisjunctZips,
@@ -98,7 +99,7 @@ modelCheck spec = do
           (Right _, st) -> do
             when (fairnessConstraint spec == StrongFair) (strongLivenessCheck fingerprint (st ^. worldCoverage) modelEnv)
 
-            return (ModelMetrics 0 (st ^. modelDepth) 0)
+            return (ModelMetrics (sizeCoverageMap (st ^. worldCoverage)) (st ^. modelDepth) 0)
 
 runInitialAction ::
   (Monad m, Hashable (Rec ctx), ReflectRow ctx) =>
@@ -108,7 +109,7 @@ runInitialAction Specification {..} =
   case runInitial initialAction of
     Left exc -> throwError [MCInitialError exc]
     Right states
-      | null states -> undefined -- TODO: handle empty initial
+      | null states -> throwError [MCNoInitialStatesError]
       | otherwise -> return (foldMap (Set.singleton . newWorld) states)
 {-# INLINE runInitialAction #-}
 

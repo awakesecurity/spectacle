@@ -1,7 +1,8 @@
 module Language.Spectacle
   ( -- * Model Checking
+    defaultInteraction,
     modelCheck,
-
+    
     -- * Syntax
     type Initial,
     type Action,
@@ -48,7 +49,6 @@ import Language.Spectacle.AST
     Invariant,
     Terminate,
   )
-import Language.Spectacle.Spec (modelCheck)
 import Language.Spectacle.Syntax
   ( always,
     catchE,

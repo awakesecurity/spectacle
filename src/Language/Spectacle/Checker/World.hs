@@ -17,7 +17,7 @@ where
 import Data.Hashable (Hashable (hashWithSalt))
 import Lens.Micro (Lens', SimpleGetter, lens, to)
 
-import Data.Type.Rec (Rec) 
+import Data.Type.Rec (Rec)
 import Language.Spectacle.Checker.Fingerprint (Fingerprint (Fingerprint), fingerprintRec)
 
 -- ---------------------------------------------------------------------------------------------------------------------
@@ -28,7 +28,7 @@ import Language.Spectacle.Checker.Fingerprint (Fingerprint (Fingerprint), finger
 -- @since 0.1.0.0
 data World spec = World
   { _worldFingerprint :: {-# UNPACK #-} !Fingerprint
-  , _worldValues :: {-# UNPACK #-} !(Rec spec)
+  , _worldValues :: Rec spec
   }
 
 -- | @since 0.1.0.0

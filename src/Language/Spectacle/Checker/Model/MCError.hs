@@ -6,6 +6,7 @@
 module Language.Spectacle.Checker.Model.MCError
   ( MCError
       ( MCInitialError,
+        MCNoInitialStatesError,
         MCActionError,
         MCImpasseError,
         MCStutterError,
@@ -47,6 +48,8 @@ data MCError ctx
   = -- | 'MCInitialError' reports a 'RuntimeException' that occured while evaluating a model's the initial action.
     MCInitialError
       RuntimeException
+  | -- | 'MCNoInitialStatesError' is reported when the initial action is evaluated to an empty set.
+    MCNoInitialStatesError
   | -- | 'MCActionError' is an error occuring in the expansion of a model's next-state relation. It gives the world the
     -- action cannot be run from along with the 'RuntimeException' raised when evaluating the next-state relation.
     MCActionError

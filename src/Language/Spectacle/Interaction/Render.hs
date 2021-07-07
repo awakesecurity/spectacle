@@ -8,6 +8,8 @@ module Language.Spectacle.Interaction.Render
 
     -- * Error Docs
     renderMCError,
+    renderMCInitialErrorDoc,
+    renderMCNoInitialStatesErrorDoc,
     renderMCImpasseErrorDoc,
     renderMCActionErrorDoc,
     renderMCStutterErrorDoc,
@@ -68,6 +70,7 @@ import Language.Spectacle.Checker.Model.MCError
         MCImpasseError,
         MCInitialError,
         MCInternalError,
+        MCNoInitialStatesError,
         MCStrongLivenessError,
         MCStutterError
       ),
@@ -115,6 +118,7 @@ renderModelMetrics metrics =
 renderMCError :: Show (Rec ctx) => MCError ctx -> IO (Doc AnsiStyle)
 renderMCError = \case
   MCInitialError exc -> return (renderMCInitialErrorDoc exc)
+  MCNoInitialStatesError -> return renderMCNoInitialStatesErrorDoc
   MCActionError world exc -> return (renderMCActionErrorDoc world exc)
   MCImpasseError world -> return (renderMCImpasseErrorDoc world)
   MCStutterError step srcLoc propK stutterK -> renderMCStutterErrorDoc step srcLoc propK stutterK
@@ -127,21 +131,28 @@ renderMCInitialErrorDoc :: RuntimeException -> Doc AnsiStyle
 renderMCInitialErrorDoc exc =
   vsep
     [ annotate (bold <> color White) (initialLocDoc <> ":") <+> errorDoc
-    , renderNotesDoc 2 [initialExceptionNote exc] <> hardline
+    , renderNotesDoc 2 [initialExceptionNote exc]
+    ]
+
+renderMCNoInitialStatesErrorDoc :: Doc AnsiStyle
+renderMCNoInitialStatesErrorDoc =
+  vsep
+    [ annotate (bold <> color White) (initialLocDoc <> ":") <+> errorDoc
+    , renderNotesDoc 2 ["The initial action produced no initial states."]
     ]
 
 renderMCImpasseErrorDoc :: Show (Rec ctx) => World ctx -> Doc AnsiStyle
 renderMCImpasseErrorDoc world =
   vsep
     [ annotate (bold <> color White) (actionLocDoc <> ":") <+> errorDoc
-    , renderNotesDoc 2 [impasseNote world] <> hardline
+    , renderNotesDoc 2 [impasseNote world]
     ]
 
 renderMCActionErrorDoc :: Show (Rec ctx) => World ctx -> RuntimeException -> Doc AnsiStyle
 renderMCActionErrorDoc world exc =
   vsep
     [ annotate (bold <> color White) (actionLocDoc <> ":") <+> errorDoc
-    , renderNotesDoc 2 [actionExceptionNote world exc] <> hardline
+    , renderNotesDoc 2 [actionExceptionNote world exc]
     ]
 
 renderMCStutterErrorDoc ::

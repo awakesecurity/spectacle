@@ -78,16 +78,16 @@ data ModelEnv spec = ModelEnv
   , -- | An optional termination condition specified to the model.
     _modelTerminate :: Maybe (Terminate spec Bool)
   , -- | An execution trace accumulated while traversing a model's state space.
-    _modelTrace :: {-# UNPACK #-} !(Seq Fingerprint)
+    _modelTrace :: Seq Fingerprint
   , -- | The initial world the model began from.
-    _modelInitialWorld :: {-# UNPACK #-} !(World spec)
+    _modelInitialWorld :: World spec
   , -- | A set of names for eventually-qualified expression in '_modelFormula'.
     _livenessPropertyNames :: {-# UNPACK #-} !IntSet
   , -- | The particular branchs of disjunction in '_modelFormula' this model is obligated to fulfill.
-    _disjunctQueue :: {-# UNPACK #-} ![DisjunctZipper]
+    _disjunctQueue :: [DisjunctZipper]
   , -- | A mapping from the names of temporal expressiongs in '_modelFormula' to their souce locations, if they could be
     -- obtained.
-    _srcLocMap :: {-# UNPACK #-} !(IntMap (Maybe SrcLoc))
+    _srcLocMap :: IntMap (Maybe SrcLoc)
   }
 
 -- | Lens focusing on the fairness constraint of a 'ModelEnv'.
