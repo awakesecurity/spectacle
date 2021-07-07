@@ -43,6 +43,7 @@ module Language.Spectacle.Syntax.Modal.Preterm
 where
 
 import Control.Applicative (Alternative ((<|>)))
+import GHC.Stack (SrcLoc)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -65,9 +66,9 @@ data Preterm a where
   PreConjunct :: Preterm a -> Preterm a -> Preterm a
   PreDisjunct :: Preterm a -> Preterm a -> Preterm a
   PreComplement :: Preterm a -> Preterm a
-  PreAlways :: Preterm a -> Preterm a
-  PreUpUntil :: Preterm a -> Preterm a -> Preterm a
-  PreEventually :: Preterm a -> Preterm a
+  PreAlways :: Maybe SrcLoc -> Preterm a -> Preterm a
+  PreUpUntil :: Maybe SrcLoc -> Preterm a -> Preterm a -> Preterm a
+  PreEventually :: Maybe SrcLoc -> Preterm a -> Preterm a
   deriving (Functor, Eq)
 
 -- | @since 0.1.0.0
@@ -77,9 +78,9 @@ instance Show a => Show (Preterm a) where
     PreConjunct x y -> "(" ++ show x ++ " /\\ " ++ show y ++ ")"
     PreDisjunct x y -> "(" ++ show x ++ " \\/ " ++ show y ++ ")"
     PreComplement x -> "not " ++ show x
-    PreAlways x -> "always[" ++ show x ++ "]"
-    PreUpUntil x y -> "until[" ++ show x ++ "][" ++ show y ++ "]"
-    PreEventually x -> "eventually[" ++ show x ++ "]"
+    PreAlways loc x -> "always[" ++ show loc ++ ":" ++ show x ++ "]"
+    PreUpUntil loc x y -> "until[" ++ show loc ++ ":" ++ show x ++ "][" ++ show y ++ "]"
+    PreEventually loc x -> "eventually[" ++ show loc ++ ":" ++ show x ++ "]"
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -134,16 +135,16 @@ distributeRewrites = \case
   PreComplement e ->
     let (t, e') = applyRewrite e
      in (t, PreComplement e')
-  PreAlways e ->
+  PreAlways loc e ->
     let (t, e') = applyRewrite e
-     in (t, PreAlways e')
-  PreUpUntil e1 e2 ->
+     in (t, PreAlways loc e')
+  PreUpUntil loc e1 e2 ->
     let (t1, e1') = applyRewrite e1
         (t2, e2') = applyRewrite e2
-     in (t1 || t2, PreUpUntil e1' e2')
-  PreEventually e ->
+     in (t1 || t2, PreUpUntil loc e1' e2')
+  PreEventually loc e ->
     let (t, e') = applyRewrite e
-     in (t, PreEventually e')
+     in (t, PreEventually loc e')
 {-# INLINE distributeRewrites #-}
 
 -- | Attempts to reduce the given 'Preterm' by any one of the rules in 'redexAlternatives'. If @'applyRewrite' t@ yields
@@ -201,7 +202,7 @@ redexNegInvolute = Rewrite \case
 -- @since 0.1.0.0
 redexAlwaysDual :: Rewrite a
 redexAlwaysDual = Rewrite \case
-  PreComplement (PreAlways term) -> return (PreEventually (PreComplement term))
+  PreComplement (PreAlways loc term) -> return (PreEventually loc (PreComplement term))
   _ -> Nothing
 {-# INLINE redexAlwaysDual #-}
 
@@ -214,7 +215,7 @@ redexAlwaysDual = Rewrite \case
 -- @since 0.1.0.0
 redexAlwaysFactorsAnd :: Rewrite a
 redexAlwaysFactorsAnd = Rewrite \case
-  PreConjunct (PreAlways left) (PreAlways right) -> return (PreAlways (PreConjunct left right))
+  PreConjunct (PreAlways loc1 left) (PreAlways _ right) -> return (PreAlways loc1 (PreConjunct left right))
   _ -> Nothing
 {-# INLINE redexAlwaysFactorsAnd #-}
 
@@ -227,7 +228,7 @@ redexAlwaysFactorsAnd = Rewrite \case
 -- @since 0.1.0.0
 redexEventuallyDual :: Rewrite a
 redexEventuallyDual = Rewrite \case
-  PreComplement (PreEventually term) -> return (PreAlways (PreComplement term))
+  PreComplement (PreEventually loc term) -> return (PreAlways loc (PreComplement term))
   _ -> Nothing
 {-# INLINE redexEventuallyDual #-}
 
@@ -267,7 +268,7 @@ redexNegDistribOr = Rewrite \case
 -- @since 0.1.0.0
 redexEventuallyIdempotent :: Rewrite a
 redexEventuallyIdempotent = Rewrite \case
-  PreEventually (PreEventually term) -> return (PreEventually term)
+  PreEventually loc1 (PreEventually _ term) -> return (PreEventually loc1 term)
   _ -> Nothing
 {-# INLINE redexEventuallyIdempotent #-}
 
@@ -280,7 +281,7 @@ redexEventuallyIdempotent = Rewrite \case
 -- @since 0.1.0.0
 redexEventuallyDistribOr :: Rewrite a
 redexEventuallyDistribOr = Rewrite \case
-  PreEventually (PreDisjunct left right) -> return (PreDisjunct (PreEventually left) (PreEventually right))
+  PreEventually loc (PreDisjunct left right) -> return (PreDisjunct (PreEventually loc left) (PreEventually loc right))
   _ -> Nothing
 {-# INLINE redexEventuallyDistribOr #-}
 
@@ -293,7 +294,7 @@ redexEventuallyDistribOr = Rewrite \case
 -- @since 0.1.0.0
 redexEventuallyAbsorbs :: Rewrite a
 redexEventuallyAbsorbs = Rewrite \case
-  PreEventually (PreAlways (PreEventually term)) -> return (PreAlways (PreEventually term))
+  PreEventually _ (PreAlways loc1 (PreEventually loc2 term)) -> return (PreAlways loc1 (PreEventually loc2 term))
   _ -> Nothing
 {-# INLINE redexEventuallyAbsorbs #-}
 
@@ -306,7 +307,7 @@ redexEventuallyAbsorbs = Rewrite \case
 -- @since 0.1.0.0
 redexAlwaysIdempotent :: Rewrite a
 redexAlwaysIdempotent = Rewrite \case
-  PreAlways (PreAlways term) -> Just (PreAlways term)
+  PreAlways loc1 (PreAlways _ term) -> Just (PreAlways loc1 term)
   _ -> Nothing
 {-# INLINE redexAlwaysIdempotent #-}
 
@@ -319,7 +320,7 @@ redexAlwaysIdempotent = Rewrite \case
 -- @since 0.1.0.0
 redexAlwaysAbsorbs :: Rewrite a
 redexAlwaysAbsorbs = Rewrite \case
-  PreAlways (PreEventually (PreAlways term)) -> return (PreEventually (PreAlways term))
+  PreAlways _ (PreEventually loc1 (PreAlways loc2 term)) -> return (PreEventually loc1 (PreAlways loc2 term))
   _ -> Nothing
 {-# INLINE redexAlwaysAbsorbs #-}
 

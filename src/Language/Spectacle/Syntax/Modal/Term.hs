@@ -28,6 +28,7 @@ import Control.Monad.Fresh (Fresh, MonadFresh (fresh), evalFresh)
 import Control.Monad.Reader (MonadReader (ask, local), ReaderT (runReaderT))
 import Data.Function ((&))
 import Data.Kind (Type)
+import GHC.Stack (SrcLoc)
 
 import Language.Spectacle.Exception.RuntimeException (SyntaxException (LevelMismatch))
 import Language.Spectacle.Syntax.Modal.Level (ExprLevel (L2, L3, L4))
@@ -53,11 +54,11 @@ data Term :: Type -> Type where
   Conjunct :: Term a -> Term a -> Term a
   Disjunct :: Term a -> Term a -> Term a
   Complement :: Term a -> Term a
-  Always :: Int -> Term a -> Term a
-  Eventually :: Int -> Term a -> Term a
-  UpUntil :: Int -> Term a -> Term a -> Term a
-  StaysAs :: Int -> Term a -> Term a
-  InfinitelyOften :: Int -> Term a -> Term a
+  Always :: Maybe SrcLoc -> Int -> Term a -> Term a
+  Eventually :: Maybe SrcLoc -> Int -> Term a -> Term a
+  UpUntil :: Maybe SrcLoc -> Int -> Term a -> Term a -> Term a
+  StaysAs :: Maybe SrcLoc -> Int -> Term a -> Term a
+  InfinitelyOften :: Maybe SrcLoc -> Int -> Term a -> Term a
 
 -- | @since 0.1.0.0
 instance Show a => Show (Term a) where
@@ -66,11 +67,11 @@ instance Show a => Show (Term a) where
     Conjunct e1 e2 -> "(" ++ show e1 ++ " ∧ " ++ show e2 ++ ")"
     Disjunct e1 e2 -> "(" ++ show e1 ++ " ∨ " ++ show e2 ++ ")"
     Complement e -> "¬" ++ show e
-    Always n e -> "◻[" ++ show n ++ "]" ++ show e
-    Eventually n e -> "◇[" ++ show n ++ "]" ++ show e
-    UpUntil n e1 e2 -> show e1 ++ " U[" ++ show n ++ " " ++ show e2
-    StaysAs n e -> "◇◻[" ++ show n ++ "]" ++ show e
-    InfinitelyOften n e -> "◻◇[" ++ show n ++ "]" ++ show e
+    Always _ n e -> "◻[" ++ show n ++ "]" ++ show e
+    Eventually _ n e -> "◇[" ++ show n ++ "]" ++ show e
+    UpUntil _ n e1 e2 -> show e1 ++ " U[" ++ show n ++ " " ++ show e2
+    StaysAs _ n e -> "◇◻[" ++ show n ++ "]" ++ show e
+    InfinitelyOften _ n e -> "◻◇[" ++ show n ++ "]" ++ show e
   {-# INLINE show #-}
 
 -- | The 'NameSupply' monad stack is used to convert 'Preterm's to 'Term's which requires a supply of unique names that
@@ -115,34 +116,34 @@ termFromPreterm = \case
   PreComplement e -> do
     e' <- termFromPreterm e
     return (Complement e')
-  PreAlways e1
-    | PreEventually e2 <- e1 -> do
+  PreAlways loc1 e1
+    | PreEventually _ e2 <- e1 -> do
       guardLevel L3
       name <- fresh
       e2' <- local (const L2) (termFromPreterm e2)
-      return (InfinitelyOften name e2')
+      return (InfinitelyOften loc1 name e2')
     | otherwise -> do
       guardLevel L3
       name <- fresh
       e1' <- local (const L2) (termFromPreterm e1)
-      return (Always name e1')
-  PreEventually e1
-    | PreAlways e2 <- e1 -> do
+      return (Always loc1 name e1')
+  PreEventually loc1 e1
+    | PreAlways _ e2 <- e1 -> do
       guardLevel L3
       name <- fresh
       e2' <- local (const L2) (termFromPreterm e2)
-      return (StaysAs name e2')
+      return (StaysAs loc1 name e2')
     | otherwise -> do
       guardLevel L3
       name <- fresh
       e1' <- local (const L2) (termFromPreterm e1)
-      return (Eventually name e1')
-  PreUpUntil e1 e2 -> do
+      return (Eventually loc1 name e1')
+  PreUpUntil loc1 e1 e2 -> do
     guardLevel L3
     name <- fresh
     e1' <- local (const L2) (termFromPreterm e1)
     e2' <- local (const L2) (termFromPreterm e2)
-    return (UpUntil name e1' e2')
+    return (UpUntil loc1 name e1' e2')
 
 -- | If @m@ is the provided expression level, 'guardLevel' guards @m@ from being greater than the expression level in
 -- a 'NameSupply' context. If @m@ is larger than expected, 'guardLevel' will emit a level-mismatch exception.

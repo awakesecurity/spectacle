@@ -31,6 +31,8 @@ where
 
 import Data.Function ((&))
 import Data.Void (absurd)
+import GHC.Stack
+    ( CallStack, SrcLoc, getCallStack, callStack, HasCallStack )
 
 import Data.Functor.Loom (hoist, runLoom, (~>~))
 import Language.Spectacle.Lang
@@ -86,8 +88,8 @@ import Language.Spectacle.Syntax.Modal.Preterm
 -- @
 --
 -- @since 0.1.0.0
-always :: Member Modal effs => Lang ctx effs Bool -> Lang ctx effs Bool
-always m = scope (Always m)
+always :: (HasCallStack, Member Modal effs) => Lang ctx effs Bool -> Lang ctx effs Bool
+always m = scope (Always (getSrcLocInfo callStack) m)
 {-# INLINE always #-}
 
 -- | The modal operator 'eventually' qualifies a formula @p@ such that @p@ must be true /now/, or some time in the
@@ -114,8 +116,8 @@ always m = scope (Always m)
 -- @
 --
 -- @since 0.1.0.0
-eventually :: Member Modal effs => Lang ctx effs Bool -> Lang ctx effs Bool
-eventually = upUntil (pure True)
+eventually :: (HasCallStack, Member Modal effs) => Lang ctx effs Bool -> Lang ctx effs Bool
+eventually m = scope (UpUntil (getSrcLocInfo callStack) (pure True) m)
 {-# INLINE eventually #-}
 
 -- | The modal operator 'upUntil' (strong) says that for some formula @p `upUntil` q@, @p@ must be true up until the
@@ -142,8 +144,8 @@ eventually = upUntil (pure True)
 -- @
 --
 -- @since 0.1.0.0
-upUntil :: Member Modal effs => Lang ctx effs Bool -> Lang ctx effs Bool -> Lang ctx effs Bool
-upUntil m n = scope (UpUntil m n)
+upUntil :: (HasCallStack, Member Modal effs) => Lang ctx effs Bool -> Lang ctx effs Bool -> Lang ctx effs Bool
+upUntil m n = scope (UpUntil (getSrcLocInfo callStack) m n)
 {-# INLINE upUntil #-}
 
 -- | Discharges the 'Modal' and 'Logic' effects to an equivalent preterm expression.
@@ -173,16 +175,16 @@ pretermFromModal = \case
           expr' <- runLoom loomReify expr
           return (PreComplement expr')
     Right eff
-      | Always expr <- eff -> do
+      | Always loc expr <- eff -> do
         expr' <- runLoom loomReify expr
-        return (PreAlways expr')
-      | UpUntil Pure {} expr <- eff -> do
+        return (PreAlways loc expr')
+      | UpUntil loc Pure {} expr <- eff -> do
         expr' <- runLoom loomReify expr
-        return (PreEventually expr')
-      | UpUntil lhs rhs <- eff -> do
+        return (PreEventually loc expr')
+      | UpUntil loc lhs rhs <- eff -> do
         lhs' <- runLoom loomReify lhs
         rhs' <- runLoom loomReify rhs
-        return (PreUpUntil lhs' rhs')
+        return (PreUpUntil loc lhs' rhs')
     where
       loomReify = loom ~>~ hoist pretermFromModal
 {-# INLINE pretermFromModal #-}
@@ -203,7 +205,13 @@ pretermToModal terms =
       PreConjunct e1 e2 -> conjunct (sendModal e1) (sendModal e2)
       PreDisjunct e1 e2 -> disjunct (sendModal e1) (sendModal e2)
       PreComplement e -> complement (sendModal e)
-      PreUpUntil e1 e2 -> upUntil (sendModal e1) (sendModal e2)
-      PreEventually e -> upUntil (pure True) (sendModal e)
-      PreAlways e -> always (sendModal e)
+      PreUpUntil loc e1 e2 -> scope (UpUntil loc (sendModal e1) (sendModal e2))
+      PreEventually loc e -> scope (UpUntil loc (pure True) (sendModal e))
+      PreAlways loc e -> scope (Always loc (sendModal e))
 {-# INLINE pretermToModal #-}
+
+getSrcLocInfo :: CallStack -> Maybe SrcLoc
+getSrcLocInfo stack = case getCallStack stack of 
+  [] -> Nothing
+  x : _ -> Just (snd x)
+{-# INLINE getSrcLocInfo #-}
