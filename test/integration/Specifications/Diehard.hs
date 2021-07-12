@@ -2,19 +2,34 @@
 
 module Specifications.Diehard where
 
-import Data.Type.Rec (type (#))
 import Language.Spectacle
-  ( always,
+  ( Action,
+    Initial,
+    Invariant,
+    Terminate,
+    always,
+    defaultInteraction,
     define,
+    eventually,
     modelCheck,
     plain,
     prime,
+    strongFair,
     (.=),
     (/\),
     (\/),
+    type (#),
   )
-import Language.Spectacle.AST (Action, Initial, Invariant, Terminate)
-import Language.Spectacle.Spec.Base (Fairness (Unfair))
+import Language.Spectacle.Specification
+  ( Specification
+      ( Specification,
+        fairnessConstraint,
+        initialAction,
+        nextAction,
+        temporalFormula,
+        terminationFormula
+      ),
+  )
 
 -- -------------------------------------------------------------------------------------------------
 
@@ -63,9 +78,9 @@ next = do
         return (bigJug - (smallJug' - smallJug))
       return True
 
-invariant :: Invariant Diehard Bool
-invariant = do
-  always smallJugBounds /\ always bigJugBounds
+formula :: Invariant Diehard Bool
+formula = do
+  always smallJugBounds /\ always bigJugBounds /\ eventually solved \/ (always (not <$> solved))
   where
     smallJugBounds = do
       smallJug <- plain #smallJug
@@ -75,15 +90,24 @@ invariant = do
       bigJug <- plain #bigJug
       return (0 <= bigJug && bigJug <= 5)
 
-terminate :: Terminate Diehard Bool
-terminate = do
+    solved = do
+      bigJug <- plain #bigJug
+      return (bigJug == 6)
+
+termination :: Terminate Diehard Bool
+termination = do
   bigJug <- plain #bigJug
   return (bigJug == 4)
 
 check :: IO ()
-check = case modelCheck initial next invariant (Just terminate) Unfair of
-  (Left exc, _) -> do
-    putStrLn "model check failed:"
-    print exc
-  (Right _, _) -> do
-    putStrLn "model success"
+check = do
+  let spec :: Specification Diehard
+      spec =
+        Specification
+          { initialAction = initial
+          , nextAction = next
+          , temporalFormula = formula
+          , terminationFormula = Nothing
+          , fairnessConstraint = strongFair
+          }
+  defaultInteraction (modelCheck spec)

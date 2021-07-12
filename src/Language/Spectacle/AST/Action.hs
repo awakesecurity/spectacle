@@ -62,9 +62,9 @@ runAction knowns nextState =
   nextState
     & introduceEnv
     & rewriteLogic
+    & runLogic
     & runActionClosure
     & runQuantifier
-    & runLogic
     & runEnv (emptyRuntimeState knowns)
     & runPlain knowns
     & runNonDetA
@@ -123,8 +123,8 @@ applyComplement = \case
 --
 -- @since 0.1.0.0
 introduceEnv ::
-  Lang ctx (Closure 'ActionClosure ': Quantifier ': Logic ': effs) a ->
-  Lang ctx (Closure 'ActionClosure ': Quantifier ': Logic ': Env ': effs) a
+  Lang ctx (Logic ': Closure 'ActionClosure ': Quantifier ': effs) a ->
+  Lang ctx (Logic : Closure 'ActionClosure ': Quantifier ': Env ': effs) a
 introduceEnv = \case
   Pure x -> pure x
   Op op k

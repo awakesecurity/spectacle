@@ -13,17 +13,28 @@ import Language.Spectacle
     Initial,
     Invariant,
     Terminate,
+    defaultInteraction,
     define,
-    modelCheck,
     enabled,
     exists,
+    modelCheck,
     plain,
+    strongFair,
     (.=),
     (==>),
     (\/),
     type (#),
   )
-import Language.Spectacle.Spec.Base (Fairness (Unfair))
+import Language.Spectacle.Specification
+  ( Specification
+      ( Specification,
+        fairnessConstraint,
+        initialAction,
+        nextAction,
+        temporalFormula,
+        terminationFormula
+      ),
+  )
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -81,8 +92,8 @@ next = do
     distance :: (?constants :: Constants) => String -> HashMap String Int -> Int
     distance n ds = HashMap.lookupDefault (maxCardinality ?constants) n ds
 
-invariant :: (?constants :: Constants) => Invariant SpanningTree Bool
-invariant = do
+formula :: (?constants :: Constants) => Invariant SpanningTree Bool
+formula = do
   not <$> enabled ==> postCondition
   where
     postCondition :: Invariant SpanningTree Bool
@@ -134,8 +145,8 @@ isNode name = do
       let closeToParent = maybe False (\d -> nodeDist == d + 1) (HashMap.lookup nodeParent dists)
       return (1 <= nodeDist && nodeDist <= maxCardinality && nodeParent `elem` nodeNeighbors && closeToParent)
 
-terminate :: Terminate ctx Bool
-terminate = not <$> enabled
+termination :: Terminate ctx Bool
+termination = not <$> enabled
 
 check :: IO ()
 check = do
@@ -153,5 +164,13 @@ check = do
           , root = "a"
           , maxCardinality = 2
           }
-
-  print (modelCheck initial next invariant (Just terminate) Unfair)
+  let spec :: Specification SpanningTree
+      spec =
+        Specification
+          { initialAction = initial
+          , nextAction = next
+          , temporalFormula = formula
+          , terminationFormula = Just termination
+          , fairnessConstraint = strongFair
+          }
+  defaultInteraction (modelCheck spec)
