@@ -81,11 +81,11 @@ data ModelEnv spec = ModelEnv
     _modelTrace :: Seq Fingerprint
   , -- | The initial world the model began from.
     _modelInitialWorld :: World spec
-  , -- | A set of names for eventually-qualified expression in '_modelFormula'.
-    _livenessPropertyNames :: {-# UNPACK #-} !IntSet
+  , -- | A set of names for eventually-qualified expressions in '_modelFormula'.
+    _livenessPropertyNames :: IntSet
   , -- | The particular branchs of disjunction in '_modelFormula' this model is obligated to fulfill.
     _disjunctQueue :: [DisjunctZipper]
-  , -- | A mapping from the names of temporal expressiongs in '_modelFormula' to their souce locations, if they could be
+  , -- | A mapping from the names of temporal expressions in '_modelFormula' to their souce locations, if they could be
     -- obtained.
     _srcLocMap :: IntMap (Maybe SrcLoc)
   }

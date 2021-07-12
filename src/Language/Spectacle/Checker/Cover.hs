@@ -41,10 +41,10 @@ import Language.Spectacle.Checker.Fingerprint (Fingerprint, fingerprintRec)
 --
 -- @since 0.1.0.0
 data Cover = Cover
-  { -- | If (- ⟶ -) is a next-state relation on a set of worlds 𝑊 and 𝑤 ∈ W, then '_succedentWorlds' is a collection
-    -- of worlds 𝐴 ⊂ 𝑊 such that @∀ 𝑢 ∈ A, 𝑤 ⟶ 𝑢@ holds.
+  { -- | If (- ⟶ -) is a next-state relation on a set of worlds W and w ∈ W, then '_succeedingWorlds' is a collection
+    -- of worlds A ⊂ W such that @∀ u ∈ A, w ⟶ u@ holds.
     --
-    -- Note that rather than storing the full @Rec ctx@ for the elements in @𝐴@ a unique hash @'Fingerprint' ctx@ is
+    -- Note that rather than storing the full @Rec ctx@ for the elements in @A@ a unique hash @'Fingerprint' ctx@ is
     -- stored. This still allows subsequent world's coverage information to be queried by their hash without taking a
     -- memory hit from keeping a set of @'Rec' ctx@ in their entirety.
     --
@@ -54,12 +54,12 @@ data Cover = Cover
     -- satisfied by this state.
     --
     -- @since 0.1.0.0
-    _livenessProperties :: {-# UNPACK #-} !IntSet
+    _livenessProperties :: IntSet
   , -- | A 'Bool' that is true only when the model checker has finish inspecting the world associated with this coverage
     -- information.
     --
     -- @since 0.1.0.0
-    _hasBeenExplored :: {-# UNPACK #-} !Bool
+    _hasBeenExplored :: Bool
   }
   deriving (Show)
 

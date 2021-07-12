@@ -2,7 +2,10 @@ module Language.Spectacle
   ( -- * Model Checking
     defaultInteraction,
     modelCheck,
-    
+    unfair,
+    weakFair,
+    strongFair,
+
     -- * Syntax
     type Initial,
     type Action,
@@ -49,6 +52,9 @@ import Language.Spectacle.AST
     Invariant,
     Terminate,
   )
+import Language.Spectacle.Checker (modelCheck)
+import Language.Spectacle.Checker.Fairness (unfair, weakFair, strongFair)
+import Language.Spectacle.Interaction (defaultInteraction)
 import Language.Spectacle.Syntax
   ( always,
     catchE,

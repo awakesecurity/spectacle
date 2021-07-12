@@ -31,6 +31,9 @@ module Language.Spectacle.Checker.Model
     -- * World Operations
     takeQuotientOf,
     propagateLiveness,
+
+    -- * Errors
+    cyclicLivenessErrors,
   )
 where
 

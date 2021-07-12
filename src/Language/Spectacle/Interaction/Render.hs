@@ -112,7 +112,7 @@ renderModelMetrics metrics =
 -- ----------------------------------------------------------------------------------------------------------------------
 -- Error Documents
 --
--- Section for functions which produce fully-formed error productions.
+-- Section for functions which produce fully-formed errors.
 --
 
 renderMCError :: Show (Rec ctx) => MCError ctx -> IO (Doc AnsiStyle)
@@ -296,7 +296,7 @@ renderLineViewDoc :: Int -> String -> IO (Doc AnsiStyle)
 renderLineViewDoc lineNumber filePath = do
   srcLines <- lines <$> readFile filePath
   let line = srcLines !! (lineNumber - 1)
-      padding = countDigits lineNumber
+      padding = countDigits lineNumber + 1
   return . vsep $
     [ indent padding (annotate (bold <> color Red) "│")
     , annotate bold (pretty lineNumber) <+> annotate (bold <> color Red) "│" <+> pretty line
@@ -388,11 +388,11 @@ stutterNote InfiniteStutterK = infiniteStutterNote
 stutterNote FiniteStutterK = finiteStutterNote
 
 infiniteStutterNote :: Doc AnsiStyle
-infiniteStutterNote = "Occuring in an infinite sequence of stutter-steps"
+infiniteStutterNote = "Occurring in an infinite sequence of stutter-steps"
 {-# INLINE CONLIKE infiniteStutterNote #-}
 
 finiteStutterNote :: Doc AnsiStyle
-finiteStutterNote = "Occuring in a stutter-step"
+finiteStutterNote = "Occurring in a stutter-step"
 {-# INLINE CONLIKE finiteStutterNote #-}
 
 cyclicBehaviorNote :: Doc AnsiStyle

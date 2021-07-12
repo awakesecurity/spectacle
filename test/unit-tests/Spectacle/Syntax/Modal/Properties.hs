@@ -33,7 +33,8 @@ import Language.Spectacle.Syntax.Modal.Preterm
         PreConjunct,
         PreConst,
         PreDisjunct,
-        PreEventually
+        PreEventually,
+        PreUpUntil
       ),
     normalForm,
   )
@@ -55,7 +56,7 @@ pretermsOf effs matches = do
           & runLang
   case preterms of
     Right expr ->
-      if matches == expr
+      if matches `termEq` expr
         then success
         else do
           annotate "Rewritten expression failed to match"
@@ -67,6 +68,13 @@ pretermsOf effs matches = do
       annotateShow exc
       failure
 
+-- | Term equality modulo source locations.
+termEq :: Eq a => Preterm a -> Preterm a -> Bool
+termEq (PreAlways _ x) (PreAlways _ y) = x `termEq` y
+termEq (PreEventually _ x) (PreEventually _ y) = x `termEq` y
+termEq (PreUpUntil _ x1 y1) (PreUpUntil _ x2 y2) = x1 `termEq` x2 && y1 `termEq` y2
+termEq x y = x == y
+
 -- | Always is idemponent.
 --
 -- @
@@ -75,7 +83,7 @@ pretermsOf effs matches = do
 prop_alwaysIdempotent :: Property
 prop_alwaysIdempotent =
   withTests 1 . property $
-    pretermsOf alwaysAlways (PreAlways (PreConst True))
+    pretermsOf alwaysAlways (PreAlways Nothing (PreConst True))
   where
     alwaysAlways :: Member Modal effs => Lang ctx effs Bool
     alwaysAlways = always (always (pure True))
@@ -88,7 +96,7 @@ prop_alwaysIdempotent =
 prop_alwaysAbsorption :: Property
 prop_alwaysAbsorption =
   withTests 1 . property $
-    pretermsOf alwaysEventuallyAlways (PreEventually (PreAlways (PreConst True)))
+    pretermsOf alwaysEventuallyAlways (PreEventually Nothing (PreAlways Nothing (PreConst True)))
   where
     alwaysEventuallyAlways :: Member Modal effs => Lang ctx effs Bool
     alwaysEventuallyAlways = always (eventually (always (pure True)))
@@ -101,7 +109,7 @@ prop_alwaysAbsorption =
 prop_eventuallyIdempotent :: Property
 prop_eventuallyIdempotent =
   withTests 1 . property $
-    pretermsOf eventuallyEventually (PreEventually (PreConst True))
+    pretermsOf eventuallyEventually (PreEventually Nothing (PreConst True))
   where
     eventuallyEventually :: Member Modal effs => Lang ctx effs Bool
     eventuallyEventually = eventually (eventually (pure True))
@@ -114,7 +122,7 @@ prop_eventuallyIdempotent =
 prop_eventuallyAbsorption :: Property
 prop_eventuallyAbsorption =
   withTests 1 . property $
-    pretermsOf eventuallyAlwaysEventually (PreAlways (PreEventually (PreConst True)))
+    pretermsOf eventuallyAlwaysEventually (PreAlways Nothing (PreEventually Nothing (PreConst True)))
   where
     eventuallyAlwaysEventually :: Member Modal effs => Lang ctx effs Bool
     eventuallyAlwaysEventually = eventually (always (eventually (pure True)))
@@ -127,7 +135,7 @@ prop_eventuallyAbsorption =
 prop_alwaysDual :: Property
 prop_alwaysDual =
   withTests 1 . property $
-    pretermsOf complementAlways (PreEventually (PreComplement (PreConst True)))
+    pretermsOf complementAlways (PreEventually Nothing (PreComplement (PreConst True)))
   where
     complementAlways :: Members '[Logic, Modal] effs => Lang ctx effs Bool
     complementAlways = complement (always (pure True))
@@ -140,7 +148,7 @@ prop_alwaysDual =
 prop_eventuallyDual :: Property
 prop_eventuallyDual =
   withTests 1 . property $
-    pretermsOf complementEventually (PreAlways (PreComplement (PreConst True)))
+    pretermsOf complementEventually (PreAlways Nothing (PreComplement (PreConst True)))
   where
     complementEventually :: Members '[Logic, Modal] effs => Lang ctx effs Bool
     complementEventually = complement (eventually (pure True))

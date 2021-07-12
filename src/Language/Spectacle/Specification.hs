@@ -10,8 +10,8 @@ module Language.Spectacle.Specification
   )
 where
 
-import Language.Spectacle.AST ( Terminate, Invariant, Initial, Action )
-import Language.Spectacle.Checker.Fairness ( Fairness )
+import Language.Spectacle.AST (Action, Initial, Invariant, Terminate)
+import Language.Spectacle.Checker.Fairness (Fairness)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

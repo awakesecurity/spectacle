@@ -41,11 +41,11 @@ import Language.Spectacle.Exception.RuntimeException (RuntimeException)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
--- | 'MCError' is a sum of the kinds of error productions the model checker can emit when it fails.
+-- | 'MCError' is a sum of the kinds of errors the model checker can emit when it fails.
 --
 -- @since 0.1.0.0
 data MCError ctx
-  = -- | 'MCInitialError' reports a 'RuntimeException' that occured while evaluating a model's the initial action.
+  = -- | 'MCInitialError' reports a 'RuntimeException' that occured while evaluating a model's initial action.
     MCInitialError
       RuntimeException
   | -- | 'MCNoInitialStatesError' is reported when the initial action is evaluated to an empty set.
@@ -62,9 +62,9 @@ data MCError ctx
   | -- | 'MCStutterError' is an elaboration on 'MCFormulaError' that occurs specifically for when a model's temporal
     -- formula is not satisfied for a stuttering-step.
     --
-    -- Along with the step that violates the model's temporal formula, the source location of the violated property, and
-    -- the kind of modality the violated formula was qualified by; the kind of stuttering is also given which is
-    -- 'InfiniteStutterK' in the case of
+    -- Along with the step that violates the model's temporal formula, we give the source location of the violated
+    -- property and the kind of modality the violated formula was qualified by; the kind of stuttering is also given
+    -- which is 'InfiniteStutterK' in the case of
     --
     -- @w -> w -> ... -> w@
     --
@@ -76,7 +76,7 @@ data MCError ctx
       (Maybe SrcLoc)
       PropertyKind
       StutterKind
-  | -- | 'MCFormulaError' is an error production for when a property of the temporal formula is violated. The step
+  | -- | 'MCFormulaError' is an error for when a property of the temporal formula is violated. The step
     -- violating the property, the kind of modality for the property, and the source location of that property are given.
     MCFormulaError
       (Step ctx)
@@ -87,7 +87,7 @@ data MCError ctx
     MCFormulaRuntimeError
       (Step ctx)
       RuntimeException
-  | -- | 'MCStrongLivenessError' is produced when strong-fair process failed to satisfy a liveness property of the
+  | -- | 'MCStrongLivenessError' is produced when a strong-fair process failed to satisfy a liveness property of the
     -- model. The source location of the property is given here.
     MCStrongLivenessError
       (Maybe SrcLoc)

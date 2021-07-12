@@ -12,7 +12,7 @@ import Language.Spectacle.Interaction.Render (renderModelErrorsDoc, renderModelM
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
--- | 'defaultIntraction' is an 'IO' action which handles rendering model failures or successful to terminal. Given some
+-- | 'defaultInteraction' is an 'IO' action which handles rendering model failures or success to terminal. Given some
 -- specification @spec@
 --
 -- @
@@ -20,7 +20,7 @@ import Language.Spectacle.Interaction.Render (renderModelErrorsDoc, renderModelM
 -- main = defaultIntraction (modelCheck spec)
 -- @
 --
--- is all that is needed to preform model checks and output the results.
+-- is all that is needed to perform model checks and output the results.
 --
 -- @since 0.1.0.0
 defaultInteraction :: Show (Rec ctx) => Either [MCError ctx] ModelMetrics -> IO ()

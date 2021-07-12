@@ -1,0 +1,40 @@
+
+* Closures
+  Closures need to be interpreted in stages. In the first stage, we traverse the syntax tree (interpose an effect) that
+  collects all expressions on the right-hand side of (.=) into a record which associates which time variable this
+  expression is bound to. This is so that in the second step, we can pass this record of neutral expression to the
+  interpreter for time variable substitution.
+
+** Problem
+   Partially evaluated the 'Closure' effect such that we dispatch the closure effect returning the desire record runs
+   the continuation and 'Loom' twice. Interposing a computation building the desired record works in theory, but in
+   practice there is no way to then thread that state back into the interpreter so that it can be used.
+
+  Potential Fixes:
+  * [X] - Attempt to use 'Codensity' to bypass running the continuation. This is equivalent to replacing the
+    continuation with pure, which does bypass it, but cannot construct the record.
+
+  * [X] - Change 'Closure' from a higher-order to a first-order effect. This is not the problem.
+
+  * [!] - Create a new 'State' effect which carries the desired record. Interpreting closures constructs the record
+    of neutral expression. This would require prime to be refactored so that it too uses this state.
+
+    Reasoning:
+    * Having a seperate effect handle the state threading relieves the burden of having to thread a state built by
+      interposing an effect with something like `makeThunks` back into the interpreter `evaluateThunks` somehow.
+
+      #+SRC_BEGIN <haskell>
+      makeThunks :: Member Closure effs => Lang ctx effs a -> Lang ctx effs (RST ctx, a)
+      evaluateThunks :: RTS ctx -> Lang ctx effs a -> Lang ctx effs (RTS ctx, a)
+      #+SRC_END
+
+*** Solution
+    Creating a state effect to handle the record of thunks constructed by closures worked; however, the prime effect
+    (which handles the substitution of time variables) for some reason still sees the values as 'Unchanged'.
+
+    Potential Fixes:
+    * [ ] - Strictly evaluate setters.
+
+      Reasoning:
+      * It is clear from observing the output that out of order closures set the state out of order, so the
+        implementation is correct, there just needs to strictness interposed on the handlers after they've run.

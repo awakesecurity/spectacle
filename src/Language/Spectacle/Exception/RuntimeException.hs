@@ -51,7 +51,7 @@ data QuantifierException where
   -- @since 0.1.0.0
   ForallViolated ::
     QuantifierException
-  -- | 'ExistsViolated' is thrown when an existentially quantified set has no values that satisfy it's predicate,
+  -- | 'ExistsViolated' is thrown when an existentially quantified set has no values that satisfy its predicate,
   -- e.g. the expression
   --
   -- @

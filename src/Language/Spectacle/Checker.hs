@@ -10,7 +10,6 @@ import Control.Monad.Except
   ( ExceptT,
     MonadError (throwError),
     runExcept,
-    when,
   )
 import Control.Monad.State.Strict ()
 import Data.Either (partitionEithers)
@@ -26,7 +25,6 @@ import Lens.Micro ((^.))
 import Data.Type.Rec (Rec, ReflectRow)
 import Language.Spectacle.AST (applyRewrites, runInitial, runInvariant)
 import Language.Spectacle.Checker.CoverageMap (sizeCoverageMap)
-import Language.Spectacle.Checker.Fairness (Fairness (StrongFair))
 import Language.Spectacle.Checker.Metrics
   ( ModelMetrics (ModelMetrics),
   )
@@ -49,12 +47,8 @@ import Language.Spectacle.Checker.Model.ModelEnv
     makeDisjunctZips,
     makeSrcLocMap,
   )
-import Language.Spectacle.Checker.PostCheck (strongLivenessCheck)
 import Language.Spectacle.Checker.Step (makeReflexStep)
-import Language.Spectacle.Checker.Universe
-  ( modelDepth,
-    worldCoverage,
-  )
+import Language.Spectacle.Checker.Universe (modelDepth, worldCoverage)
 import Language.Spectacle.Checker.World
   ( World (World),
     newWorld,
@@ -91,14 +85,12 @@ modelCheck spec = do
     (excs, _) -> Left (concat excs)
   where
     goModelCheck :: Monad m => World ctx -> ExceptT [MCError ctx] m ModelMetrics
-    goModelCheck world@(World fingerprint _) = do
+    goModelCheck world = do
       disjunctionPaths spec (world ^. worldValues) >>= foldMapA \path -> do
         modelEnv <- makeModelEnv spec world path
         case runModel modelEnv mempty (stepModel world) of
           (Left excs, _) -> throwError excs
           (Right _, st) -> do
-            when (fairnessConstraint spec == StrongFair) (strongLivenessCheck fingerprint (st ^. worldCoverage) modelEnv)
-
             return (ModelMetrics (sizeCoverageMap (st ^. worldCoverage)) (st ^. modelDepth) 0)
 
 runInitialAction ::

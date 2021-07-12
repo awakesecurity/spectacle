@@ -68,9 +68,7 @@ library
     , mmorph
     , prettyprinter
     , prettyprinter-ansi-terminal
-    , text
     , transformers >= 0.5
-    , unordered-containers
 
   exposed-modules:
       Control.Monad.Fresh
@@ -148,8 +146,7 @@ test-suite unit-tests
   main-is:             Main.hs
 
   other-modules:
-      Spectacle.Checker.Model
-    , Spectacle.Syntax.Modal
+      Spectacle.Syntax.Modal
     , Spectacle.Syntax.Modal.Properties
 
   build-depends:
@@ -157,7 +154,6 @@ test-suite unit-tests
     , hedgehog
     , tasty
     , tasty-hedgehog
-    , containers
 
 test-suite integration-tests
   import:              common
@@ -175,12 +171,7 @@ test-suite integration-tests
   build-depends:
       spectacle
     , hashable
-    , tasty
-    , containers
-    , microlens
     , unordered-containers
-    , prettyprinter
-    , prettyprinter-ansi-terminal
 
 benchmark benchmark
   import:         common

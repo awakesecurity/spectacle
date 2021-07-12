@@ -170,10 +170,10 @@ formulaTruth :: Int -> Lens' TruthTable Bool
 formulaTruth name = lens (lookupTruthTable name) (flip (insertTruthTable name))
 {-# INLINE formulaTruth #-}
 
--- | 'lookupTruthTable' queries a 'TruthTable' for the truth values assigned to the given 'FormulaName'. If their is no
+-- | 'lookupTruthTable' queries a 'TruthTable' for the truth values assigned to the given 'FormulaName'. If there is no
 -- truth value assigned to the given 'FormulaName' the result is always 'False'.
 --
--- Use 'lookupTruthTable'' for a version that returns 'Nothing' in the case where there no truth value associated to
+-- Use 'lookupTruthTable'' for a version that returns 'Nothing' in the case where there is no truth value associated to
 -- the 'FormulaName'.
 --
 -- @since 0.1.0.0
@@ -197,7 +197,7 @@ insertTruthTable :: Int -> Bool -> TruthTable -> TruthTable
 insertTruthTable name truth (TruthTable table) =
   -- The idea behind ignoring insertion for 'False' is that, since truth table insertion is done by (||) to keep updates
   -- monotone, inserting 'False' will never change the utility of the truth table so it's dropped entirely. This is more
-  -- preformant since it keeps 'IntMap' traversals to a minimum, but it also guards against memory being allocating for
+  -- preformant since it keeps 'IntMap' traversals to a minimum, but it also guards against memory being allocated  for
   -- useless boolean-values in the 'Intmap'.
   if truth
     then TruthTable (IntMap.insert name True table)

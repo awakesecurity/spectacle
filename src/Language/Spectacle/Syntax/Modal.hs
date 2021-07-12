@@ -32,7 +32,12 @@ where
 import Data.Function ((&))
 import Data.Void (absurd)
 import GHC.Stack
-    ( CallStack, SrcLoc, getCallStack, callStack, HasCallStack )
+  ( CallStack,
+    HasCallStack,
+    SrcLoc,
+    callStack,
+    getCallStack,
+  )
 
 import Data.Functor.Loom (hoist, runLoom, (~>~))
 import Language.Spectacle.Lang
@@ -211,7 +216,7 @@ pretermToModal terms =
 {-# INLINE pretermToModal #-}
 
 getSrcLocInfo :: CallStack -> Maybe SrcLoc
-getSrcLocInfo stack = case getCallStack stack of 
+getSrcLocInfo stack = case getCallStack stack of
   [] -> Nothing
   x : _ -> Just (snd x)
 {-# INLINE getSrcLocInfo #-}

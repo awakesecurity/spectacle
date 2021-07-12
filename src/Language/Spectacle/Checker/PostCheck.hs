@@ -1,7 +1,9 @@
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Language.Spectacle.Checker.PostCheck
   ( SearchEnv (SearchEnv, _stateGraph, _searchedWorlds, _neededProperties),
+    propTable,
     strongLivenessCheck,
   )
 where
@@ -18,35 +20,22 @@ import Data.Coerce (coerce)
 import qualified Data.IntMap as IntMap
 import Data.IntSet (IntSet)
 import qualified Data.IntSet as IntSet
-import GHC.Stack ()
 import Lens.Micro (Lens', SimpleGetter, lens, to, (&))
 import Lens.Micro.Mtl (use, (%=), (.=))
 
-import Language.Spectacle.Checker.Cover
-  ( livenessProperties,
-    succeedingWorlds,
-  )
-import Language.Spectacle.Checker.CoverageMap
-  ( CoverageMap,
-    coverageInfo,
-  )
+import Language.Spectacle.Checker.Cover (livenessProperties, succeedingWorlds)
+import Language.Spectacle.Checker.CoverageMap (CoverageMap, coverageInfo)
 import Language.Spectacle.Checker.Fingerprint (Fingerprint (Fingerprint))
-import Language.Spectacle.Checker.Model.MCError
-  ( MCError (MCStrongLivenessError),
-  )
-import Language.Spectacle.Checker.Model.ModelEnv
-  ( ModelEnv
-      ( ModelEnv,
-        _livenessPropertyNames,
-        _srcLocMap
-      ),
-  )
+import Language.Spectacle.Checker.Model.MCError (MCError (MCStrongLivenessError))
+import Language.Spectacle.Checker.Model.ModelEnv (ModelEnv (ModelEnv, _livenessPropertyNames, _srcLocMap))
+import Language.Spectacle.Checker.Truth (TruthMap)
 import Language.Spectacle.Syntax.NonDet (foldMapA)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
 data SearchEnv = SearchEnv
   { _stateGraph :: CoverageMap
+  , _propTable :: TruthMap
   , _searchedWorlds :: IntSet
   , _neededProperties :: IntSet
   }
@@ -54,6 +43,10 @@ data SearchEnv = SearchEnv
 stateGraph :: SimpleGetter SearchEnv CoverageMap
 stateGraph = to _stateGraph
 {-# INLINE stateGraph #-}
+
+propTable :: SimpleGetter SearchEnv TruthMap
+propTable = to _propTable
+{-# INLINE propTable #-}
 
 searchedWorlds :: Lens' SearchEnv IntSet
 searchedWorlds = lens _searchedWorlds \SearchEnv {..} x -> SearchEnv {_searchedWorlds = x, ..}
@@ -67,13 +60,14 @@ strongLivenessCheck ::
   MonadError [MCError ctx] m =>
   Fingerprint ->
   CoverageMap ->
+  TruthMap ->
   ModelEnv ctx ->
   m ()
-strongLivenessCheck fingerprint coverage ModelEnv {..} =
+strongLivenessCheck fingerprint coverage truthMap ModelEnv {..} =
   let checkResult =
         searchStrongLiveness fingerprint
           & runExceptT
-          & flip evalState (SearchEnv coverage IntSet.empty _livenessPropertyNames)
+          & flip evalState (SearchEnv coverage truthMap IntSet.empty _livenessPropertyNames)
    in case checkResult of
         Left unsatNames ->
           throwError (map (MCStrongLivenessError . join . (`IntMap.lookup` _srcLocMap)) (IntSet.toList unsatNames))

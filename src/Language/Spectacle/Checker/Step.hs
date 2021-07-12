@@ -87,7 +87,7 @@ toStepImage :: Step ctx -> StepImage
 toStepImage (Step from to) = StepImage (from ^. worldFingerprint) (to ^. worldFingerprint)
 {-# INLINE toStepImage #-}
 
--- | Similar to 'stepHash' but has an additional argument for adding salt to into the resulting hash.
+-- | Similar to 'stepHash' but has an additional argument for adding salt into the resulting hash.
 --
 -- @since 0.1.0.0
 stepHashWithSalt :: Int -> Fingerprint -> Fingerprint -> Int
@@ -125,7 +125,7 @@ stepTo = lens _stepTo \Step {..} x -> Step {_stepTo = x, ..}
 -- ---------------------------------------------------------------------------------------------------------------------
 
 -- | The data type 'StepImage' is a weaker form of 'Step'. While 'Step' is a 𝑅-step between two worlds, 'StepImage' is
--- 𝑅-step between the fingerprints of two worlds.
+-- a step between the fingerprints of two worlds.
 --
 -- The concrete values found in @𝑤 :: 'World' spec@ are rarely avaliable to the model checker for an arbitrary @𝑤@ which
 -- means it isn't always possible to construct a full 'Step'. 'StepImage' is used in situations where the concrete

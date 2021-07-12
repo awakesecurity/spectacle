@@ -10,8 +10,8 @@ import Data.Bifunctor (Bifunctor (bimap, first, second))
 
 infixr 5 :<
 data Node w a b
-  = Leaf {-# UNPACK #-} !a
-  | {-# UNPACK #-} !w :< b
+  = Leaf !a
+  | !w :< b
 
 -- | @since 0.1.0.0
 instance Functor (Node w a) where
