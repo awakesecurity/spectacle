@@ -33,7 +33,6 @@ import Language.Spectacle
     (==>),
   )
 import Language.Spectacle.RTS.Registers (RelationTerm)
-import Numeric.Natural (Natural)
 import Language.Spectacle.Specification
   ( Specification
       ( Specification,

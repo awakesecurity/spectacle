@@ -31,7 +31,6 @@ import Language.Spectacle.Specification
       ),
   )
 
-import Control.Exception (throwIO)
 -- -------------------------------------------------------------------------------------------------
 
 type Diehard =

@@ -5,19 +5,29 @@ module Specifications.BitClock where
 import Data.Type.Rec (type (#))
 import Data.Word (Word8)
 import qualified Data.Set as Set
-import Control.Exception (throwIO)
 
 import Language.Spectacle
-  ( define,
+  ( Action,
+    Initial,
+    Invariant,
     always,
-    eventually,
+    defaultInteraction,
+    define,
     modelCheck,
     plain,
+    weakFair,
     (.=),
-    (/\),
   )
-import Language.Spectacle.AST (Action, Initial, Invariant)
-import Language.Spectacle.Spec.Base (Fairness (WeaklyFair))
+import Language.Spectacle.Specification
+  ( Specification
+      ( Specification,
+        fairnessConstraint,
+        initialAction,
+        nextAction,
+        temporalFormula,
+        terminationFormula
+      ),
+  )
 
 type BitClock = '[ "clock" # Word8 ]
 
@@ -26,8 +36,8 @@ initial :: Initial BitClock ()
 initial = do
   #clock `define` return 0
 
-action :: Action BitClock Bool
-action = do
+next :: Action BitClock Bool
+next = do
 
   clock <- plain #clock
 
@@ -38,15 +48,23 @@ action = do
 
   return True
 
-invariant :: Invariant BitClock Bool
-invariant = do
+formula :: Invariant BitClock Bool
+formula = do
   clock <- plain #clock
 
-  eventually (return (clock > 0))
-    /\ always (return (Set.member clock (Set.fromList [0,1])))
+  always (return (Set.member clock (Set.fromList [0,1])))
 
 check :: IO ()
-check = case modelCheck initial action invariant Nothing WeaklyFair of
-  (Left exc, _)
-    -> throwIO exc
-  _ -> pure ()
+check = do
+
+  let spec :: Specification BitClock
+      spec =
+        Specification
+          { initialAction = initial
+          , nextAction = next
+          , temporalFormula = formula
+          , terminationFormula = Nothing
+          , fairnessConstraint = weakFair
+          }
+
+  defaultInteraction (modelCheck spec)

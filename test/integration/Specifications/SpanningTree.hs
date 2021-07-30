@@ -7,7 +7,6 @@ module Specifications.SpanningTree where
 import Control.Monad (forM)
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
-import Control.Exception (throwIO)
 
 import Language.Spectacle
   ( Action,
