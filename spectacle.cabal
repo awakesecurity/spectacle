@@ -61,14 +61,19 @@ library
   build-depends:
       containers >= 0.6
     , hashable >= 1.3.0.0
+    , list-t
     , microlens
     , microlens-mtl
     , mtl >= 2.2
+    , mmorph
+    , prettyprinter
+    , prettyprinter-ansi-terminal
     , transformers >= 0.5
-    , unordered-containers
 
   exposed-modules:
       Control.Monad.Fresh
+    , Control.Monad.Heap
+    , Control.Monad.Heap.Node
     , Control.Natural
     , Data.Ascript
     , Data.Functor.Loom
@@ -84,25 +89,31 @@ library
     , Language.Spectacle.AST.Invariant.Internal
     , Language.Spectacle.AST.Terminate
     , Language.Spectacle.AST.Terminate.Internal
-    , Language.Spectacle.Exception
-    , Language.Spectacle.Exception.ModelCheckerException
+    , Language.Spectacle.Checker
+    , Language.Spectacle.Checker.Cover
+    , Language.Spectacle.Checker.CoverageMap
+    , Language.Spectacle.Checker.Fairness
+    , Language.Spectacle.Checker.Fingerprint
+    , Language.Spectacle.Checker.Metrics
+    , Language.Spectacle.Checker.Model
+    , Language.Spectacle.Checker.Model.Internal
+    , Language.Spectacle.Checker.Model.MCError
+    , Language.Spectacle.Checker.Model.ModelEnv
+    , Language.Spectacle.Checker.PostCheck
+    , Language.Spectacle.Checker.Step
+    , Language.Spectacle.Checker.Truth
+    , Language.Spectacle.Checker.Universe
+    , Language.Spectacle.Checker.World
     , Language.Spectacle.Exception.RuntimeException
+    , Language.Spectacle.Interaction
+    , Language.Spectacle.Interaction.Render
     , Language.Spectacle.Lang
     , Language.Spectacle.Lang.Internal
     , Language.Spectacle.Lang.Member
     , Language.Spectacle.Lang.Op
     , Language.Spectacle.Lang.Scoped
     , Language.Spectacle.RTS.Registers
-    , Language.Spectacle.Spec
-    , Language.Spectacle.Spec.Base
-    , Language.Spectacle.Spec.Behavior
-    , Language.Spectacle.Spec.CheckResult
-    , Language.Spectacle.Spec.Coverage
-    , Language.Spectacle.Spec.Model
-    , Language.Spectacle.Spec.Model.Base
-    , Language.Spectacle.Spec.Prop
-    , Language.Spectacle.Spec.Prop.Base
-    , Language.Spectacle.Spec.Zipper
+    , Language.Spectacle.Specification
     , Language.Spectacle.Syntax
     , Language.Spectacle.Syntax.Closure
     , Language.Spectacle.Syntax.Closure.Internal

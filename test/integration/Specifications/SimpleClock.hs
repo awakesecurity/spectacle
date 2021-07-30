@@ -1,66 +1,94 @@
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NegativeLiterals #-}
 {-# LANGUAGE OverloadedLabels #-}
 
 module Specifications.SimpleClock where
 
-import Data.Type.Rec (type (#))
 import Language.Spectacle
-  ( always,
+  ( Action,
+    Initial,
+    Invariant,
+    always,
+    defaultInteraction,
     define,
-    modelCheck,
     eventually,
+    modelCheck,
     plain,
     prime,
+    weakFair,
     (.=),
     (/\),
     (==>),
+    (\/),
+    type (#),
   )
-import Language.Spectacle.AST (Action, Initial, Invariant)
-import Language.Spectacle.Spec.Base (Fairness (WeaklyFair))
-import Control.Exception (throwIO)
+import Language.Spectacle.Specification
+  ( Specification
+      ( Specification,
+        fairnessConstraint,
+        initialAction,
+        nextAction,
+        temporalFormula,
+        terminationFormula
+      ),
+  )
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
-type SimpleClock =
-  '[ "hours" # Int
-   , "minutes" # Int
-   ]
+type ClockSpec = '["hours" # Int]
 
-initial :: Initial SimpleClock ()
+initial :: Initial ClockSpec ()
 initial = do
   #hours `define` return 0
-  #minutes `define` return 0
 
-action :: Action SimpleClock Bool
-action = do
+action :: Action ClockSpec Bool
+action = tick \/ rollover
+
+tick :: Action ClockSpec Bool
+tick = do
   hours <- plain #hours
-  minutes <- plain #minutes
+  #hours .= return (hours + 1)
+  return (hours < 23)
 
-  #hours .= do
-    minutes' <- prime #minutes
-    if minutes' == 0
-      then return ((hours + 1) `mod` 24)
-      else return hours
-
-  #minutes
-    .= if minutes == 59
-      then return 0
-      else return (minutes + 1)
-
-  return True
-
-invariant :: Invariant SimpleClock Bool
-invariant = do
+rollover :: Action ClockSpec Bool
+rollover = do
   hours <- plain #hours
-  minutes <- plain #minutes
+  #hours .= return 0
+  return (23 <= hours)
 
-  always (return (0 <= hours && hours <= 23))
-    /\ always (return (0 <= hours && minutes <= 59))
-    /\ (return (minutes == 0) ==> eventually (return (hours == 23)))
+breakClock :: Action ClockSpec Bool
+breakClock = do
+  hours <- plain #hours
+  #hours .= return hours
+  return (0 <= hours)
+
+formula :: Invariant ClockSpec Bool
+formula = always inBounds /\ isZero ==> always (eventually willRollOver)
+  where
+    inBounds :: Invariant ClockSpec Bool
+    inBounds = do
+      hours <- plain #hours
+      return (0 <= hours && hours <= 23)
+
+    isZero :: Invariant ClockSpec Bool
+    isZero = do
+      hours <- plain #hours
+      return (hours == 0)
+
+    willRollOver = do
+      hours <- plain #hours
+      hours' <- prime #hours
+      return (hours == 23 && hours' == 0)
 
 check :: IO ()
-check =
-  case modelCheck initial action invariant Nothing WeaklyFair of
-    (Left exc, _)
-      -> throwIO exc
-    _ -> pure ()
+check = do
+  let spec :: Specification ClockSpec
+      spec =
+        Specification
+          { initialAction = initial
+          , nextAction = action
+          , temporalFormula = formula
+          , terminationFormula = Nothing
+          , fairnessConstraint = weakFair
+          }
+  defaultInteraction (modelCheck spec)

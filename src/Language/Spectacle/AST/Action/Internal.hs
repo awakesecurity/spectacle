@@ -26,9 +26,9 @@ type ActionSyntax :: [Ascribe Symbol Type] -> [EffectK]
 type ActionSyntax ctx =
   -- NOTE: 'Closure' must be handled before 'Quantifier'. If 'Quantifier' discharged before 'Closure', erroneous values
   -- are produced from any 'Closure' nested within a forall/exists.
-  '[ Closure 'ActionClosure
+  '[ Logic
+   , Closure 'ActionClosure
    , Quantifier
-   , Logic
    , Plain
    , NonDet
    , Error RuntimeException
