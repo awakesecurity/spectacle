@@ -185,6 +185,8 @@ starvationFree = do
         p <- (HashMap.! pid) <$> plain #procs
         return (procStep p == Critical)
 
+
+
 check :: IO ()
 check = do
   let ?constants = mkProcesses 2
@@ -201,3 +203,18 @@ check = do
   where
     mkProcesses :: Natural -> Constants
     mkProcesses n = Constants n (ProcessLabel <$> [0 .. n - 1])
+
+-- ghciCheck :: IO ()
+-- ghciCheck = do
+--   let ?constants = mkProcesses 2
+--   case modelCheck initial next invariant Nothing WeaklyFair of
+--     (Left (ModelCheckerException ws exc), _) -> do
+--       putStrLn "model check failed with checker exception:"
+--       print ws
+--       print exc
+--     (Left (RuntimeException ws exc), _) -> do
+--       putStrLn "model check failed with runtime exception:"
+--       mapM_ print ws
+--       print exc
+--     (Right _, _) -> do
+--       putStrLn "model success, final state: ..."
