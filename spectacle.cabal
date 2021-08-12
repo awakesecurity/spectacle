@@ -42,7 +42,6 @@ common common
     -Wmissing-import-lists
     -Wunused-packages
 
-
   build-depends:
       base >=4.14 && <4.15
 
@@ -165,6 +164,7 @@ test-suite integration-tests
       Specifications.Diehard
     , Specifications.DijkstraMutex
     , Specifications.DijkstraMutex.Process
+    , Specifications.RateLimit
     , Specifications.SimpleClock
     , Specifications.SpanningTree
 
