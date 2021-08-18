@@ -66,8 +66,8 @@ import Language.Spectacle.Checker.Model.MCError
         MCFormulaError,
         MCFormulaRuntimeError,
         MCImpasseError,
-        MCStutterError,
-        MCInternalError
+        MCInternalError,
+        MCStutterError
       ),
     PropertyKind (AlwaysPropK, EventuallyPropK, UpUntilPropK),
     StutterKind (FiniteStutterK, InfiniteStutterK),
@@ -284,10 +284,9 @@ checkAlways :: forall ctx. Step ctx -> Int -> Maybe SrcLoc -> Term Bool -> Model
 checkAlways step name srcLoc e = do
   result <- interpretFormula step e
   truthCoverage . stepTruth step name .= result
-
-  unless result (throwError [MCFormulaError step srcLoc AlwaysPropK])
-
-  return result
+  if result
+    then return result
+    else throwError [MCFormulaError step srcLoc AlwaysPropK]
 {-# INLINE checkAlways #-}
 
 -- | @'checkEventually' step name e@ checks a formula @eventually e@ identified by @name@ for the model-step @step@.
