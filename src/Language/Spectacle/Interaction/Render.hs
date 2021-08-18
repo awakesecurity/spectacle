@@ -295,7 +295,7 @@ renderLineViewDoc :: Int -> String -> IO (Doc AnsiStyle)
 renderLineViewDoc lineNumber filePath = do
   srcLines <- lines <$> readFile filePath
   let line = srcLines !! (lineNumber - 1)
-      padding = length (show lineNumber) + 1 -- lineNumber
+      padding = length (show lineNumber) + 1
   return . vsep $
     [ indent padding (annotate (bold <> color Red) "│")
     , annotate bold (pretty lineNumber) <+> annotate (bold <> color Red) "│" <+> pretty line
