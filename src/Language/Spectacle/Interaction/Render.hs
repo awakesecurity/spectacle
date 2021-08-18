@@ -1,4 +1,3 @@
-{-# LANGUAGE NegativeLiterals #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Language.Spectacle.Interaction.Render
@@ -175,7 +174,7 @@ renderMCStutterErrorDoc step Nothing propK stutterK = do
         <> hardline
     ]
 renderMCStutterErrorDoc step (Just srcLoc) propK stutterK = do
-  let padding = countDigits (srcLocStartLine srcLoc)
+  let padding = length (show (srcLocStartLine srcLoc))
   lineView <- renderLineViewDoc (srcLocStartLine srcLoc) (srcLocFile srcLoc)
   return . vsep $
     [ annotate (bold <> color White) (fileHeadingDoc (srcLocFile srcLoc) <> ":") <+> errorDoc
@@ -207,7 +206,7 @@ renderMCFormulaErrorDoc step Nothing propK =
         <> hardline
     ]
 renderMCFormulaErrorDoc step (Just srcLoc) propK = do
-  let padding = countDigits (srcLocStartLine srcLoc)
+  let padding = length (show (srcLocStartLine srcLoc))
   lineView <- renderLineViewDoc (srcLocStartLine srcLoc) (srcLocFile srcLoc)
   return . vsep $
     [ annotate (bold <> color White) (fileHeadingDoc (srcLocFile srcLoc) <> ":") <+> errorDoc
@@ -236,7 +235,7 @@ renderMCStrongLivenessErrorDoc = \case
         <> hardline
         <> indent 2 "could not satisfy liveness properties with strong fairness constraint"
   Just srcLoc -> do
-    let padding = countDigits (srcLocStartLine srcLoc)
+    let padding = length (show (srcLocStartLine srcLoc))
     lineView <-
       renderLineViewDoc
         (srcLocStartLine srcLoc)
@@ -296,7 +295,7 @@ renderLineViewDoc :: Int -> String -> IO (Doc AnsiStyle)
 renderLineViewDoc lineNumber filePath = do
   srcLines <- lines <$> readFile filePath
   let line = srcLines !! (lineNumber - 1)
-      padding = countDigits lineNumber + 1
+      padding = length (show lineNumber) + 1
   return . vsep $
     [ indent padding (annotate (bold <> color Red) "│")
     , annotate bold (pretty lineNumber) <+> annotate (bold <> color Red) "│" <+> pretty line
@@ -398,10 +397,3 @@ finiteStutterNote = "Occurring in a stutter-step"
 cyclicBehaviorNote :: Doc AnsiStyle
 cyclicBehaviorNote = "In the cyclic behavior"
 {-# INLINE CONLIKE cyclicBehaviorNote #-}
-
--- ----------------------------------------------------------------------------------------------------------------------
-
-countDigits :: Int -> Int
-countDigits 0 = 1
-countDigits n = round (logBase (10 :: Double) (fromIntegral (abs n))) + 1
-{-# INLINE countDigits #-}
