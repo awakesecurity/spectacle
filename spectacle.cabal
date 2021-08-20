@@ -152,13 +152,10 @@ test-suite unit-tests
     , Spectacle.Checker.VacuousFormula
 
   build-depends:
-      containers
-    , hashable
-    , hedgehog
+      hedgehog
     , spectacle
     , tasty
     , tasty-hedgehog
-    , unordered-containers
 
 test-suite integration-tests
   import:              common
