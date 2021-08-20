@@ -152,8 +152,8 @@ test-suite unit-tests
     , Spectacle.Checker.VacuousFormula
 
   build-depends:
-      hedgehog
-    , spectacle
+      spectacle
+    , hedgehog
     , tasty
     , tasty-hedgehog
 
@@ -174,8 +174,11 @@ test-suite integration-tests
 
   build-depends:
       spectacle
+    , hashable
     , tasty
     , tasty-hunit
+    , unordered-containers
+    , containers
 
 benchmark benchmark
   import:         common
