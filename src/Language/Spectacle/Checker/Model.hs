@@ -37,7 +37,6 @@ module Language.Spectacle.Checker.Model
   )
 where
 
-import Control.Applicative (Alternative (empty))
 import Control.Monad (forM, guard, join, unless, void, when)
 import Control.Monad.Except (MonadError (catchError, throwError))
 import Control.Monad.Reader (MonadReader (local))
@@ -178,7 +177,18 @@ nextStep :: Hashable (Rec ctx) => World ctx -> Model ctx (Step ctx)
 nextStep world =
   takeQuotientOf world >>= foldMapA \world' ->
     if world == world'
-      then empty
+      then do
+        let step = makeStep world world'
+        fairness <- view modelFairness
+
+        _ <- case fairness of
+          Unfair -> unfairStep step
+          WeakFair -> weakFairStep step
+          StrongFair -> strongFairStep step
+
+        errs <- cyclicLivenessErrors step
+        guard (not (null errs))
+        throwError errs
       else return (makeStep world world')
 {-# INLINE nextStep #-}
 
@@ -384,7 +394,6 @@ satisfiesLiveness fingerprint = do
 -- @since 0.1.0.0
 takeQuotientOf :: forall ctx. Hashable (Rec ctx) => World ctx -> Model ctx (Set (World ctx))
 takeQuotientOf world@(World fingerprint values) = do
-  guard =<< isUnexploredFingerprint fingerprint
   action <- view modelAction
   case runAction values action of
     Left exc -> throwError [MCActionError world exc]
@@ -392,9 +401,25 @@ takeQuotientOf world@(World fingerprint values) = do
       | null results -> throwError [MCImpasseError world]
       | otherwise -> do
         let newWorlds = foldMap (uncurry dropUnrelated . first newValues) results
-        worldCoverage . coverageInfo fingerprint . succeedingWorlds .= Set.map (^. worldFingerprint) newWorlds
-        modelDepth += 1
-        return newWorlds
+        isUnexplored <- isUnexploredFingerprint fingerprint
+
+        if isUnexplored
+          then do
+            worldCoverage . coverageInfo fingerprint . succeedingWorlds .= Set.map (^. worldFingerprint) newWorlds
+            modelDepth += 1
+            return newWorlds
+          else do
+            step <- foldMapA (pure . makeStep world) newWorlds
+            fairness <- view modelFairness
+
+            _ <- case fairness of
+              Unfair -> unfairStep step
+              WeakFair -> weakFairStep step
+              StrongFair -> strongFairStep step
+
+            errs <- cyclicLivenessErrors step
+            guard (not (null errs))
+            throwError errs
   where
     dropUnrelated :: Rec ctx -> Bool -> Set (World ctx)
     dropUnrelated world' isRelated

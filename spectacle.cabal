@@ -147,6 +147,8 @@ test-suite unit-tests
   other-modules:
       Spectacle.Syntax.Modal
     , Spectacle.Syntax.Modal.Properties
+    , Spectacle.Checker
+    , Spectacle.Checker.CyclicLiveness
     , Spectacle.Checker.VacuousFormula
 
   build-depends:
