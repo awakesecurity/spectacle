@@ -147,13 +147,18 @@ test-suite unit-tests
   other-modules:
       Spectacle.Syntax.Modal
     , Spectacle.Syntax.Modal.Properties
+    , Spectacle.Checker
+    , Spectacle.Checker.CyclicLiveness
     , Spectacle.Checker.VacuousFormula
 
   build-depends:
-      spectacle
+      containers
+    , hashable
     , hedgehog
+    , spectacle
     , tasty
     , tasty-hedgehog
+    , unordered-containers
 
 test-suite integration-tests
   import:              common
@@ -172,11 +177,8 @@ test-suite integration-tests
 
   build-depends:
       spectacle
-    , hashable
     , tasty
     , tasty-hunit
-    , unordered-containers
-    , containers
 
 benchmark benchmark
   import:         common

@@ -6,7 +6,7 @@ module Spectacle.Checker.VacuousFormula
   )
 where
 
-import Hedgehog (Property, failure, property, success)
+import Hedgehog (Property, failure, property, success, withTests)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.Hedgehog (testProperty)
 
@@ -28,7 +28,7 @@ specNext = return True
 -- | Test case ensuring that the formula @return False@ fails at initial world generation, in reference to the issue:
 -- <https://github.com/awakesecurity/spectacle/issues/26>
 testAlwaysVacuousProp :: Property
-testAlwaysVacuousProp = property do
+testAlwaysVacuousProp = withTests 1 . property $ do
   case alwaysCheckSpec of
     Left _ -> success
     Right _ -> failure
@@ -42,7 +42,7 @@ testAlwaysVacuousProp = property do
 -- | Test case ensuring that the formula @always (return False)@ fails at initial world generation, in reference to the
 -- issue: <https://github.com/awakesecurity/spectacle/issues/26>
 testVacuousProp :: Property
-testVacuousProp = property do
+testVacuousProp = withTests 1 . property $ do
   case checkSpec of
     Left _ -> success
     Right _ -> failure
@@ -56,7 +56,7 @@ testVacuousProp = property do
 tests :: TestTree
 tests =
   testGroup
-    "Checker.VacuousFormula"
-    [ testProperty "vacuous formula (always false) is violated." testAlwaysVacuousProp
+    "Spectacle.Checker.VacuousFormula"
+    [ testProperty "vacuous formula (always false) is violated" testAlwaysVacuousProp
     , testProperty "vacuous formula (false) is violated" testVacuousProp
     ]
