@@ -83,7 +83,7 @@ specProp = eventually do
   return (x == 2 && x' == 0)
 
 -- | 'testInfiniteCycleLiveness' tests that the model checker can detect liveness property violations in an infinite,
--- unchanging sequence extending the bheavior. The 'Action' 'specNextInfiniteExt' generates the trace:
+-- unchanging sequence extending the behavior. The 'Action' 'specNextInfiniteExt' generates the trace:
 --
 -- @
 --     World 1                World 2                  World 3                  World n
