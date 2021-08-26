@@ -71,12 +71,14 @@ library
 
   exposed-modules:
       Control.Monad.Fresh
-    , Control.Monad.Heap
-    , Control.Monad.Heap.Node
+    , Control.Monad.Levels
+    , Control.Hyper
     , Control.Natural
     , Data.Ascript
+    , Data.Bag
     , Data.Functor.Loom
     , Data.Name
+    , Data.Node
     , Data.Type.Rec
     , Language.Spectacle
     , Language.Spectacle.AST
@@ -93,6 +95,7 @@ library
     , Language.Spectacle.Checker.CoverageMap
     , Language.Spectacle.Checker.Fairness
     , Language.Spectacle.Checker.Fingerprint
+    , Language.Spectacle.Checker.Graph
     , Language.Spectacle.Checker.Metrics
     , Language.Spectacle.Checker.Model
     , Language.Spectacle.Checker.Model.Internal
