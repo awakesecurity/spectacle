@@ -16,6 +16,7 @@ import Language.Spectacle
     plain,
     prime,
     weakFair,
+    oneOf,
     (.=),
     (/\),
     (==>),
@@ -42,7 +43,13 @@ initial = do
   #hours `define` return 0
 
 action :: Action ClockSpec Bool
-action = tick \/ rollover
+action = do
+  hours <- plain #hours
+  if (hours < (5 * 100))
+    then #hours .= oneOf (map ((hours * 10) +)[1 .. 5])
+    else #hours .= return 0
+  return True
+  -- tick \/ rollover
 
 tick :: Action ClockSpec Bool
 tick = do
@@ -63,22 +70,22 @@ breakClock = do
   return (0 <= hours)
 
 formula :: Invariant ClockSpec Bool
-formula = always inBounds /\ isZero ==> always (eventually willRollOver)
+formula = eventually (return True)-- willRollOver
   where
-    inBounds :: Invariant ClockSpec Bool
-    inBounds = do
-      hours <- plain #hours
-      return (0 <= hours && hours <= 23)
+    -- inBounds :: Invariant ClockSpec Bool
+    -- inBounds = do
+    --   hours <- plain #hours
+    --   return (0 <= hours && hours <= 23)
 
-    isZero :: Invariant ClockSpec Bool
-    isZero = do
-      hours <- plain #hours
-      return (hours == 0)
+    -- isZero :: Invariant ClockSpec Bool
+    -- isZero = do
+    --   hours <- plain #hours
+    --   return (hours == 0)
 
-    willRollOver = do
-      hours <- plain #hours
-      hours' <- prime #hours
-      return (hours == 23 && hours' == 0)
+    -- willRollOver = do
+    --   hours <- plain #hours
+    --   hours' <- prime #hours
+    --   return (hours == 23 && hours' == 24)
 
 check :: IO ()
 check = do

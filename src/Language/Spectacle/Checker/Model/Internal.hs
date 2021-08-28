@@ -13,7 +13,8 @@ import Control.Monad.State.Strict (MonadState, State, runState)
 import Control.Monad.Writer.Strict (MonadWriter)
 import Data.Function ((&))
 
-import Control.Monad.Heap (HeapT (HeapT), searchHeapT)
+import Control.Monad.Levels
+import Data.Bag
 import Language.Spectacle.Checker.Fingerprint (Fingerprint)
 import Language.Spectacle.Checker.Model.MCError (MCError)
 import Language.Spectacle.Checker.Model.ModelEnv (ModelEnv)
@@ -23,20 +24,36 @@ import Language.Spectacle.Checker.Universe (Universe)
 
 newtype Model ctx a where
   Model ::
-    HeapT [Fingerprint] (ExceptT [MCError ctx] (ReaderT (ModelEnv ctx) (State Universe))) a ->
+    LevelsT (ExceptT [MCError ctx] (ReaderT (ModelEnv ctx) (State Universe))) a ->
     Model ctx a
-  deriving (Functor, Applicative, Monad, Alternative)
+  deriving
+    ( Functor
+    , Applicative
+    , Monad
+    , Alternative
+    )
   deriving
     ( MonadReader (ModelEnv ctx)
     , MonadState Universe
     , MonadError [MCError ctx]
-    , MonadWriter [Fingerprint]
     )
 
-runModel :: ModelEnv ctx -> Universe -> Model ctx a -> (Either [MCError ctx] [(a, [Fingerprint])], Universe)
-runModel modelEnv universe (Model model) =
+runModel ::
+  ModelEnv ctx ->
+  Universe ->
+  Model ctx a ->
+  (Either [MCError ctx] (Bag a), Universe)
+runModel env universe (Model model) =
   model
-    & searchHeapT
+    & runLevelsA
     & runExceptT
-    & flip runReaderT modelEnv
+    & flip runReaderT env
     & flip runState universe
+
+-- runModel :: ModelEnv ctx -> Universe -> Model ctx a -> (Either [MCError ctx] [(a, [Fingerprint])], Universe)
+-- runModel modelEnv universe (Model model) =
+--   model
+--     & searchHeapT
+--     & runExceptT
+--     & flip runReaderT modelEnv
+--     & flip runState universe

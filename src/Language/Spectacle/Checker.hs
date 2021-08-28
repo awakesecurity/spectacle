@@ -21,6 +21,7 @@ import qualified Data.Sequence as Seq
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Lens.Micro ((^.))
+import Data.Tree
 
 import Data.Type.Rec (Rec, ReflectRow)
 import Language.Spectacle.AST (applyRewrites, runInitial, runInvariant)
@@ -29,7 +30,7 @@ import Language.Spectacle.Checker.Fingerprint (Fingerprint)
 import Language.Spectacle.Checker.Metrics
   ( ModelMetrics (ModelMetrics),
   )
-import Language.Spectacle.Checker.Model (interpretFormula, runModel, stepModel)
+import Language.Spectacle.Checker.Model
 import Language.Spectacle.Checker.Model.MCError (MCError (MCFormulaRuntimeError, MCInitialError, MCNoInitialStatesError))
 import Language.Spectacle.Checker.Model.ModelEnv
   ( DisjunctZipper (LeftBranch, RightBranch),
@@ -78,7 +79,10 @@ import Language.Spectacle.Syntax.Modal.Term
         Value
       ),
   )
-import Language.Spectacle.Syntax.NonDet (foldMapA)
+import Language.Spectacle.Syntax.NonDet (foldMapA, oneOf)
+import Data.Bag
+import Debug.Trace
+import qualified Data.Node as Bin
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -97,11 +101,13 @@ modelCheck spec = do
   where
     goModelCheck :: Monad m => World ctx -> ExceptT [MCError ctx] m ModelMetrics
     goModelCheck world = do
-      disjunctionPaths spec (world ^. worldValues) >>= foldMapA \path -> do
-        modelEnv <- makeModelEnv spec world path
-        case runModel modelEnv mempty (stepModel world) of
-          (Left excs, _) -> throwError excs
-          (Right _, st) -> return (ModelMetrics (sizeCoverageMap (st ^. worldCoverage)) (st ^. modelDepth) 0)
+      path <- oneOf =<< disjunctionPaths spec (world ^. worldValues)
+      env <- makeModelEnv spec world path
+      let (result, universe) = runModel env mempty (stepInitial world)
+
+      case result of
+        Left excs -> throwError excs
+        Right _ -> return (ModelMetrics (sizeCoverageMap (universe ^. worldCoverage)) (universe ^. modelDepth) 0)
 
 runInitialAction ::
   (Monad m, Hashable (Rec ctx), ReflectRow ctx) =>
@@ -138,28 +144,19 @@ makeModelEnv Specification {..} initialWorld@(World _ values) disjuncts = do
   terms <- case runInvariant True values values formula of
     Left exc -> throwError [MCFormulaRuntimeError (makeReflexStep initialWorld) exc]
     Right terms -> return terms
-  let env :: ModelEnv ctx
-      env =
-        ModelEnv
-          { _modelFairness = fairnessConstraint
-          , _modelAction = nextAction
-          , _modelFormula = temporalFormula
-          , _modelTerminate = terminationFormula
-          , _modelTrace = Seq.empty
-          , _modelInitialWorld = initialWorld
-          , _livenessPropertyNames = getLivenessPropertyNames disjuncts terms
-          , _disjunctQueue = disjuncts
-          , _srcLocMap = makeSrcLocMap terms
-          }
 
-      step :: Step ctx
-      step = makeReflexStep initialWorld
-
-      initialWorldCheck :: (Either [MCError ctx] [(Bool, [Fingerprint])], Universe)
-      initialWorldCheck = runModel env mempty (interpretFormula step terms)
-  case fst initialWorldCheck of
-    Left err -> throwError err
-    Right _ -> return env
+  return
+    ModelEnv
+      { _modelFairness = fairnessConstraint
+      , _modelAction = nextAction
+      , _modelFormula = temporalFormula
+      , _modelTerminate = terminationFormula
+      , _modelTrace = Seq.empty
+      , _modelInitialWorld = initialWorld
+      , _livenessPropertyNames = getLivenessPropertyNames disjuncts terms
+      , _disjunctQueue = disjuncts
+      , _srcLocMap = makeSrcLocMap terms
+      }
 {-# INLINE makeModelEnv #-}
 
 getLivenessPropertyNames :: [DisjunctZipper] -> Term Bool -> IntSet

@@ -2,11 +2,11 @@
 --
 -- @since 0.1.0.0
 module Control.Hyper
-  ( HyperM(HyperM, invokeM)
+  ( HyperM (HyperM, invokeM),
   )
 where
 
-import Data.Kind ( Type )
+import Data.Kind (Type)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

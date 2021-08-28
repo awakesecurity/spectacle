@@ -23,7 +23,7 @@ import qualified Data.IntSet as IntSet
 import Lens.Micro (Lens', SimpleGetter, lens, to, (&))
 import Lens.Micro.Mtl (use, (%=), (.=))
 
-import Language.Spectacle.Checker.Cover (livenessProperties, succeedingWorlds)
+import Language.Spectacle.Checker.Cover (livenessProperties, nextWorlds)
 import Language.Spectacle.Checker.CoverageMap (CoverageMap, coverageInfo)
 import Language.Spectacle.Checker.Fingerprint (Fingerprint (Fingerprint))
 import Language.Spectacle.Checker.Model.MCError (MCError (MCStrongLivenessError))
@@ -87,5 +87,5 @@ searchStrongLiveness fingerprint = do
 
       unless (IntSet.null needs') do
         neededProperties .= needs'
-        nextStates <- use (stateGraph . coverageInfo fingerprint . succeedingWorlds)
+        nextStates <- use (stateGraph . coverageInfo fingerprint . nextWorlds)
         foldMapA searchStrongLiveness nextStates

@@ -14,7 +14,7 @@ import Language.Spectacle
     modelCheck,
     plain,
     prime,
-    strongFair,
+    weakFair,
     (.=),
     (/\),
     (\/),
@@ -30,6 +30,7 @@ import Language.Spectacle.Specification
         terminationFormula
       ),
   )
+import Debug.Trace
 
 -- -------------------------------------------------------------------------------------------------
 
@@ -45,6 +46,9 @@ initial = do
 
 next :: Action Diehard Bool
 next = do
+  bigJug <- plain #bigJug
+  smallJug <- plain #smallJug
+
   fillSmallJug
     \/ fillBigJug
     \/ emptySmallJug
@@ -52,13 +56,25 @@ next = do
     \/ smallToBig
     \/ bigToSmall
   where
-    fillSmallJug = #smallJug .= return 3 >> return True
+    fillSmallJug = do
+      #smallJug .= return 3
+      #bigJug .= plain #bigJug
+      return True
 
-    fillBigJug = #bigJug .= return 5 >> return True
+    fillBigJug = do
+      #bigJug .= return 5
+      #smallJug .= plain #smallJug
+      return True
 
-    emptySmallJug = #smallJug .= return 0 >> return True
+    emptySmallJug = do
+      #smallJug .= return 0
+      #bigJug .= plain #bigJug
+      return True
 
-    emptyBigJug = #bigJug .= return 0 >> return True
+    emptyBigJug = do
+      #bigJug .= return 0
+      #smallJug .= plain #smallJug
+      return True
 
     smallToBig = do
       smallJug <- plain #smallJug
@@ -80,19 +96,19 @@ next = do
 
 formula :: Invariant Diehard Bool
 formula = do
-  always smallJugBounds /\ always bigJugBounds /\ eventually solved \/ (always (not <$> solved))
+  eventually solved
   where
-    smallJugBounds = do
-      smallJug <- plain #smallJug
-      return (0 <= smallJug && smallJug <= 3)
+    -- smallJugBounds = do
+    --   smallJug <- plain #smallJug
+    --   return (0 <= smallJug && smallJug <= 3)
 
-    bigJugBounds = do
-      bigJug <- plain #bigJug
-      return (0 <= bigJug && bigJug <= 5)
+    -- bigJugBounds = do
+    --   bigJug <- plain #bigJug
+    --   return (0 <= bigJug && bigJug <= 5)
 
     solved = do
       bigJug <- plain #bigJug
-      return (bigJug == 6)
+      return (bigJug == 4)
 
 termination :: Terminate Diehard Bool
 termination = do
@@ -108,6 +124,6 @@ check = do
           , nextAction = next
           , temporalFormula = formula
           , terminationFormula = Nothing
-          , fairnessConstraint = strongFair
+          , fairnessConstraint = weakFair
           }
   defaultInteraction (modelCheck spec)

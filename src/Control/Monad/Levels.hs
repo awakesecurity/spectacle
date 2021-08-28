@@ -1,80 +1,50 @@
--- | The "Levels" search monad.
---
--- === Reference
---
--- 1. Donnacha Oisín Kidney, Nicolas Wu. 2021. Algebras for Weighted Search.
---
 -- @since 0.1.0.0
 module Control.Monad.Levels
-  ( LevelsT (LevelsT, runLevelsT),
+  ( -- * LevelsT
+    LevelsT (LevelsT, runLevelsT),
     runLevelsA,
     liftLevelsT,
     wrapLevelsT,
+
+    -- ** Searches
+    star,
+    starInt,
+    choices,
+    choicesInt,
+    foreach,
   )
 where
 
-import Control.Applicative (Alternative (empty, (<|>)))
-import Control.Hyper (HyperM (HyperM, invokeM))
-import Control.Monad (ap)
-import Control.Monad.Trans (MonadTrans (lift))
+import Control.Applicative (liftA2, Alternative (empty, (<|>)))
 import Data.Kind (Type)
 
 import Data.Bag (Bag (None))
 import qualified Data.Bag as Bag
+import Control.Monad.Levels.Internal
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
-newtype LevelsT :: (Type -> Type) -> Type -> Type where
-  LevelsT :: {runLevelsT :: forall x. (Bag a -> m x -> m x) -> m x -> m x} -> LevelsT m a
 
 runLevelsA :: Alternative m => LevelsT m a -> m (Bag a)
 runLevelsA (LevelsT m) = m ((<|>) . pure) (pure None)
 {-# INLINE runLevelsA #-}
 
-liftLevelsT :: Monad m => m (LevelsT m a) -> LevelsT m a
-liftLevelsT xs = LevelsT (\cons nil -> xs >>= \xs' -> runLevelsT xs' cons nil)
-{-# INLINE liftLevelsT #-}
+star :: (Alternative m, Monad m) => (a -> m a) -> a -> m a
+star f x = pure x <|> (f x >>= star f)
+{-# INLINE star #-}
 
-wrapLevelsT :: Monad m => m (LevelsT m a) -> LevelsT m a
-wrapLevelsT xs = LevelsT (\cons nil -> cons None (xs >>= \xs' -> runLevelsT xs' cons nil))
-{-# INLINE wrapLevelsT #-}
+starInt :: (Alternative m, Monad m) => (Int -> a -> m a) -> Int -> a -> m a
+starInt f n x = pure x <|> (f n x >>= starInt f (n + 1))
+{-# INLINE starInt #-}
 
--- | @since 0.1.0.0
-instance Functor (LevelsT m) where
-  fmap f (LevelsT g) = LevelsT \cons nil -> g (cons . fmap f) nil
-  {-# INLINE fmap #-}
+choices :: (Alternative f, Foldable t) => (a -> f b) -> t a -> f b
+choices f = foldr ((<|>) . f) empty
+{-# INLINE choices #-}
 
--- | @since 0.1.0.0
-instance Monad m => Applicative (LevelsT m) where
-  pure x = LevelsT \cons nil -> cons (Bag.singleton x) nil
-  {-# INLINE pure #-}
+foreach :: (Alternative f, Monoid (m b), Foldable t) => t a -> (a -> f (m b)) -> f (m b)
+foreach xs f = foldr (liftA2 (<>) . f) (pure mempty) xs
+{-# INLINE foreach #-}
 
-  -- TODO: Lower the definition of (<*>) from 'ap'.
-  (<*>) = ap
-  {-# INLINE (<*>) #-}
-
--- | @since 0.1.0.0
-instance Monad m => Monad (LevelsT m) where
-  LevelsT m >>= k = liftLevelsT (m (\x xs -> pure (foldr ((<|>) . k) (wrapLevelsT xs) x)) (pure empty))
-  {-# INLINE (>>=) #-}
-
--- | @since 0.1.0.0
-instance Monad m => Alternative (LevelsT m) where
-  empty = LevelsT \_ nil -> nil
-  {-# INLINE empty #-}
-
-  LevelsT f <|> LevelsT g = LevelsT \cons nil ->
-    let fcons x xs = pure (\k -> k (HyperM xs) x)
-        fnil = pure \k -> k (HyperM fnil) None
-
-        gcon y yk = pure \xk x -> cons (x <> y) (invokeM xk >>= (yk >>=))
-
-        gnil _ None = nil
-        gnil xk x = cons x (invokeM xk >>= ($ gnil))
-     in f fcons fnil >>= (g gcon (pure gnil) >>=)
-  {-# INLINE (<|>) #-}
-
--- | @since 0.1.0.0
-instance MonadTrans LevelsT where
-  lift m = LevelsT \cons nil -> m >>= (`cons` nil) . Bag.singleton
-  {-# INLINE lift #-}
+choicesInt :: (Alternative f, Foldable t) => (Int -> a -> f b) -> Int -> t a -> f b
+choicesInt f n = foldr ((<|>) . f (n + 1)) empty
+{-# INLINE choicesInt #-}

@@ -138,7 +138,7 @@ insertStepTruth step table (TruthMap truthMap)
 insertStepImageTruth :: StepImage -> TruthTable -> TruthMap -> TruthMap
 insertStepImageTruth step table (TruthMap truthMap)
   | IntMap.null (coerce table :: IntMap Bool) = TruthMap truthMap
-  | otherwise = TruthMap (IntMap.adjust (<> table) (hash step) truthMap)
+  | otherwise = TruthMap (IntMap.alter (Just . maybe mempty (<> table)) (hash step) truthMap)
 {-# INLINE insertStepImageTruth #-}
 
 -- | The wrapper type 'TruthTable' which maps the 'FormulaNames' in a temporal formula to a boolean truth-value

@@ -72,6 +72,7 @@ library
   exposed-modules:
       Control.Monad.Fresh
     , Control.Monad.Levels
+    , Control.Monad.Levels.Internal
     , Control.Hyper
     , Control.Natural
     , Data.Ascript
@@ -93,6 +94,7 @@ library
     , Language.Spectacle.Checker
     , Language.Spectacle.Checker.Cover
     , Language.Spectacle.Checker.CoverageMap
+    , Language.Spectacle.Checker.Cycle
     , Language.Spectacle.Checker.Fairness
     , Language.Spectacle.Checker.Fingerprint
     , Language.Spectacle.Checker.Graph
@@ -174,6 +176,7 @@ test-suite integration-tests
     , Specifications.SimpleClock
     , Specifications.BitClock
     , Specifications.SpanningTree
+    , Specifications.GRPC
 
   build-depends:
       spectacle

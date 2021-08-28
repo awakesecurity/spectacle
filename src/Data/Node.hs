@@ -3,8 +3,8 @@ module Data.Node
   )
 where
 
-import Data.Kind
-import GHC.Base (Applicative(liftA2))
+import Data.Kind (Type)
+import GHC.Base (Applicative (liftA2))
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

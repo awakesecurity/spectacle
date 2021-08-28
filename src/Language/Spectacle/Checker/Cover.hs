@@ -7,7 +7,7 @@ module Language.Spectacle.Checker.Cover
   ( -- * Cover
     Cover
       ( Cover,
-        _succeedingWorlds,
+        _nextWorlds,
         _livenessProperties,
         _hasBeenExplored
       ),
@@ -17,7 +17,8 @@ module Language.Spectacle.Checker.Cover
     isSuccessorWorld,
 
     -- ** Lenses
-    succeedingWorlds,
+    nextWorlds,
+    disabledNextWorlds,
     livenessProperties,
     hasBeenExplored,
   )
@@ -41,7 +42,7 @@ import Language.Spectacle.Checker.Fingerprint (Fingerprint, fingerprintRec)
 --
 -- @since 0.1.0.0
 data Cover = Cover
-  { -- | If (- ⟶ -) is a next-state relation on a set of worlds W and w ∈ W, then '_succeedingWorlds' is a collection
+  { -- | If (- ⟶ -) is a next-state relation on a set of worlds W and w ∈ W, then '_nextWorlds' is a collection
     -- of worlds A ⊂ W such that @∀ u ∈ A, w ⟶ u@ holds.
     --
     -- Note that rather than storing the full @Rec ctx@ for the elements in @A@ a unique hash @'Fingerprint' ctx@ is
@@ -49,7 +50,11 @@ data Cover = Cover
     -- memory hit from keeping a set of @'Rec' ctx@ in their entirety.
     --
     -- @since 0.1.0.0
-    _succeedingWorlds :: Set Fingerprint
+    _nextWorlds :: Set Fingerprint
+  , -- | TODO: document
+    --
+    -- @since 0.1.0.0
+    _disabledNextWorlds :: Set Fingerprint
   , -- | A list of unique 'Int' names that are bound to liveness properties in a model's formula that have been
     -- satisfied by this state.
     --
@@ -65,29 +70,20 @@ data Cover = Cover
 
 -- | @since 0.1.0.0
 instance Semigroup Cover where
-  c1 <> c2 =
-    Cover
-      { _succeedingWorlds = c1 ^. succeedingWorlds <> c2 ^. succeedingWorlds
-      , _livenessProperties = c1 ^. livenessProperties <> c2 ^. livenessProperties
-      , _hasBeenExplored = c1 ^. hasBeenExplored || c2 ^. hasBeenExplored
-      }
+  Cover nw1 dn1 ps1 seen1 <> Cover nw2 dn2 ps2 seen2 =
+    Cover (nw1 <> nw2) (dn1 <> dn2) (ps1 <> ps2) (seen1 || seen2)
   {-# INLINE (<>) #-}
 
 -- | @since 0.1.0.0
 instance Monoid Cover where
-  mempty =
-    Cover
-      { _succeedingWorlds = Set.empty
-      , _livenessProperties = IntSet.empty
-      , _hasBeenExplored = False
-      }
+  mempty = Cover Set.empty Set.empty IntSet.empty False
   {-# INLINE mempty #-}
 
 -- | Predicate on 'Cover' checking if the fingerprint given has been recorded as a successor world.
 --
 -- @since 0.1.0.0
 isSuccessor :: Fingerprint -> Cover -> Bool
-isSuccessor fingerprint cover = Set.member fingerprint (cover ^. succeedingWorlds)
+isSuccessor fingerprint cover = Set.member fingerprint (cover ^. nextWorlds)
 {-# INLINE isSuccessor #-}
 
 -- | Predicate on 'Cover' checking if the world given has been recorded as a successor.
@@ -98,12 +94,16 @@ isSuccessorWorld world = isSuccessor (fingerprintRec world)
 {-# INLINE isSuccessorWorld #-}
 
 -- | If @𝑤 𝑅 -@ is a next-state relation and @𝑤@ is the world associated with the 'Cover' this lens is focusing, then
--- 'succeedingWorlds' is any world @𝑢@ such that @𝑤 𝑅 𝑢@ is enabled.
+-- 'nextWorlds' is any world @𝑢@ such that @𝑤 𝑅 𝑢@ is enabled.
 --
 -- @since 0.1.0.0
-succeedingWorlds :: Lens' Cover (Set Fingerprint)
-succeedingWorlds = lens _succeedingWorlds \Cover {..} x -> Cover {_succeedingWorlds = x, ..}
-{-# INLINE succeedingWorlds #-}
+nextWorlds :: Lens' Cover (Set Fingerprint)
+nextWorlds = lens _nextWorlds \Cover {..} x -> Cover {_nextWorlds = x, ..}
+{-# INLINE nextWorlds #-}
+
+disabledNextWorlds :: Lens' Cover (Set Fingerprint)
+disabledNextWorlds = lens _disabledNextWorlds \Cover {..} x -> Cover {_disabledNextWorlds = x, ..}
+{-# INLINE disabledNextWorlds #-}
 
 -- | A lens focusing on the names bound to liveness properties that this state has satisfied.
 --
