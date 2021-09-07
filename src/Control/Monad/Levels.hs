@@ -5,46 +5,42 @@ module Control.Monad.Levels
     runLevelsA,
     liftLevelsT,
     wrapLevelsT,
-
-    -- ** Searches
-    star,
-    starInt,
-    choices,
-    choicesInt,
-    foreach,
+    foldMapAp,
+    forAp,
+    foldMapAlt,
+    forAlt,
+    (<>=),
   )
 where
 
-import Control.Applicative (liftA2, Alternative (empty, (<|>)))
-import Data.Kind (Type)
+import Control.Applicative (Alternative (empty, (<|>)), liftA2)
 
+import Control.Monad.Levels.Internal (LevelsT (LevelsT), liftLevelsT, runLevelsT, wrapLevelsT)
 import Data.Bag (Bag (None))
-import qualified Data.Bag as Bag
-import Control.Monad.Levels.Internal
 
 -- ---------------------------------------------------------------------------------------------------------------------
-
 
 runLevelsA :: Alternative m => LevelsT m a -> m (Bag a)
 runLevelsA (LevelsT m) = m ((<|>) . pure) (pure None)
 {-# INLINE runLevelsA #-}
 
-star :: (Alternative m, Monad m) => (a -> m a) -> a -> m a
-star f x = pure x <|> (f x >>= star f)
-{-# INLINE star #-}
+foldMapAp :: (Foldable t, Monoid m, Applicative f) => (a -> f m) -> t a -> f m
+foldMapAp f = foldr (liftA2 (<>) . f) (pure mempty)
+{-# INLINE foldMapAp #-}
 
-starInt :: (Alternative m, Monad m) => (Int -> a -> m a) -> Int -> a -> m a
-starInt f n x = pure x <|> (f n x >>= starInt f (n + 1))
-{-# INLINE starInt #-}
+forAp :: (Foldable t, Monoid m, Applicative f) => t a -> (a -> f m) -> f m
+forAp = flip foldMapAp
+{-# INLINE forAp #-}
 
-choices :: (Alternative f, Foldable t) => (a -> f b) -> t a -> f b
-choices f = foldr ((<|>) . f) empty
-{-# INLINE choices #-}
+foldMapAlt :: (Foldable t, Alternative m) => (a -> m b) -> t a -> m b
+foldMapAlt f = foldr ((<|>) . f) empty
+{-# INLINE foldMapAlt #-}
 
-foreach :: (Alternative f, Monoid (m b), Foldable t) => t a -> (a -> f (m b)) -> f (m b)
-foreach xs f = foldr (liftA2 (<>) . f) (pure mempty) xs
-{-# INLINE foreach #-}
+forAlt :: (Foldable t, Alternative f) => t a -> (a -> f b) -> f b
+forAlt = flip foldMapAlt
+{-# INLINE forAlt #-}
 
-choicesInt :: (Alternative f, Foldable t) => (Int -> a -> f b) -> Int -> t a -> f b
-choicesInt f n = foldr ((<|>) . f (n + 1)) empty
-{-# INLINE choicesInt #-}
+infixl 1 <>=
+(<>=) :: (Monad m, Foldable f, Monoid (t b)) => m (f a) -> (a -> m (t b)) -> m (t b)
+xs <>= k = xs >>= foldr (liftA2 (<>) . k) (pure mempty)
+{-# INLINE (<>=) #-}
