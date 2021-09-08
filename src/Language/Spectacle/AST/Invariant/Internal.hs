@@ -16,14 +16,15 @@ import Language.Spectacle.Syntax.Logic.Internal (Logic)
 import Language.Spectacle.Syntax.Modal.Internal (Modal)
 import Language.Spectacle.Syntax.Plain.Internal (Plain)
 import Language.Spectacle.Syntax.Prime.Internal (Prime)
+import Data.Context
 
 -- -------------------------------------------------------------------------------------------------
 
-type Invariant :: [Ascribe Symbol Type] -> Type -> Type
-type Invariant ctx a = Lang ctx (InvariantSyntax ctx) a
+type Invariant :: Context -> Type -> Type
+type Invariant ctxt a = Lang ctxt InvariantSyntax a
 
-type InvariantSyntax :: [Ascribe Symbol Type] -> [EffectK]
-type InvariantSyntax ctx =
+type InvariantSyntax :: [EffectK]
+type InvariantSyntax =
   '[ Modal
    , Logic
    , Enabled

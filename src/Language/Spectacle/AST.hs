@@ -1,12 +1,5 @@
 module Language.Spectacle.AST
-  ( -- * Initial Actions
-    type Initial,
-    type InitialSyntax,
-
-    -- ** Interpreters
-    runInitial,
-
-    -- * Temporal Actions
+  (-- * Temporal Actions
     type Action,
     type ActionSyntax,
 
@@ -32,8 +25,7 @@ module Language.Spectacle.AST
   )
 where
 
-import Language.Spectacle.AST.Action (Action, ActionSyntax, runAction)
-import Language.Spectacle.AST.Initial (Initial, InitialSyntax, runInitial)
+import Language.Spectacle.AST.Action
 import Language.Spectacle.AST.Invariant (Invariant, InvariantSyntax, applyRewrites, runInvariant)
 import Language.Spectacle.AST.Terminate (Terminate, TerminateSyntax, runTerminate)
 

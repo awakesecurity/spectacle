@@ -12,10 +12,16 @@ module Language.Spectacle.AST.Action
 where
 
 import Data.Function ((&))
+import Data.Proxy
+import Data.Set
+import qualified Data.Set as Set
+import Data.Hashable
+import GHC.TypeLits
 
 import Data.Functor.Loom (hoist, runLoom, (~>~))
 import Data.Type.Rec (Rec)
-import Language.Spectacle.AST.Action.Internal (Action, ActionSyntax)
+import Data.World
+import Language.Spectacle.AST.Action.Internal
 import Language.Spectacle.Exception.RuntimeException (RuntimeException)
 import Language.Spectacle.Lang
   ( Lang (Op, Pure, Scoped),
@@ -25,12 +31,8 @@ import Language.Spectacle.Lang
     Scoped (SHere, SThere),
     runLang,
   )
-import Language.Spectacle.RTS.Registers (RuntimeState, emptyRuntimeState)
+import Language.Spectacle.RTS.Registers (RuntimeState, emptyRuntimeState, newValues)
 import Language.Spectacle.Syntax.Closure
-  ( Closure,
-    ClosureKind (ActionClosure),
-    runActionClosure,
-  )
 import Language.Spectacle.Syntax.Env (Env, runEnv)
 import Language.Spectacle.Syntax.Error (runError)
 import Language.Spectacle.Syntax.Logic
@@ -57,19 +59,33 @@ import Language.Spectacle.Syntax.Quantifier
 -- by the action given.
 --
 -- @since 0.1.0.0
-runAction :: Rec ctx -> Action ctx Bool -> Either RuntimeException [(RuntimeState ctx, Bool)]
-runAction knowns nextState =
-  nextState
-    & introduceEnv
-    & rewriteLogic
-    & runLogic
-    & runActionClosure
-    & runQuantifier
-    & runEnv (emptyRuntimeState knowns)
-    & runPlain knowns
-    & runNonDetA
-    & runError
-    & runLang
+runAction ::
+  forall ctxt.
+  Hashable (Rec ctxt) =>
+  Rec ctxt ->
+  Action ctxt Bool ->
+  Either RuntimeException (Set (World ctxt))
+runAction knowns (Action action) = do
+  states <-
+    action
+      & introduceEnv
+      & rewriteLogic
+      & runLogic
+      & runActionClosure
+      & runQuantifier
+      & runEnv (emptyRuntimeState knowns)
+      & runPlain knowns
+      & runNonDetA
+      & runError
+      & runLang
+
+  return (takeRelatedSet states)
+  where
+    takeRelatedSet :: [(RuntimeState ctxt, Bool)] -> Set (World ctxt)
+    takeRelatedSet = foldMap \(rst, rel) ->
+      if rel
+        then Set.singleton (makeWorld (newValues rst))
+        else Set.empty
 {-# INLINE runAction #-}
 
 -- | Traverses the effects in an action, rewriting all logical operators and quantifiers scoped within a negation.
@@ -123,8 +139,8 @@ applyComplement = \case
 --
 -- @since 0.1.0.0
 introduceEnv ::
-  Lang ctx (Logic ': Closure 'ActionClosure ': Quantifier ': effs) a ->
-  Lang ctx (Logic : Closure 'ActionClosure ': Quantifier ': Env ': effs) a
+  Lang ctx (Logic ': Closure ': Quantifier ': effs) a ->
+  Lang ctx (Logic ': Closure ': Quantifier ': Env ': effs) a
 introduceEnv = \case
   Pure x -> pure x
   Op op k

@@ -12,10 +12,11 @@ import Data.Type.Rec (Ascribe)
 import Language.Spectacle.Lang (EffectK, Lang)
 import Language.Spectacle.Syntax.Enabled.Internal (Enabled)
 import Language.Spectacle.Syntax.Plain.Internal (Plain)
+import Data.Context
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
-type Terminate :: [Ascribe Symbol Type] -> Type -> Type
+type Terminate :: Context -> Type -> Type
 type Terminate ctx a = Lang ctx TerminateSyntax a
 
 type TerminateSyntax :: [EffectK]

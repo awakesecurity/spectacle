@@ -1,33 +1,54 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
+
 module Language.Spectacle.AST.Action.Internal
-  ( type Action,
+  ( -- *
+    Action (Action, getAction),
     type ActionSyntax,
   )
 where
 
 import Data.Kind (Type)
-import GHC.TypeLits (Symbol)
+import Data.Set (Set)
+import GHC.TypeLits (KnownSymbol, Symbol)
 
-import Data.Type.Rec (Ascribe)
+import Data.Type.Rec (Ascribe, Rec, type (#), type (.|))
+import Data.World (World)
 import Language.Spectacle.Exception.RuntimeException (RuntimeException)
-import Language.Spectacle.Lang (EffectK, Lang)
-import Language.Spectacle.Syntax.Closure.Internal (Closure, ClosureKind (ActionClosure))
+import Language.Spectacle.Lang (EffectK, Lang, scope)
+import Language.Spectacle.Syntax.Closure.Internal
 import Language.Spectacle.Syntax.Error.Internal (Error)
 import Language.Spectacle.Syntax.Logic.Internal (Logic)
 import Language.Spectacle.Syntax.NonDet.Internal (NonDet)
-import Language.Spectacle.Syntax.Plain.Internal (Plain)
+import Language.Spectacle.Syntax.Plain.Internal
+import Data.Context
 import Language.Spectacle.Syntax.Quantifier.Internal (Quantifier)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
-type Action :: [Ascribe Symbol Type] -> Type -> Type
-type Action ctx a = Lang ctx (ActionSyntax ctx) a
+newtype Action :: Context -> Type -> Type where
+  Action :: { getAction :: Lang ctxt ActionSyntax a } -> Action ctxt a
+  deriving (Functor, Applicative, Monad)
 
-type ActionSyntax :: [Ascribe Symbol Type] -> [EffectK]
-type ActionSyntax ctx =
+instance Contextual (Action ctxt a) where
+  type Ctxt (Action ctxt a) = ctxt
+
+-- | @since 0.1.0.0
+instance (s # a .| ctxt) => PlainIntro (Action ctxt) s a where
+  plainIntro name = Action (scope (PlainVar name))
+  {-# INLINE plainIntro #-}
+
+-- | @since 0.1.0.0
+instance (s # a .| ctxt) => ClosureIntro (Action ctxt) s a where
+  closureIntro name expr = Action (scope (Close name expr))
+
+type ActionSyntax :: [EffectK]
+type ActionSyntax =
   -- NOTE: 'Closure' must be handled before 'Quantifier'. If 'Quantifier' discharged before 'Closure', erroneous values
   -- are produced from any 'Closure' nested within a forall/exists.
   '[ Logic
-   , Closure 'ActionClosure
+   , Closure
    , Quantifier
    , Plain
    , NonDet
