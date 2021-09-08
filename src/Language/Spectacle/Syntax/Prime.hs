@@ -40,12 +40,6 @@ import Language.Spectacle.Lang
     scope,
   )
 import Language.Spectacle.RTS.Registers
-  ( RelationTerm,
-    RuntimeState (RuntimeState, callStack, plains, primes),
-    Thunk (Evaluated, Thunk, Unchanged),
-    getRegister,
-    setRegister,
-  )
 import Language.Spectacle.Syntax.Env
   ( Env,
     get,
@@ -57,15 +51,15 @@ import Language.Spectacle.Syntax.Env
 import Language.Spectacle.Syntax.Error (Error, runError, throwE)
 import Language.Spectacle.Syntax.NonDet (NonDet, oneOf, runNonDetA)
 import Language.Spectacle.Syntax.Plain (runPlain)
-import Language.Spectacle.Syntax.Prime.Internal (Effect (PrimeVar), Prime (Prime))
+import Language.Spectacle.Syntax.Prime.Internal
 
 -- -------------------------------------------------------------------------------------------------
 
 -- | 'prime' for a variable named @s@ is the value of @s@ in the next time frame.
 --
 -- @since 0.1.0.0
-prime :: (s # a .| ctx, Member Prime effs) => Name s -> Lang ctx effs a
-prime name = scope (PrimeVar name)
+prime :: PrimeIntro m s a => Name s -> m a
+prime name = primeIntro name
 {-# INLINE prime #-}
 
 -- | Discharges a 'Prime' effect. This interpreter carries out the substitution of primed variables
@@ -127,12 +121,13 @@ substPrime vars = \case
 substitute ::
   (Members '[Env, NonDet, Error RuntimeException] effs, s # a .| ctx) =>
   Name s ->
-  RelationTerm ctx a ->
+  StateFun ctx a ->
   Lang ctx effs a
 substitute name expr = do
   rst <- get
   let result =
         expr
+          & getStateFun
           & introduceState
           & runPrime
           & runEnv rst

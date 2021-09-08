@@ -21,15 +21,15 @@ import Language.Spectacle.Lang
     decomposeS,
     scope,
   )
-import Language.Spectacle.Syntax.Plain.Internal (Effect (PlainVar), Plain (Plain))
+import Language.Spectacle.Syntax.Plain.Internal
 
 -- -------------------------------------------------------------------------------------------------
 
 -- | 'plain' for a variable named @s@ is the value of @s@ from the previous frame of time.
 --
 -- @since 0.1.0.0
-plain :: (s # a .| ctx, Members Plain effs) => Name s -> Lang ctx effs a
-plain name = scope (PlainVar name)
+plain :: PlainIntro m s a => Name s -> m a
+plain name = plainIntro name
 {-# INLINE plain #-}
 
 -- | Discharge a 'Plain' effect, substituting instances of 'PlainVar' for the values in the given
