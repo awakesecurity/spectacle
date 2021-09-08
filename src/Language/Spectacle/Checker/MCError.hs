@@ -3,12 +3,13 @@
 -- | Model checker error productions.
 --
 -- @since 0.1.0.0
-module Language.Spectacle.Checker.Model.MCError
+module Language.Spectacle.Checker.MCError
   ( MCError
       ( MCInitialError,
         MCNoInitialStatesError,
         MCActionError,
         MCImpasseError,
+        MCEventuallyError,
         MCStutterError,
         MCFormulaError,
         MCFormulaRuntimeError,
@@ -33,18 +34,20 @@ module Language.Spectacle.Checker.Model.MCError
 where
 
 import GHC.Stack (SrcLoc)
+import Data.Set (Set)
 
 import Data.Type.Rec (Rec)
-import Language.Spectacle.Checker.Step (Step)
-import Language.Spectacle.Checker.World (World)
+import Data.World (World)
 import Language.Spectacle.Exception.RuntimeException (RuntimeException)
+import Language.Spectacle.Checker.Step
+import Language.Spectacle.Checker.Fingerprint (Fingerprint)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
 -- | 'MCError' is a sum of the kinds of errors the model checker can emit when it fails.
 --
 -- @since 0.1.0.0
-data MCError ctx
+data MCError ctxt
   = -- | 'MCInitialError' reports a 'RuntimeException' that occured while evaluating a model's initial action.
     MCInitialError
       RuntimeException
@@ -53,12 +56,19 @@ data MCError ctx
   | -- | 'MCActionError' is an error occuring in the expansion of a model's next-state relation. It gives the world the
     -- action cannot be run from along with the 'RuntimeException' raised when evaluating the next-state relation.
     MCActionError
-      (World ctx)
+      (World ctxt)
       RuntimeException
   | -- | 'MCImpasseError' is emitted when the next-state relation successfully evaluates but produces an empty set. The
     -- 'World' which is not related to any new states is given here.
     MCImpasseError
-      (World ctx)
+      (World ctxt)
+  | -- | 'MCEventuallyError' is emitted when the an A-step qualified with @Eventually A@ is never taken. The initial
+    -- world, final world, unsatisfied step names, and depth of the final world are provided.
+    MCEventuallyError
+      Fingerprint
+      Fingerprint
+      (Set String)
+      Int
   | -- | 'MCStutterError' is an elaboration on 'MCFormulaError' that occurs specifically for when a model's temporal
     -- formula is not satisfied for a stuttering-step.
     --
@@ -72,20 +82,20 @@ data MCError ctx
     --
     -- @w_1 -> w_1 -> w_2@
     MCStutterError
-      (Step ctx)
+      (Step ctxt)
       (Maybe SrcLoc)
       PropertyKind
       StutterKind
   | -- | 'MCFormulaError' is an error for when a property of the temporal formula is violated. The step
     -- violating the property, the kind of modality for the property, and the source location of that property are given.
     MCFormulaError
-      (Step ctx)
+      (Step ctxt)
       (Maybe SrcLoc)
       PropertyKind
   | -- | 'MCFormulaRuntimeError' is emitted when a 'RuntimeException' is raised while evaluating a model's temporal
     -- formula. Realistically the only exception that could show up here is a level-mismatch in the temporal formula.
     MCFormulaRuntimeError
-      (Step ctx)
+      (Step ctxt)
       RuntimeException
   | -- | 'MCStrongLivenessError' is produced when a strong-fair process failed to satisfy a liveness property of the
     -- model. The source location of the property is given here.
@@ -95,7 +105,7 @@ data MCError ctx
     -- bugs in the model checker are obvious.
     MCInternalError InternalErrorKind
 
-deriving instance Show (Rec ctx) => Show (MCError ctx)
+deriving instance Show (Rec ctxt) => Show (MCError ctxt)
 
 -- | An an enumeration of the kinds of stuttering-steps that can occur while model checking.
 --

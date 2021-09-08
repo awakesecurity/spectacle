@@ -44,12 +44,12 @@ fingerprintRec world = Fingerprint (hash world)
 --
 -- @since 0.1.0.0
 showAsHex :: Int -> String
-showAsHex = go 8
+showAsHex = go 0
   where
     go :: Int -> Int -> String
     go i n
-      | i <= 0 = [fastToHexEnum (n .&. 0xF)]
-      | otherwise = fastToHexEnum (rotateR n (i * 4) .&. 0xF) : go (i - 1) n
+      | i < 8 = fastToHexEnum (rotateR n (4*i) .&. 0xF) : go (i + 1) n
+      | otherwise = []
 {-# INLINE showAsHex #-}
 
 -- | Converts an 'n :: Int' in the interval [0, 15] to @['0' .. '9']@ if @n <= 9@, otherwise @n@ is mapped to

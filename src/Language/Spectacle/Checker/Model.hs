@@ -1,416 +1,386 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TupleSections #-}
+
 module Language.Spectacle.Checker.Model
-  ( -- * Model Monad Stack
-    Model (Model),
-    runModel,
-
-    -- * Model Operations
-    stepInitial,
-    stepNextModel,
-
-    -- * Model Checking Operations
-    -- TODO: checkTermination,
-    checkFormula,
-    checkTerms,
-    checkAlways,
-    checkEventually,
-    checkUpUntil,
-
-    -- * Model Predicates
-    isExploredWorld,
-    isUnexploredWorld,
-    isExploredFingerprint,
-    isUnexploredFingerprint,
-
-    -- * World Operations
-    propagateLiveness,
-
-    -- * Errors
-    -- TODO: cyclicLivenessErrors,
+  ( -- * Model Operations
+    modelNextSets,
+    modelFairScheduling,
   )
 where
 
-import Control.Applicative
-import Control.Monad (forM, forM_, guard, join, unless, void, when, filterM)
-import Control.Monad.Except (MonadError (catchError, throwError))
-import Control.Monad.Reader (MonadReader (local))
-import Data.Bifunctor (Bifunctor (first))
-import Data.Hashable (Hashable)
-import qualified Data.IntMap as IntMap
-import qualified Data.IntSet as IntSet
-import Data.List (nub)
+import Control.Monad.Except
+import Data.Hashable
+import Data.Kind
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
-import GHC.Stack (SrcLoc)
-import Debug.Trace
-import Lens.Micro (set, to, (^.))
-import Lens.Micro.Mtl (use, view, (%=), (+=), (.=), (<~))
-import Data.IntSet (IntSet)
 
-import Data.Type.Rec (Rec)
-import Language.Spectacle.AST (runAction, runInvariant, runTerminate)
-import Language.Spectacle.Checker.Cover
-import Language.Spectacle.Checker.CoverageMap (coverageInfo)
-import Language.Spectacle.Checker.Fairness (Fairness (StrongFair, Unfair, WeakFair))
-import Language.Spectacle.Checker.Fingerprint (Fingerprint)
-import Language.Spectacle.Checker.Cycle
-import Language.Spectacle.Checker.Graph
-import Language.Spectacle.Checker.Model.Internal
-import Language.Spectacle.Checker.Model.MCError
-  ( InternalErrorKind (EmptyDisjunctQueueK),
-    MCError
-      ( MCActionError,
-        MCFormulaError,
-        MCFormulaRuntimeError,
-        MCImpasseError,
-        MCInternalError,
-        MCStutterError
-      ),
-    PropertyKind (AlwaysPropK, EventuallyPropK, UpUntilPropK),
-    StutterKind (FiniteStutterK, InfiniteStutterK),
-  )
-import Language.Spectacle.Checker.Model.ModelEnv
-  ( DisjunctZipper (LeftBranch, RightBranch),
-    disjunctQueue,
-    livenessPropertyNames,
-    modelAction,
-    modelFairness,
-    modelFormula,
-    modelTerminate,
-    srcLocMap,
-  )
-import Control.Monad.Levels
-import Language.Spectacle.Checker.Step
-  ( Step (Step),
-    StepImage (StepImage),
-    makeReflexStep,
-    makeStep,
-    stepFrom,
-    stepTo,
-    toStepImage,
-  )
-import Language.Spectacle.Checker.Truth (TruthTable (TruthTable), stepImageTruthTable, stepTruth)
-import Language.Spectacle.Checker.Universe (modelDepth, truthCoverage, worldCoverage)
-import Language.Spectacle.Checker.World (World (World), newWorld, worldFingerprint, worldValues)
-import Language.Spectacle.RTS.Registers (newValues)
-import Language.Spectacle.Syntax.Modal.Term
-  ( Term
-      ( Always,
-        Complement,
-        Conjunct,
-        Disjunct,
-        Eventually,
-        InfinitelyOften,
-        StaysAs,
-        UpUntil,
-        Value
-      ),
-  )
+import Data.Context
+import Data.Type.Rec
+import Data.World
+import Language.Spectacle.Checker.Fingerprint
+import Language.Spectacle.Checker.MCError
+import Language.Spectacle.Specification.Action
 
 -- ---------------------------------------------------------------------------------------------------------------------
 -- Model Operations
 
-stepInitial ::
-  (Show (Rec ctx), Hashable (Rec ctx)) =>
-  World ctx ->
-  Model ctx (Set (World ctx))
-stepInitial = stepModel 0 . Set.singleton
+modelNextSets ::
+  forall (m :: Context -> [Type] -> Type -> Type) (ctxt :: Context) (acts :: [Type]).
+  (MonadError [MCError ctxt] (m ctxt acts), Hashable (Rec ctxt)) =>
+  World ctxt ->
+  ActionSpine ctxt acts ->
+  m ctxt acts [ActionSet ctxt]
+modelNextSets worldHere spine =
+  case spineToActionSets worldHere spine of
+    Left err -> throwError [MCActionError worldHere err]
+    Right results -> return results
+{-# INLINE modelNextSets #-}
 
-stepModel ::
-  (Show (Rec ctx), Hashable (Rec ctx)) =>
-  Int ->
-  Set (World ctx) ->
-  Model ctx (Set (World ctx))
-stepModel depth worlds = do
-  nextWorlds <- foldr (liftA2 (<>) . stepNextModel (depth + 1)) (pure Set.empty) worlds
-
-  if Set.null nextWorlds
-    then empty
-    else pure worlds <|> stepModel (depth + 1) nextWorlds
-
-stepNextModel ::
-  (Show (Rec ctx), Hashable (Rec ctx)) =>
-  Int ->
-  World ctx ->
-  Model ctx (Set (World ctx))
-stepNextModel depth worldHere@(World fingerprint _) = do
-  trace ("step here: " ++ show worldHere) (pure ())
-  trace ("step depth: " ++ show depth) (pure ())
-
-  explored <- isExploredFingerprint fingerprint
-
-  view modelFairness >>= \case
-    Unfair
-      | explored -> stopModel depth
-      | otherwise -> error "unfair process: unexplored!"
-    WeakFair
-      | explored -> do
-        allProps <- view livenessPropertyNames
-        satProps <- use (worldCoverage . coverageInfo fingerprint . livenessProperties)
-        let unsatProps = allProps `IntSet.difference` satProps
-
-        trace (show worldHere ++ " sats " ++ show satProps) (pure ())
-
-        if IntSet.null unsatProps
-          then stopModel depth
-          else weakLiveness unsatProps depth worldHere
-      | otherwise -> do
-        worldsThere <- takeAction worldHere
-        forM_ worldsThere \worldThere -> do
-          let step = makeStep worldHere worldThere
-          checkFormula step
-        worldCoverage . coverageInfo fingerprint . hasBeenExplored .= True
-        return worldsThere
-    StrongFair
-      | explored -> error "strong fair: explored!"
-      | otherwise -> error "strong fair: unexplored!"
+modelFairScheduling :: Map String ActionInfo -> Set (String, Set Fingerprint) -> Set (String, Set Fingerprint)
+modelFairScheduling actionInfos = foldMap \(action, nexts) ->
+  let fairness = maybe Unfair actionInfoFairness (Map.lookup action actionInfos)
+   in if fairness == Unfair
+        then Set.empty
+        else Set.singleton (action, nexts)
+{-# INLINE modelFairScheduling #-}
 
 
 
-stepNextUnique :: (Show (Rec ctx), Hashable (Rec ctx)) => World ctx -> Model ctx ()
-stepNextUnique worldHere@(World fingerprint _) = do
-  guard . not =<< isExploredWorld worldHere
-  worldCoverage . coverageInfo fingerprint . hasBeenExplored .= True
+-- stepModelNextSets ::
+--   forall ctxt acts.
+--   (Show (Rec ctxt), Hashable (Rec ctxt)) =>
+--   World ctxt ->
+--   Model ctxt acts [ActionSet ctxt]
+-- stepModelNextSets worldHere = do
+--   actionSets <- sequence . foldActionCtxt <$> view mcEnvActions
 
-stopModel :: Int -> Model ctx (Set a)
-stopModel depth = do
-  modelDepth %= max depth
-  return Set.empty
+--   case actionSets of
+--     Left err -> throwError [err]
+--     Right results -> forM results \actionSet ->
+--       if Set.null (actionStates actionSet)
+--         then do
+--           actionPropInfo <- Map.lookup (actionName actionSet) <$> view mcEnvPropInfo
 
-weakLiveness ::
-  (Hashable (Rec ctx), Show (Rec ctx)) =>
-  IntSet ->
-  Int ->
-  World ctx ->
-  Model ctx (Set (World ctx))
-weakLiveness props depth worldHere@(World fingerprint _) = do
-  enabledNexts <- takeEnabledNexts fingerprint
+--           if maybe False propInfoIsAlways actionPropInfo
+--             then throwError [MCImpasseError worldHere]
+--             else return actionSet
+--         else return actionSet
+--   where
+--     foldActionCtxt ::
+--       ActionCtxt ctxt acts ->
+--       [Either (MCError ctxt) (ActionSet ctxt)]
+--     foldActionCtxt = \case
+--       ActionCtxtNil -> []
+--       ActionCtxtCon anAct ctxt -> evalAnAction anAct : foldActionCtxt ctxt
 
-  trace ("world: " ++ show worldHere) (pure ())
+--     evalAnAction ::
+--       AnAction ctxt acts' ->
+--       Either (MCError ctxt) (ActionSet ctxt)
+--     evalAnAction = \case
+--       ActionHere _ act -> actionQuotient worldHere act
+--       ActionThere actions -> evalAnAction actions
 
-  if Set.null enabledNexts
-    then do
-      -- stopModel depth
-      error "no enabled nexts"
-      -- trace ("marking out world: " ++ show worldHere) (pure ())
-      -- cycles <- takeCyclesFrom fingerprint <$> use worldCoverage
+-- stepInitial ::
+--   (Show (Rec ctx), Hashable (Rec ctx)) =>
+--   World ctx ->
+--   Model ctx (Set (World ctx))
+-- stepInitial = stepModel 0 . Set.singleton
 
-      -- forM_ cycles \case
-      --   (DeadEnd _, _) -> return ()
-      --   (CompleteCycle _, xs) -> disableCycle fingerprint xs
+-- stepModel ::
+--   (Show (Rec ctx), Hashable (Rec ctx)) =>
+--   Int ->
+--   Set (World ctx) ->
+--   Model ctx (Set (World ctx))
+-- stepModel depth worlds = do
+--   nextWorlds <- foldr (liftA2 (<>) . stepNextModel (depth + 1)) (pure Set.empty) worlds
 
-      -- stopModel depth
-    else do
-      cycles <- takeCyclesFrom fingerprint <$> use worldCoverage
-      worldsThere <- takeAction worldHere
+--   if Set.null nextWorlds
+--     then empty
+--     else pure worlds <|> stepModel (depth + 1) nextWorlds
 
-      foreach worldsThere \worldThere@(World there _) -> do
-        if Set.member there enabledNexts
-          then do
-            let loops = takeClosedCycles there cycles
+-- stepNextModel ::
+--   (Show (Rec ctx), Hashable (Rec ctx)) =>
+--   Int ->
+--   World ctx ->
+--   Model ctx (Set (World ctx))
+-- stepNextModel depth worldHere@(World fingerprint _) = do
+--   trace ("step here: " ++ show worldHere) (pure ())
+--   trace ("step depth: " ++ show depth) (pure ())
 
-            forM_ loops \case
-              (DeadEnd _, _) -> return ()
-              (ClosedCycle there', loop) -> do
-                disableCycle fingerprint loop
-                worldCoverage . coverageInfo fingerprint . disabledNextWorlds %= Set.insert there'
+--   explored <- isExploredFingerprint fingerprint
 
-            -- error (show cycles)
-            return (Set.singleton worldThere)
-          else return Set.empty
+--   view modelFairness >>= \case
+--     Unfair
+--       | explored -> stopModel depth
+--       | otherwise -> error "unfair process: unexplored!"
+--     WeakFair
+--       | explored -> do
+--         allProps <- view livenessPropertyNames
+--         satProps <- use (worldCoverage . coverageInfo fingerprint . livenessProperties)
+--         let unsatProps = allProps `IntSet.difference` satProps
 
+--         trace (show worldHere ++ " sats " ++ show satProps) (pure ())
 
-takeEnabledNexts :: Fingerprint -> Model ctx (Set Fingerprint)
-takeEnabledNexts fingerprint = do
-  nexts <- use (worldCoverage . coverageInfo fingerprint . nextWorlds)
-  disabledNexts <- use (worldCoverage . coverageInfo fingerprint . disabledNextWorlds)
-  return (nexts `Set.difference` disabledNexts)
+--         if IntSet.null unsatProps
+--           then stopModel depth
+--           else weakLiveness unsatProps depth worldHere
+--       | otherwise -> do
+--         worldsThere <- takeAction worldHere
+--         forM_ worldsThere \worldThere -> do
+--           let step = makeStep worldHere worldThere
+--           checkFormula step
+--         worldCoverage . coverageInfo fingerprint . hasBeenExplored .= True
+--         return worldsThere
+--     StrongFair
+--       | explored -> error "strong fair: explored!"
+--       | otherwise -> error "strong fair: unexplored!"
 
-isDisabledWorld ::  Fingerprint -> Model ctx Bool
-isDisabledWorld fingerprint = do
-  nexts <- use (worldCoverage . coverageInfo fingerprint . nextWorlds)
-  disabled <- use (worldCoverage . coverageInfo fingerprint . disabledNextWorlds)
-  return (nexts == disabled)
+-- stepNextUnique :: (Show (Rec ctx), Hashable (Rec ctx)) => World ctx -> Model ctx ()
+-- stepNextUnique worldHere@(World fingerprint _) = do
+--   guard . not =<< isExploredWorld worldHere
+--   worldCoverage . coverageInfo fingerprint . hasBeenExplored .= True
 
-disableCycle :: Fingerprint -> [Fingerprint] -> Model ctx ()
-disableCycle _ [] = return ()
-disableCycle here (there : xs) = do
-  worldCoverage . coverageInfo here . disabledNextWorlds %= Set.insert there
-  propagateLiveness (StepImage here there)
-  disableCycle there xs
+-- stopModel :: Int -> Model ctx (Set a)
+-- stopModel depth = do
+--   modelDepth %= max depth
+--   return Set.empty
 
-takeAction ::
-  (Hashable (Rec ctx)) =>
-  World ctx ->
-  Model ctx (Set (World ctx))
-takeAction worldHere@(World fingerprint _) = do
-  worlds <- actionQuotient worldHere <$> view modelAction
-  case worlds of
-    Left mcerr -> throwError [mcerr]
-    Right ReflexiveClass -> checkInfiniteReflexStep worldHere >> empty
-    Right (EquivalenceClass worldsThere) -> do
-      worldCoverage . coverageInfo fingerprint . nextWorlds .= Set.map (^. worldFingerprint) worldsThere
-      return worldsThere
+-- weakLiveness ::
+--   (Hashable (Rec ctx), Show (Rec ctx)) =>
+--   IntSet ->
+--   Int ->
+--   World ctx ->
+--   Model ctx (Set (World ctx))
+-- weakLiveness props depth worldHere@(World fingerprint _) = do
+--   enabledNexts <- takeEnabledNexts fingerprint
 
-takeFormulaTerms :: Step ctx -> Model ctx (Term Bool)
-takeFormulaTerms step@(Step worldHere worldThere) = do
-  formula <- view modelFormula
-  case runInvariant True (worldHere ^. worldValues) (worldThere ^. worldValues) formula of
-    Left err -> throwError [MCFormulaRuntimeError step err]
-    Right terms -> return terms
+--   trace ("world: " ++ show worldHere) (pure ())
 
--- | Checks if extending the current execution trace with an infinite sequence of stutter-step violates the temporal
--- formula.
---
--- @since 0.1.0.0
-checkInfiniteReflexStep :: World ctx -> Model ctx ()
-checkInfiniteReflexStep world@(World fingerprint _) = do
-  let step = makeReflexStep world
+--   if Set.null enabledNexts
+--     then do
+--       -- stopModel depth
+--       error "no enabled nexts"
+--       -- trace ("marking out world: " ++ show worldHere) (pure ())
+--       -- cycles <- takeCyclesFrom fingerprint <$> use worldCoverage
 
-  checkFormula step
+--       -- forM_ cycles \case
+--       --   (DeadEnd _, _) -> return ()
+--       --   (CompleteCycle _, xs) -> disableCycle fingerprint xs
 
-  -- check if all liveness properties have been satisfies here. for an infinite w --> w, if there is some liveness
-  -- property which has not yet been satisfied, then it will never be satisfied.
-  allProps <- view livenessPropertyNames
-  satProps <- use (worldCoverage . coverageInfo fingerprint . livenessProperties)
-  let unsatProps = allProps `IntSet.difference` satProps
+--       -- stopModel depth
+--     else do
+--       cycles <- takeCyclesFrom fingerprint <$> use worldCoverage
+--       worldsThere <- takeAction worldHere
 
-  unless (IntSet.null unsatProps) do
-    errs <- forM (IntSet.toList unsatProps) \prop -> do
-      srcLoc <- IntMap.lookup prop <$> view srcLocMap
-      return (MCFormulaError step (join srcLoc) EventuallyPropK)
+--       foreach worldsThere \worldThere@(World there _) -> do
+--         if Set.member there enabledNexts
+--           then do
+--             let loops = takeClosedCycles there cycles
 
-    throwError errs
+--             forM_ loops \case
+--               (DeadEnd _, _) -> return ()
+--               (ClosedCycle there', loop) -> do
+--                 disableCycle fingerprint loop
+--                 worldCoverage . coverageInfo fingerprint . disabledNextWorlds %= Set.insert there'
 
--- | @'checkFormula' step@ checks @step@ satisfies the models temporal formula, throwing a model checker error if the
--- formula is violated.
---
--- @since 0.1.0.0
-checkFormula :: Step ctx -> Model ctx ()
-checkFormula step@(Step worldHere _) = do
-  fairness <- view modelFairness
+--             -- error (show cycles)
+--             return (Set.singleton worldThere)
+--           else return Set.empty
 
-  case fairness of
-    Unfair -> do
-      void . checkTerms step =<< takeFormulaTerms step
-      checkInfiniteReflexStep worldHere
-      propagateLiveness (toStepImage step)
-    WeakFair -> do
-      let stutter = makeReflexStep worldHere
+-- takeEnabledNexts :: Fingerprint -> Model ctx (Set Fingerprint)
+-- takeEnabledNexts fingerprint = do
+--   nexts <- use (worldCoverage . coverageInfo fingerprint . nextWorlds)
+--   disabledNexts <- use (worldCoverage . coverageInfo fingerprint . disabledNextWorlds)
+--   return (nexts `Set.difference` disabledNexts)
 
-      void . checkTerms step =<< takeFormulaTerms step
-      void . checkTerms stutter =<< takeFormulaTerms stutter
+-- isDisabledWorld ::  Fingerprint -> Model ctx Bool
+-- isDisabledWorld fingerprint = do
+--   nexts <- use (worldCoverage . coverageInfo fingerprint . nextWorlds)
+--   disabled <- use (worldCoverage . coverageInfo fingerprint . disabledNextWorlds)
+--   return (nexts == disabled)
 
-      propagateLiveness (toStepImage step)
-    StrongFair -> do
-      let stutter = makeReflexStep worldHere
-      void . checkTerms step =<< takeFormulaTerms step
-      void . checkTerms stutter =<< takeFormulaTerms stutter
-      propagateLiveness (toStepImage step)
+-- disableCycle :: Fingerprint -> [Fingerprint] -> Model ctx ()
+-- disableCycle _ [] = return ()
+-- disableCycle here (there : xs) = do
+--   worldCoverage . coverageInfo here . disabledNextWorlds %= Set.insert there
+--   propagateLiveness (StepImage here there)
+--   disableCycle there xs
 
-checkTerms :: Step ctx -> Term Bool -> Model ctx Bool
-checkTerms step = \case
-  Value x -> return x
-  Conjunct e1 e2 -> liftA2 (&&) (checkTerms step e1) (checkTerms step e2)
-  Disjunct e1 e2 ->
-    view disjunctQueue >>= \case
-      [] -> throwError [MCInternalError EmptyDisjunctQueueK]
-      LeftBranch : xs -> local (set disjunctQueue xs) (checkTerms step e1)
-      RightBranch : xs -> local (set disjunctQueue xs) (checkTerms step e2)
-  Complement e -> not <$> checkTerms step e
-  Always srcLoc name e -> checkAlways step name srcLoc e
-  Eventually _ name e -> checkEventually step name e
-  UpUntil srcLoc name e1 e2 -> checkUpUntil step name srcLoc e1 e2
-  StaysAs _ name e -> do
-    result <- checkTerms step e
-    truthCoverage . stepTruth step name .= result
-    return result
-  InfinitelyOften _ name e -> do
-    result <- checkTerms step e
-    truthCoverage . stepTruth step name .= result
-    return result
+-- takeAction ::
+--   (Hashable (Rec ctx)) =>
+--   World ctx ->
+--   Model ctx (Set (World ctx))
+-- takeAction worldHere@(World fingerprint _) = do
+--   undefined
+--   -- worlds <- actionQuotient worldHere <$> view modelAction
+--   -- case worlds of
+--   --   Left mcerr -> throwError [mcerr]
+--   --   Right (ActionSet name worldsThere) -> do
+--   --     worldCoverage . coverageInfo fingerprint . nextWorlds .= Set.map (^. worldFingerprint) worldsThere
+--   --     return worldsThere
 
--- | @'checkAlways' step name srcLoc e@ checks a formula @always e@ identified by @name@ for the model-step @step@.
---
--- @since 0.1.0.0
-checkAlways :: forall ctx. Step ctx -> Int -> Maybe SrcLoc -> Term Bool -> Model ctx Bool
-checkAlways step name srcLoc term = do
-  result <- checkTerms step term
-  truthCoverage . stepTruth step name .= result
-  if result
-    then return result
-    else throwError [MCFormulaError step srcLoc AlwaysPropK]
-{-# INLINE checkAlways #-}
+-- takeFormulaTerms :: Step ctx -> Model ctx (Term Bool)
+-- takeFormulaTerms step@(Step worldHere worldThere) = do
+--   formula <- view modelFormula
+--   case runInvariant True (worldHere ^. worldValues) (worldThere ^. worldValues) formula of
+--     Left err -> throwError [MCFormulaRuntimeError step err]
+--     Right terms -> return terms
 
--- | @'checkEventually' step name e@ checks a formula @eventually e@ identified by @name@ for the model-step @step@.
---
--- @since 0.1.0.0
-checkEventually :: Step ctx -> Int -> Term Bool -> Model ctx Bool
-checkEventually step@(Step worldHere worldThere) name e = do
-  result <- checkTerms step e
-  truthCoverage . stepTruth step name .= result
+-- -- | Checks if extending the current execution trace with an infinite sequence of stutter-step violates the temporal
+-- -- formula.
+-- --
+-- -- @since 0.1.0.0
+-- checkInfiniteReflexStep :: World ctx -> Model ctx ()
+-- checkInfiniteReflexStep world@(World fingerprint _) = do
+--   let step = makeReflexStep world
 
-  when result do
-    worldCoverage . coverageInfo (worldHere ^. worldFingerprint) . livenessProperties %= IntSet.insert name
-    worldCoverage . coverageInfo (worldThere ^. worldFingerprint) . livenessProperties %= IntSet.insert name
+--   checkFormula step
 
-  return True
-{-# INLINE checkEventually #-}
+--   -- check if all liveness properties have been satisfies here. for an infinite w --> w, if there is some liveness
+--   -- property which has not yet been satisfied, then it will never be satisfied.
+--   allProps <- view livenessPropertyNames
+--   satProps <- use (worldCoverage . coverageInfo fingerprint . livenessProperties)
+--   let unsatProps = allProps `IntSet.difference` satProps
 
-checkUpUntil :: Step ctx -> Int -> Maybe SrcLoc -> Term Bool -> Term Bool -> Model ctx Bool
-checkUpUntil step@(Step worldHere worldThere) name srcLoc e1 e2 = do
-  result1 <- checkTerms step e1
-  result2 <- checkTerms step e2
-  truthCoverage . stepTruth step name .= result2
+--   unless (IntSet.null unsatProps) do
+--     errs <- forM (IntSet.toList unsatProps) \prop -> do
+--       srcLoc <- IntMap.lookup prop <$> view srcLocMap
+--       return (MCFormulaError step (join srcLoc) EventuallyPropK)
 
-  unless (result1 || result2) (throwError [MCFormulaError step srcLoc UpUntilPropK])
+--     throwError errs
 
-  when result2 do
-    worldCoverage . coverageInfo (worldHere ^. worldFingerprint) . livenessProperties %= IntSet.insert name
-    worldCoverage . coverageInfo (worldThere ^. worldFingerprint) . livenessProperties %= IntSet.insert name
+-- -- | @'checkFormula' step@ checks @step@ satisfies the models temporal formula, throwing a model checker error if the
+-- -- formula is violated.
+-- --
+-- -- @since 0.1.0.0
+-- checkFormula :: Step ctx -> Model ctx ()
+-- checkFormula step@(Step worldHere _) = do
+--   fairness <- view modelFairness
 
-  return (result1 || result2)
-{-# INLINE checkUpUntil #-}
+--   case fairness of
+--     Unfair -> do
+--       void . checkTerms step =<< takeFormulaTerms step
+--       checkInfiniteReflexStep worldHere
+--       propagateLiveness (toStepImage step)
+--     WeakFair -> do
+--       let stutter = makeReflexStep worldHere
 
--- | If @s@ is the given 'StepImage', @'propagateLiveness' s@ updates the coverage information such that all liveness
--- properties satisfied by the initial world in step are also satisfied by the terminal world in the step. The
--- implication being if @eventually p@ is true for a world @w_n@, then it follows that @eventually p@ is also true for
--- a world @w_n+1@.
---
--- @since 0.1.0.0
-propagateLiveness :: StepImage -> Model ctx ()
-propagateLiveness step@(StepImage fromWorld toWorld) = do
-  satProps <- use (worldCoverage . coverageInfo fromWorld . livenessProperties)
+--       void . checkTerms step =<< takeFormulaTerms step
+--       void . checkTerms stutter =<< takeFormulaTerms stutter
 
-  worldCoverage . coverageInfo toWorld . livenessProperties .= satProps
-  truthCoverage . stepImageTruthTable step .= TruthTable (IntSet.foldr (`IntMap.insert` True) IntMap.empty satProps)
+--       propagateLiveness (toStepImage step)
+--     StrongFair -> do
+--       let stutter = makeReflexStep worldHere
+--       void . checkTerms step =<< takeFormulaTerms step
+--       void . checkTerms stutter =<< takeFormulaTerms stutter
+--       propagateLiveness (toStepImage step)
 
--- | A predicate for if the given world has been explored by the model checker.
---
--- @since 0.1.0.0
-isExploredWorld :: World ctx -> Model ctx Bool
-isExploredWorld world = isExploredFingerprint (world ^. worldFingerprint)
-{-# INLINE isExploredWorld #-}
+-- checkTerms :: Step ctx -> Term Bool -> Model ctx Bool
+-- checkTerms step = \case
+--   Value x -> return x
+--   Conjunct e1 e2 -> liftA2 (&&) (checkTerms step e1) (checkTerms step e2)
+--   Disjunct e1 e2 ->
+--     view disjunctQueue >>= \case
+--       [] -> throwError [MCInternalError EmptyDisjunctQueueK]
+--       LeftBranch : xs -> local (set disjunctQueue xs) (checkTerms step e1)
+--       RightBranch : xs -> local (set disjunctQueue xs) (checkTerms step e2)
+--   Complement e -> not <$> checkTerms step e
+--   Always srcLoc name e -> checkAlways step name srcLoc e
+--   Eventually _ name e -> checkEventually step name e
+--   UpUntil srcLoc name e1 e2 -> checkUpUntil step name srcLoc e1 e2
+--   StaysAs _ name e -> do
+--     result <- checkTerms step e
+--     truthCoverage . stepTruth step name .= result
+--     return result
+--   InfinitelyOften _ name e -> do
+--     result <- checkTerms step e
+--     truthCoverage . stepTruth step name .= result
+--     return result
 
--- | A predicate for if the given world has not yet been explored.
---
--- @since 0.1.0.0
-isUnexploredWorld :: World ctx -> Model ctx Bool
-isUnexploredWorld = fmap not . isExploredWorld
-{-# INLINE isUnexploredWorld #-}
+-- -- | @'checkAlways' step name srcLoc e@ checks a formula @always e@ identified by @name@ for the model-step @step@.
+-- --
+-- -- @since 0.1.0.0
+-- checkAlways :: forall ctx. Step ctx -> Int -> Maybe SrcLoc -> Term Bool -> Model ctx Bool
+-- checkAlways step name srcLoc term = do
+--   result <- checkTerms step term
+--   truthCoverage . stepTruth step name .= result
+--   if result
+--     then return result
+--     else throwError [MCFormulaError step srcLoc AlwaysPropK]
+-- {-# INLINE checkAlways #-}
 
--- | A predicate for if the given fingerprint has been explored.
---
--- @since 0.1.0.0
-isExploredFingerprint :: Fingerprint -> Model ctx Bool
-isExploredFingerprint fingerprint = use (worldCoverage . coverageInfo fingerprint . hasBeenExplored)
-{-# INLINE isExploredFingerprint #-}
+-- -- | @'checkEventually' step name e@ checks a formula @eventually e@ identified by @name@ for the model-step @step@.
+-- --
+-- -- @since 0.1.0.0
+-- checkEventually :: Step ctx -> Int -> Term Bool -> Model ctx Bool
+-- checkEventually step@(Step worldHere worldThere) name e = do
+--   result <- checkTerms step e
+--   truthCoverage . stepTruth step name .= result
 
--- | A predicate for if the given fingerprint has not yet been checked.
---
--- @since 0.1.0.0
-isUnexploredFingerprint :: Fingerprint -> Model ctx Bool
-isUnexploredFingerprint = fmap not . isExploredFingerprint
-{-# INLINE isUnexploredFingerprint #-}
+--   when result do
+--     worldCoverage . coverageInfo (worldHere ^. worldFingerprint) . livenessProperties %= IntSet.insert name
+--     worldCoverage . coverageInfo (worldThere ^. worldFingerprint) . livenessProperties %= IntSet.insert name
+
+--   return True
+-- {-# INLINE checkEventually #-}
+
+-- checkUpUntil :: Step ctx -> Int -> Maybe SrcLoc -> Term Bool -> Term Bool -> Model ctx Bool
+-- checkUpUntil step@(Step worldHere worldThere) name srcLoc e1 e2 = do
+--   result1 <- checkTerms step e1
+--   result2 <- checkTerms step e2
+--   truthCoverage . stepTruth step name .= result2
+
+--   unless (result1 || result2) (throwError [MCFormulaError step srcLoc UpUntilPropK])
+
+--   when result2 do
+--     worldCoverage . coverageInfo (worldHere ^. worldFingerprint) . livenessProperties %= IntSet.insert name
+--     worldCoverage . coverageInfo (worldThere ^. worldFingerprint) . livenessProperties %= IntSet.insert name
+
+--   return (result1 || result2)
+-- {-# INLINE checkUpUntil #-}
+
+-- -- | If @s@ is the given 'StepImage', @'propagateLiveness' s@ updates the coverage information such that all liveness
+-- -- properties satisfied by the initial world in step are also satisfied by the terminal world in the step. The
+-- -- implication being if @eventually p@ is true for a world @w_n@, then it follows that @eventually p@ is also true for
+-- -- a world @w_n+1@.
+-- --
+-- -- @since 0.1.0.0
+-- propagateLiveness :: StepImage -> Model ctx ()
+-- propagateLiveness step@(StepImage fromWorld toWorld) = do
+--   satProps <- use (worldCoverage . coverageInfo fromWorld . livenessProperties)
+
+--   worldCoverage . coverageInfo toWorld . livenessProperties .= satProps
+--   truthCoverage . stepImageTruthTable step .= TruthTable (IntSet.foldr (`IntMap.insert` True) IntMap.empty satProps)
+
+-- -- | A predicate for if the given world has been explored by the model checker.
+-- --
+-- -- @since 0.1.0.0
+-- isExploredWorld :: World ctx -> Model ctx Bool
+-- isExploredWorld world = isExploredFingerprint (world ^. worldFingerprint)
+-- {-# INLINE isExploredWorld #-}
+
+-- -- | A predicate for if the given world has not yet been explored.
+-- --
+-- -- @since 0.1.0.0
+-- isUnexploredWorld :: World ctx -> Model ctx Bool
+-- isUnexploredWorld = fmap not . isExploredWorld
+-- {-# INLINE isUnexploredWorld #-}
+
+-- -- | A predicate for if the given fingerprint has been explored.
+-- --
+-- -- @since 0.1.0.0
+-- isExploredFingerprint :: Fingerprint -> Model ctx Bool
+-- isExploredFingerprint fingerprint = use (worldCoverage . coverageInfo fingerprint . hasBeenExplored)
+-- {-# INLINE isExploredFingerprint #-}
+
+-- -- | A predicate for if the given fingerprint has not yet been checked.
+-- --
+-- -- @since 0.1.0.0
+-- isUnexploredFingerprint :: Fingerprint -> Model ctx Bool
+-- isUnexploredFingerprint = fmap not . isExploredFingerprint
+-- {-# INLINE isUnexploredFingerprint #-}
 
 {-
 
