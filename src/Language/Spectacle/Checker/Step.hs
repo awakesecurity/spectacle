@@ -36,8 +36,8 @@ import qualified Data.Sequence as Seq
 import Lens.Micro (Lens', lens, (^.))
 
 import Data.Type.Rec (Rec)
+import Data.World (World, worldFingerprint)
 import Language.Spectacle.Checker.Fingerprint (Fingerprint (Fingerprint))
-import Language.Spectacle.Checker.World (World, worldFingerprint)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
