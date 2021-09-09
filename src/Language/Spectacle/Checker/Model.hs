@@ -27,11 +27,11 @@ import Language.Spectacle.Specification.Action
 -- Model Operations
 
 modelNextSets ::
-  forall (m :: Context -> [Type] -> Type -> Type) (ctxt :: Context) (acts :: [Type]).
-  (MonadError [MCError ctxt] (m ctxt acts), Hashable (Rec ctxt)) =>
+  forall m (ctxt :: Context) (acts :: [Type]).
+  (MonadError [MCError ctxt] m, Hashable (Rec ctxt)) =>
   World ctxt ->
   ActionSpine ctxt acts ->
-  m ctxt acts [ActionSet ctxt]
+  m [ActionSet ctxt]
 modelNextSets worldHere spine =
   case spineToActionSets worldHere spine of
     Left err -> throwError [MCActionError worldHere err]

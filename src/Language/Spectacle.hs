@@ -1,13 +1,8 @@
 module Language.Spectacle
   ( -- * Model Checking
     defaultInteraction,
-    modelCheck,
-    unfair,
-    weakFair,
-    strongFair,
 
     -- * Syntax
-    type Initial,
     type Action,
     type Invariant,
     type Terminate,
@@ -23,7 +18,6 @@ module Language.Spectacle
     upUntil,
 
     -- ** Operators
-    define,
     (.=),
     enabled,
     throwE,
@@ -48,19 +42,16 @@ where
 import Data.Type.Rec (type (#))
 import Language.Spectacle.AST
   ( Action,
-    Initial,
     Invariant,
     Terminate,
   )
-import Language.Spectacle.Checker (modelCheck)
-import Language.Spectacle.Checker.Fairness (unfair, weakFair, strongFair)
+import Language.Spectacle.Checker
 import Language.Spectacle.Interaction (defaultInteraction)
 import Language.Spectacle.Syntax
   ( always,
     catchE,
     complement,
     conjunct,
-    define,
     disjunct,
     enabled,
     eventually,

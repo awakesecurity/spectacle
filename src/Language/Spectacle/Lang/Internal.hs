@@ -23,6 +23,7 @@ import Language.Spectacle.Lang.Member (Member (inject, injectS))
 import Language.Spectacle.Lang.Op (Op)
 import Language.Spectacle.Lang.Scoped (Effect, EffectK, Scoped)
 import Language.Spectacle.Syntax.NonDet.Internal (NonDet (Choose, Empty))
+import Data.Context
 
 -- -------------------------------------------------------------------------------------------------
 
@@ -36,19 +37,19 @@ import Language.Spectacle.Syntax.NonDet.Internal (NonDet (Choose, Empty))
 -- * The type parameter @effs@ is the set of effects a 'Lang' is capable of performing.
 --
 -- @since 0.1.0.0
-type Lang :: [Ascribe Symbol Type] -> [EffectK] -> Type -> Type
-data Lang ctx effs a where
+type Lang :: Context -> [EffectK] -> Type -> Type
+data Lang ctxt effs a where
   Pure ::
     a ->
-    Lang ctx effs a
+    Lang ctxt effs a
   Op ::
     Op effs a ->
-    (a -> Lang ctx effs b) ->
-    Lang ctx effs b
+    (a -> Lang ctxt effs b) ->
+    Lang ctxt effs b
   Scoped ::
-    Scoped effs (Lang ctx effs') a ->
-    Loom (Lang ctx effs') (Lang ctx effs) a b ->
-    Lang ctx effs b
+    Scoped effs (Lang ctxt effs') a ->
+    Loom (Lang ctxt effs') (Lang ctxt effs) a b ->
+    Lang ctxt effs b
 
 -- | Sends a constructor for the effect @eff@ for 'Lang' to handle.
 --

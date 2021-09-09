@@ -1,4 +1,7 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Language.Spectacle.Checker
@@ -6,171 +9,210 @@ module Language.Spectacle.Checker
   )
 where
 
-import Control.Monad.Except
-  ( ExceptT,
-    MonadError (throwError),
-    runExcept,
-  )
-import Control.Monad.State.Strict ()
-import Data.Either (partitionEithers)
-import Data.Foldable (Foldable (fold))
+import Control.Applicative (Alternative ((<|>)))
+import Control.Monad.Except (ExceptT, MonadError (throwError), runExceptT)
+import Control.Monad.Reader (MonadReader, ReaderT (runReaderT))
+import Control.Monad.State (MonadState, State, execState)
+import Data.Coerce (coerce)
 import Data.Hashable (Hashable)
+import qualified Data.IntMap.Strict as IntMap
 import Data.IntSet (IntSet)
 import qualified Data.IntSet as IntSet
-import qualified Data.Sequence as Seq
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Lens.Micro ((^.))
-import Data.Tree
+import Lens.Micro ((&), (^.))
+import Lens.Micro.Mtl (use, view, (%=), (.=))
 
-import Data.Type.Rec (Rec, ReflectRow)
-import Language.Spectacle.AST (applyRewrites, runInitial, runInvariant)
-import Language.Spectacle.Checker.CoverageMap (sizeCoverageMap)
-import Language.Spectacle.Checker.Fingerprint (Fingerprint)
-import Language.Spectacle.Checker.Metrics
-  ( ModelMetrics (ModelMetrics),
+import Control.Monad.Levels (LevelsT (LevelsT), runLevelsA, forAp, (<>=), foldMapAp)
+import Data.Type.Rec (Rec)
+import Data.World (World (World), worldFingerprint)
+import Language.Spectacle.Checker.Fingerprint (Fingerprint (Fingerprint))
+import Language.Spectacle.Checker.Liveness (livenessCheck)
+import Language.Spectacle.Checker.MCCoverageMap (MCCoverageMap (MCCoverageMap))
+import qualified Language.Spectacle.Checker.MCCoverageMap as MCCoverageMap
+import Language.Spectacle.Checker.MCEnv (MCEnv (MCEnv), mcEnvActionSpine, mcEnvPropInfo)
+import Language.Spectacle.Checker.MCError (MCError (MCActionError, MCImpasseError))
+import Language.Spectacle.Checker.MCState
+  ( MCState (MCState),
+    mcStateCoverageMap,
+    mcStateMaxDepth,
+    mcStateMaxWidth,
   )
-import Language.Spectacle.Checker.Model
-import Language.Spectacle.Checker.Model.MCError (MCError (MCFormulaRuntimeError, MCInitialError, MCNoInitialStatesError))
-import Language.Spectacle.Checker.Model.ModelEnv
-  ( DisjunctZipper (LeftBranch, RightBranch),
-    ModelEnv
-      ( ModelEnv,
-        _disjunctQueue,
-        _livenessPropertyNames,
-        _modelAction,
-        _modelFairness,
-        _modelFormula,
-        _modelInitialWorld,
-        _modelTerminate,
-        _modelTrace,
-        _srcLocMap
-      ),
-    makeDisjunctZips,
-    makeSrcLocMap,
-  )
-import Language.Spectacle.Checker.Step (Step, makeReflexStep)
-import Language.Spectacle.Checker.Universe (Universe, modelDepth, worldCoverage)
-import Language.Spectacle.Checker.World
-  ( World (World),
-    newWorld,
-    worldValues,
-  )
+import Language.Spectacle.Checker.MCWorldInfo (MCWorldInfo (MCWorldInfo))
 import Language.Spectacle.Specification
-  ( Specification
-      ( Specification,
-        fairnessConstraint,
-        initialAction,
-        nextAction,
-        temporalFormula,
-        terminationFormula
-      ),
+  ( Spec (Spec),
+    Specification,
+    specInitialWorlds,
   )
-import Language.Spectacle.Syntax.Modal.Term
-  ( Term
-      ( Always,
-        Complement,
-        Conjunct,
-        Disjunct,
-        Eventually,
-        InfinitelyOften,
-        StaysAs,
-        UpUntil,
-        Value
-      ),
+import Language.Spectacle.Specification.Action
+  ( ActionInfo,
+    ActionSet (ActionSet, actionSetName, actionSetWorlds),
+    ActionSpine,
+    HasActions (ActionCtxt, takeActionSpine),
+    spineToActionInfo,
+    spineToActionSets,
   )
-import Language.Spectacle.Syntax.NonDet (foldMapA, oneOf)
-import Data.Bag
-import Debug.Trace
-import qualified Data.Node as Bin
+import Language.Spectacle.Specification.Prop
+  ( HasProp (collectPropInfo),
+    PropInfo (propInfoIsAlways, propInfoIsEventually),
+  )
+import Language.Spectacle.Specification.Variable (HasVariables (VariableCtxt))
+import Language.Spectacle.Checker.MCMetrics
+import Language.Spectacle.Checker.Model
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
+newtype Model ctxt actions a where
+  Model ::
+    { runModel ::
+        LevelsT (ExceptT [MCError ctxt] (ReaderT (MCEnv ctxt actions) (State MCState))) a
+    } ->
+    Model ctxt actions a
+  deriving
+    ( Functor
+    , Applicative
+    , Monad
+    , Alternative
+    )
+  deriving
+    ( MonadReader (MCEnv ctxt actions)
+    , MonadState MCState
+    , MonadError [MCError ctxt]
+    )
+
 modelCheck ::
-  forall ctx.
-  (Hashable (Rec ctx), ReflectRow ctx, Show (Rec ctx)) =>
-  Specification ctx ->
-  Either [MCError ctx] ModelMetrics
-modelCheck spec = do
-  initialWorlds <- runExcept (runInitialAction spec)
-  let checks :: [Either [MCError ctx] ModelMetrics]
-      checks = foldMap (pure . runExcept . goModelCheck) initialWorlds
-  case partitionEithers checks of
-    ([], results) -> Right (fold results)
-    (excs, _) -> Left (concat excs)
-  where
-    goModelCheck :: Monad m => World ctx -> ExceptT [MCError ctx] m ModelMetrics
-    goModelCheck world = do
-      path <- oneOf =<< disjunctionPaths spec (world ^. worldValues)
-      env <- makeModelEnv spec world path
-      let (result, universe) = runModel env mempty (stepInitial world)
+  forall vars spec prop ctxt acts.
+  ( Specification vars spec prop
+  , VariableCtxt vars ~ ctxt
+  , ActionCtxt ctxt spec ~ acts
+  , Show (Rec ctxt)
+  , Hashable (Rec ctxt)
+  ) =>
+  Spec vars spec prop ->
+  Either [MCError ctxt] MCMetrics
+modelCheck spec@(Spec _ sp) = do
+  let initialWorlds :: Set (World ctxt)
+      initialWorlds = specInitialWorlds spec
 
-      case result of
-        Left excs -> throwError excs
-        Right _ -> return (ModelMetrics (sizeCoverageMap (universe ^. worldCoverage)) (universe ^. modelDepth) 0)
+      mcFinalState =
+        stepModel 0 initialWorlds
+          & runModel
+          & runLevelsA
+          & runExceptT
+          & flip runReaderT mcenv
+          & flip execState (MCState IntMap.empty (MCCoverageMap IntMap.empty) 0 0)
 
-runInitialAction ::
-  (Monad m, Hashable (Rec ctx), ReflectRow ctx) =>
-  Specification ctx ->
-  ExceptT [MCError ctx] m (Set (World ctx))
-runInitialAction Specification {..} =
-  case runInitial initialAction of
-    Left exc -> throwError [MCInitialError exc]
-    Right states
-      | null states -> throwError [MCNoInitialStatesError]
-      | otherwise -> return (foldMap (Set.singleton . newWorld) states)
-{-# INLINE runInitialAction #-}
-
-disjunctionPaths ::
-  (Monad m, Hashable (Rec ctx)) =>
-  Specification ctx ->
-  Rec ctx ->
-  ExceptT [MCError ctx] m [[DisjunctZipper]]
-disjunctionPaths Specification {..} world =
-  case runInvariant True world world (applyRewrites temporalFormula) of
-    Left exc -> throwError [MCFormulaRuntimeError (makeReflexStep (newWorld world)) exc]
-    Right terms -> return (makeDisjunctZips terms)
-{-# INLINE disjunctionPaths #-}
-
-makeModelEnv ::
-  forall ctx m.
-  Monad m =>
-  Specification ctx ->
-  World ctx ->
-  [DisjunctZipper] ->
-  ExceptT [MCError ctx] m (ModelEnv ctx)
-makeModelEnv Specification {..} initialWorld@(World _ values) disjuncts = do
-  let formula = applyRewrites temporalFormula
-  terms <- case runInvariant True values values formula of
-    Left exc -> throwError [MCFormulaRuntimeError (makeReflexStep initialWorld) exc]
-    Right terms -> return terms
+  livenessCheck
+    (takeEventuallyActions propInfo)
+    (Set.map (view worldFingerprint) initialWorlds)
+    (mcFinalState ^. mcStateCoverageMap)
+    actionInfo
 
   return
-    ModelEnv
-      { _modelFairness = fairnessConstraint
-      , _modelAction = nextAction
-      , _modelFormula = temporalFormula
-      , _modelTerminate = terminationFormula
-      , _modelTrace = Seq.empty
-      , _modelInitialWorld = initialWorld
-      , _livenessPropertyNames = getLivenessPropertyNames disjuncts terms
-      , _disjunctQueue = disjuncts
-      , _srcLocMap = makeSrcLocMap terms
+    MCMetrics
+      { _distinctStates = MCCoverageMap.size (view mcStateCoverageMap mcFinalState)
+      , _treeDepth = view mcStateMaxDepth mcFinalState
+      , _treeWidth = view mcStateMaxWidth mcFinalState
       }
-{-# INLINE makeModelEnv #-}
+  where
+    mcenv :: MCEnv ctxt acts
+    mcenv = MCEnv actionInfo spine propInfo
 
-getLivenessPropertyNames :: [DisjunctZipper] -> Term Bool -> IntSet
-getLivenessPropertyNames path = \case
-  Value {} -> IntSet.empty
-  Conjunct e1 e2 -> getLivenessPropertyNames path e1 <> getLivenessPropertyNames path e2
-  Disjunct e1 e2
-    | LeftBranch : path' <- path -> getLivenessPropertyNames path' e1
-    | RightBranch : path' <- path -> getLivenessPropertyNames path' e2
-    | otherwise -> undefined -- TODO
-  Complement e -> getLivenessPropertyNames path e
-  Always _ _ e -> getLivenessPropertyNames path e
-  Eventually _ name e -> IntSet.singleton name <> getLivenessPropertyNames path e
-  UpUntil _ name e1 e2 -> IntSet.singleton name <> getLivenessPropertyNames path e1 <> getLivenessPropertyNames path e2
-  StaysAs _ _ e -> getLivenessPropertyNames path e
-  InfinitelyOften _ _ e -> getLivenessPropertyNames path e
-{-# INLINE getLivenessPropertyNames #-}
+    actionInfo :: Map String ActionInfo
+    actionInfo = spineToActionInfo spine
+
+    propInfo :: Map String PropInfo
+    propInfo = collectPropInfo @prop
+
+    spine :: ActionSpine ctxt acts
+    spine = takeActionSpine sp
+
+stepModel ::
+  (Show (Rec ctxt), Hashable (Rec ctxt)) =>
+  Int ->
+  Set (World ctxt) ->
+  Model ctxt acts (Set Fingerprint)
+stepModel depth worldsHere
+  | Set.null worldsHere = do
+    stopModel depth
+  | otherwise = do
+    nextWorlds <- foldMapAp stepModelNext worldsHere
+    let worldsThere = Set.difference nextWorlds worldsHere
+
+    mcStateMaxWidth .= Set.size worldsThere
+
+    pure (Set.map (view worldFingerprint) worldsHere) <|> stepModel (depth + 1) worldsThere
+
+stopModel :: Int -> Model ctxt acts (Set a)
+stopModel depth = do
+  mcStateMaxDepth .= depth
+  return Set.empty
+
+stepModelNext ::
+  Hashable (Rec ctxt) =>
+  World ctxt ->
+  Model ctxt acts (Set (World ctxt))
+stepModelNext worldHere@(World fingerprint _) = do
+  explored <- MCCoverageMap.member fingerprint <$> use mcStateCoverageMap
+  nextSets <- modelNextSets worldHere =<< view mcEnvActionSpine
+  (stepInfo, worldsThere) <-
+    forAp nextSets \ActionSet {..} -> do
+      nexts <- stepModelCheck actionSetName worldHere actionSetWorlds
+      let worldInfo =
+            if not (Set.null actionSetWorlds)
+              then MCWorldInfo (foldr (takeEnabledActions actionSetName) Map.empty actionSetWorlds)
+              else MCWorldInfo Map.empty
+
+      return (worldInfo, nexts)
+
+  mcStateCoverageMap %= MCCoverageMap.insert fingerprint stepInfo
+
+  if explored
+    then pure Set.empty
+    else pure worldsThere
+  where
+    takeEnabledActions :: String -> World ctxt -> Map String IntSet -> Map String IntSet
+    takeEnabledActions action (World fpThere _) = flip Map.alter action \case
+      Nothing -> Just (IntSet.singleton (coerce fpThere))
+      Just fpsThere -> Just (IntSet.insert (coerce fpThere) fpsThere)
+
+stepModelCheck ::
+  String ->
+  World ctxt ->
+  Set (World ctxt) ->
+  Model ctxt acts (Set (World ctxt))
+stepModelCheck action worldHere worldsThere = do
+  stepModelCheckAlways action worldHere worldsThere
+
+stepModelCheckAlways ::
+  String ->
+  World ctxt ->
+  Set (World ctxt) ->
+  Model ctxt acts (Set (World ctxt))
+stepModelCheckAlways action worldHere worldsThere = do
+  isActionAlways <- maybe False propInfoIsAlways . Map.lookup action <$> view mcEnvPropInfo
+
+  if isActionAlways && Set.null worldsThere
+    then throwError [MCImpasseError worldHere]
+    else do
+      return worldsThere
+
+takeEventuallyActions :: Map String PropInfo -> Set String
+takeEventuallyActions = Map.foldrWithKey go Set.empty
+  where
+    go :: String -> PropInfo -> Set String -> Set String
+    go action info xs
+      | propInfoIsEventually info = Set.insert action xs
+      | otherwise = xs
+
+data Transition ctxt = Transition (World ctxt) (World ctxt)
+
+instance Eq (Transition ctxt) where
+  Transition here1 there1 == Transition here2 there2 = here1 == here2 && there1 == there2
+
+instance Ord (Transition ctxt) where
+  compare (Transition here1 there1) (Transition here2 there2) = case compare here1 here2 of
+    EQ -> compare there1 there2
+    comp -> comp

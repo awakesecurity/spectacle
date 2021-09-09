@@ -9,7 +9,12 @@ module Language.Spectacle.Checker.Replayer
   ( -- *
     Replayer (Replayer),
     runReplayer,
-    replayModel,
+    replayModelTrace,
+
+    -- * Behavior
+    Behavior (Behavior),
+    behaviorDepth,
+    behaviorActions,
   )
 where
 
@@ -139,7 +144,7 @@ instance Monoid Behavior where
   mempty = Behavior 0 Set.empty
   {-# INLINE mempty #-}
 
-replayModel ::
+replayModelTrace ::
   forall vars spec prop ctxt acts.
   ( Specification vars spec prop
   , VariableCtxt vars ~ ctxt
@@ -152,7 +157,7 @@ replayModel ::
   Int ->
   Spec vars spec prop ->
   Either [MCError ctxt] (Set Behavior)
-replayModel initial target depth spec@(Spec _ sp) = do
+replayModelTrace initial target depth spec@(Spec _ sp) = do
   resultTrace <- foldMapAp (stepReplayer 0) initialWorlds
     & runReplayer
     & runLevelsA
@@ -179,7 +184,7 @@ stepReplayer depth worldHere@(World fingerprint _) = do
   depthTarget <- view rpEnvTargetDepth
   explored <- IntSet.member (coerce fingerprint) <$> use rpStateCoverage
 
-  if explored
+  if explored || depthTarget <= depth
     then empty
     else do
       actionInfo <- view rpEnvActionInfo
@@ -204,5 +209,5 @@ stepReplayer depth worldHere@(World fingerprint _) = do
                 else Behavior depth (Set.singleton action)
 
           if view worldFingerprint nextWorld == finalTarget && depth + 1 == depthTarget
-            then empty
+            then return actionHere
             else return actionHere <|> stepReplayer (depth + 1) nextWorld
