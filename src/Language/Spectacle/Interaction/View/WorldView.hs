@@ -30,11 +30,11 @@ import Data.Text.Prettyprint.Doc
 import Lens.Micro
 
 import Data.Ascript
+import Data.Context
 import Data.Type.Rec
 import Data.World
-import Data.Context
-import Language.Spectacle.Interaction.AnsiDoc
 import Language.Spectacle.Checker.Fingerprint
+import Language.Spectacle.Interaction.AnsiDoc
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -54,9 +54,16 @@ worldViewRec = lens _worldViewRec \WorldView {..} x -> WorldView {_worldViewRec 
 newWorldView :: ViewableSignature sig => World sig -> WorldView sig
 newWorldView (World fingerprint xs) = WorldView fingerprint (mapRecView xs)
 
-ppWorldView :: ViewableSignature sig => WorldView sig -> AnsiDoc
-ppWorldView WorldView {..} =
-  "<world" <> ":" <> prettyAnsi _worldViewHash <> ">" <> line <> indent 2 (ppRecView _worldViewRec)
+ppWorldView :: ViewableSignature sig => Int -> String -> WorldView sig -> AnsiDoc
+ppWorldView depth action WorldView {..} =
+  "<world:"
+    <> pretty depth
+    <> ":"
+    <> prettyAnsi _worldViewHash
+    <> "> from"
+    <+> pretty action
+    <> line
+    <> indent 2 (ppRecView _worldViewRec)
 
 ppRecView :: ViewableSignature sig => RecT FieldView sig -> AnsiDoc
 ppRecView = vsep . foldFieldViews
@@ -77,7 +84,7 @@ data FieldView :: Type -> Type where
 type ViewableSignature :: Context -> Constraint
 type family ViewableSignature sig where
   ViewableSignature 'CtxtNil = ()
-  ViewableSignature ('CtxtCon (s # a) sig) = (AnsiPretty a, ViewableSignature sig)
+  ViewableSignature ( 'CtxtCon (s # a) sig) = (AnsiPretty a, ViewableSignature sig)
 
 mapRecView :: ViewableSignature sig => Rec sig -> RecT FieldView sig
 mapRecView = \case

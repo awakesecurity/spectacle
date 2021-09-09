@@ -3,7 +3,7 @@
 module Language.Spectacle.Interaction.Render
   ( -- * Model Results Docs
     renderModelErrorsDoc,
-    renderModelMetrics,
+    renderMCMetrics,
 
     -- * Error Docs
     renderMCError,
@@ -37,6 +37,9 @@ module Language.Spectacle.Interaction.Render
   )
 where
 
+import Data.Set (Set)
+import qualified Data.Set as Set
+import Data.Function
 import Data.Text.Prettyprint.Doc
   ( Doc,
     Pretty (pretty),
@@ -46,6 +49,7 @@ import Data.Text.Prettyprint.Doc
     hang,
     hardline,
     indent,
+    parens,
     vsep,
     (<+>),
   )
@@ -54,16 +58,13 @@ import GHC.Stack (SrcLoc (srcLocFile, srcLocStartLine))
 import Lens.Micro ((^.))
 
 import Data.Type.Rec (Rec)
-import Language.Spectacle.Checker.Metrics
-  ( ModelMetrics,
-    distinctStates,
-    treeDepth,
-    treeWidth,
-  )
-import Language.Spectacle.Checker.Model.MCError
+import Data.World (World)
+import Language.Spectacle.Checker.Fingerprint (Fingerprint)
+import Language.Spectacle.Checker.MCError
   ( InternalErrorKind (EmptyDisjunctQueueK),
     MCError
       ( MCActionError,
+        MCEventuallyError,
         MCFormulaError,
         MCFormulaRuntimeError,
         MCImpasseError,
@@ -76,8 +77,8 @@ import Language.Spectacle.Checker.Model.MCError
     PropertyKind (AlwaysPropK, EventuallyPropK, InfinitelyOftenPropK, StaysAsPropK, UpUntilPropK),
     StutterKind (FiniteStutterK, InfiniteStutterK),
   )
+import Language.Spectacle.Checker.MCMetrics
 import Language.Spectacle.Checker.Step (Step)
-import Language.Spectacle.Checker.World (World)
 import Language.Spectacle.Exception.RuntimeException (RuntimeException)
 
 -- ----------------------------------------------------------------------------------------------------------------------
@@ -94,8 +95,8 @@ renderModelErrorsDoc errs = do
     lastLine :: Doc AnsiStyle
     lastLine = "Model checking failed with" <+> annotate (bold <> color Red) (pretty (length errs)) <+> "errors."
 
-renderModelMetrics :: ModelMetrics -> Doc AnsiStyle
-renderModelMetrics metrics =
+renderMCMetrics :: MCMetrics -> Doc AnsiStyle
+renderMCMetrics metrics =
   annotate (italicized <> color Green) "Success"
     <> ","
     <+> "model checker satisfied all properties with"
@@ -120,6 +121,8 @@ renderMCError = \case
   MCNoInitialStatesError -> return renderMCNoInitialStatesErrorDoc
   MCActionError world exc -> return (renderMCActionErrorDoc world exc)
   MCImpasseError world -> return (renderMCImpasseErrorDoc world)
+  MCEventuallyError initialWorld lastWorld unsatisfied depth ->
+    return (renderMCEventuallyErrorDoc initialWorld lastWorld unsatisfied depth)
   MCStutterError step srcLoc propK stutterK -> renderMCStutterErrorDoc step srcLoc propK stutterK
   MCFormulaError step srcLoc propK -> renderMCFormulaErrorDoc step srcLoc propK
   MCFormulaRuntimeError step exc -> return (renderMCFormulaRuntimeErrorDoc step exc)
@@ -146,6 +149,27 @@ renderMCImpasseErrorDoc world =
     [ annotate (bold <> color White) (actionLocDoc <> ":") <+> errorDoc
     , renderNotesDoc 2 [impasseNote world]
     ]
+
+renderMCEventuallyErrorDoc :: Fingerprint -> Fingerprint -> Set String -> Int -> Doc AnsiStyle
+renderMCEventuallyErrorDoc initialWorld finalWorld unsatisfied depth =
+  vsep
+    [ errorDoc <+> "could not satisfy the following eventually step(s),"
+    , indent 4 "To see a counterexample behavior, replay the model checker with:"
+    , indent 6 (annotate (bold <> color White) replayNoteDoc)
+    , Set.toList unsatisfied
+        & map (\x -> annotate (color White) "*" <+> "Eventually" <+> parens (pretty x))
+        & vsep
+        & indent 2
+    ]
+  where
+    replayNoteDoc =
+      "+replay -from="
+        <> pretty (show initialWorld)
+        <+> "-to="
+        <> pretty (show finalWorld)
+        <+> "-d="
+        <> pretty depth
+        <+> "-replay"
 
 renderMCActionErrorDoc :: Show (Rec ctx) => World ctx -> RuntimeException -> Doc AnsiStyle
 renderMCActionErrorDoc world exc =
