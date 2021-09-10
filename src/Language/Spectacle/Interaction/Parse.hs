@@ -13,15 +13,15 @@ module Language.Spectacle.Interaction.Parse
   )
 where
 
-import Control.Monad
-import Data.Bits
-import Data.Char
-import Data.Functor
-import Text.Megaparsec
-import Text.Megaparsec.Char
+import Control.Monad (replicateM)
+import Data.Bits (Bits (rotateL))
+import Data.Char (isDigit, isUpper)
+import Data.Functor ((<&>))
+import Text.Megaparsec (MonadParsec (takeWhile1P), Parsec, between)
+import Text.Megaparsec.Char (hexDigitChar, space, space1, string)
 
 import Data.Foldable (foldr')
-import Language.Spectacle.Checker.Fingerprint
+import Language.Spectacle.Checker.Fingerprint ( Fingerprint (Fingerprint))
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -44,7 +44,7 @@ parseReplayOpts = between (string "+replay" <* space1) (space1 *> string "-repla
 parseFingerprint :: ParserCli Fingerprint
 parseFingerprint =
   string "0x" *> replicateM 8 hexDigitChar
-    <&> foldr' (\(i, c) y -> shiftL (fromHexChar c) (4 * i) .|. y) 0 . zip [0 :: Int ..]
+    <&> foldr' (\(i, c) y -> rotateL (fromIntegral (fromHexChar c)) (4 * i) + y) 0 . zip [8 :: Int ..]
     <&> Fingerprint
   where
     fromHexChar :: Char -> Int

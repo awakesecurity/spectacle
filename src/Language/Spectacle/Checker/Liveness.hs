@@ -221,4 +221,4 @@ toCanonicalTranition :: String -> IntSet -> (String, Set Fingerprint)
 toCanonicalTranition action nexts = (action, toFingerprintSet nexts)
 
 toFingerprintSet :: IntSet -> Set Fingerprint
-toFingerprintSet = IntSet.fold (Set.insert . Fingerprint) Set.empty
+toFingerprintSet = IntSet.fold (Set.insert . fromIntegral) Set.empty

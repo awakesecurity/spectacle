@@ -175,8 +175,8 @@ stepModelNext worldHere@(World fingerprint _) = do
   where
     takeEnabledActions :: String -> World ctxt -> Map String IntSet -> Map String IntSet
     takeEnabledActions action (World fpThere _) = flip Map.alter action \case
-      Nothing -> Just (IntSet.singleton (coerce fpThere))
-      Just fpsThere -> Just (IntSet.insert (coerce fpThere) fpsThere)
+      Nothing -> Just (IntSet.singleton (fromIntegral fpThere))
+      Just fpsThere -> Just (IntSet.insert (fromIntegral fpThere) fpsThere)
 
 stepModelCheck ::
   String ->

@@ -48,8 +48,6 @@ import Language.Spectacle.Specification
 import Language.Spectacle.Specification.Action
 import Language.Spectacle.Specification.Variable
 
-import qualified Debug.Trace as Debug
-
 -- ---------------------------------------------------------------------------------------------------------------------
 
 type Replayer :: Context -> [Type] -> Type -> Type
@@ -182,17 +180,15 @@ stepReplayer ::
 stepReplayer depth worldHere@(World fingerprint _) = do
   finalTarget <- view rpEnvFinal
   depthTarget <- view rpEnvTargetDepth
-  explored <- IntSet.member (coerce fingerprint) <$> use rpStateCoverage
+  explored <- IntSet.member (fromIntegral fingerprint) <$> use rpStateCoverage
 
-  Debug.trace (show depth ++ ", " ++ show worldHere) (pure ())
-
-  if explored && depthTarget < depth
-    then empty
+  if explored || depthTarget < depth
+    then return (Behavior depth Set.empty)
     else do
       actionInfo <- view rpEnvActionInfo
       actionSets <- modelNextSets worldHere =<< view rpEnvActionSpine
 
-      rpStateCoverage %= IntSet.insert (coerce fingerprint)
+      rpStateCoverage %= IntSet.insert (fromIntegral fingerprint)
 
       let fairNexts = flip foldMap actionSets \ActionSet {..} ->
             let fairness = maybe Unfair actionInfoFairness (Map.lookup actionSetName actionInfo)
@@ -203,8 +199,6 @@ stepReplayer depth worldHere@(World fingerprint _) = do
           actions = if Set.null fairNexts
             then foldMap (\ActionSet {..} -> Set.singleton (actionSetName, actionSetWorlds)) actionSets
             else fairNexts
-
-      Debug.trace (show depth ++ " " ++ show depthTarget ++ ", " ++ show actions) (pure ())
 
       forAp actions \(action, nextWorlds) -> do
         forAp nextWorlds \nextWorld -> do

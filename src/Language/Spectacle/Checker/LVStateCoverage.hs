@@ -30,7 +30,7 @@ empty = LVStateCoverage IntSet.empty
 {-# INLINE CONLIKE empty #-}
 
 insert :: Fingerprint -> LVStateCoverage -> LVStateCoverage
-insert fingerprint (LVStateCoverage xs) = LVStateCoverage (IntSet.insert (coerce fingerprint) xs)
+insert fingerprint (LVStateCoverage xs) = LVStateCoverage (IntSet.insert (fromIntegral fingerprint) xs)
 {-# INLINE insert #-}
 
 union :: LVStateCoverage -> LVStateCoverage -> LVStateCoverage
@@ -38,5 +38,5 @@ union (LVStateCoverage xs) (LVStateCoverage ys) = LVStateCoverage (xs `IntSet.un
 {-# INLINE union #-}
 
 member :: Fingerprint -> LVStateCoverage -> Bool
-member fingerprint (LVStateCoverage xs) = IntSet.member (coerce fingerprint) xs
+member fingerprint (LVStateCoverage xs) = IntSet.member (fromIntegral fingerprint) xs
 {-# INLINE member #-}

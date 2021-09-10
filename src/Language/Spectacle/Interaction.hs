@@ -18,7 +18,8 @@ import Data.Function ((&))
 import Data.Hashable (Hashable)
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Data.Text.Prettyprint.Doc.Render.Terminal (putDoc)
+import Data.Text.Prettyprint.Doc.Render.Terminal
+import Data.Text.Prettyprint.Doc
 import System.Environment (getArgs)
 import System.Exit (exitFailure, exitSuccess)
 import System.IO
@@ -28,6 +29,8 @@ import System.IO
     stdout,
   )
 import Text.Megaparsec (runParser, (<|>))
+import Lens.Micro
+import Lens.Micro.Mtl
 
 import Control.Monad.Levels
   ( LevelsT,
@@ -35,10 +38,10 @@ import Control.Monad.Levels
     forAp,
     runLevelsA,
   )
-import Data.Text.Prettyprint.Doc (hardline)
 import Data.Type.Rec (Rec)
-import Data.World (World)
+import Data.World (World, worldFingerprint)
 import Language.Spectacle.Checker (modelCheck)
+import Language.Spectacle.Checker.Fingerprint
 import Language.Spectacle.Checker.MCError (MCError)
 import Language.Spectacle.Checker.Model (modelNextSets)
 import Language.Spectacle.Checker.Replayer
@@ -95,7 +98,6 @@ defaultInteraction ::
 defaultInteraction spec = do
   args <- getArgs
 
-  print args
   hSetBuffering stdout LineBuffering
   hSetBuffering stderr LineBuffering
 
@@ -116,7 +118,7 @@ defaultInteraction spec = do
           Left errs -> do
             putDoc =<< renderModelErrorsDoc errs
             exitFailure
-          Right excTrace -> emitReplayTrace spec excTrace
+          Right excTrace -> emitReplayTrace replayFrom replayTo spec excTrace
 
 emitReplayTrace ::
   forall vars spec prop ctxt acts.
@@ -127,10 +129,12 @@ emitReplayTrace ::
   , Show (Rec ctxt)
   , Hashable (Rec ctxt)
   ) =>
+  Fingerprint ->
+  Fingerprint ->
   Spec vars spec prop ->
   Set Behavior ->
   IO ()
-emitReplayTrace spec@(Spec _ sp) behavior' = do
+emitReplayTrace fpFrom fpTo spec@(Spec _ sp) behavior' = do
   emit <-
     traceBFS initialWorlds behavior'
       & runLevelsA
@@ -162,9 +166,11 @@ emitReplayTrace spec@(Spec _ sp) behavior' = do
         liftIO do
           forM_ nextWorlds \(action, nextWorld) -> do
             let worldView = newWorldView nextWorld
+                worldDoc =
+                  if view worldFingerprint nextWorld == fpTo || view worldFingerprint nextWorld == fpFrom
+                    then annotate (bold <> color Red) (ppWorldView depth action worldView <> hardline)
+                    else ppWorldView depth action worldView <> hardline
 
-            putDoc (ppWorldView depth action worldView <> hardline)
-
-          return ()
+            putDoc worldDoc
 
         return () <|> traceBFS (Set.map snd nextWorlds) xs

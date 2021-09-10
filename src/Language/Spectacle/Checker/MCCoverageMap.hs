@@ -20,16 +20,17 @@ module Language.Spectacle.Checker.MCCoverageMap
 where
 
 import Data.Bifunctor (first)
-import Data.IntMap.Strict as IntMap (IntMap)
-import qualified Data.IntMap.Strict as IntMap
-import Data.Maybe (Maybe(Just), maybe, fromMaybe)
+import Data.Bool
 import Data.Function
 import Data.Int
-import Data.Semigroup
-import Data.Monoid
-import Data.Bool
-import Lens.Micro (Lens', lens)
+import Data.IntMap.Strict as IntMap (IntMap)
+import qualified Data.IntMap.Strict as IntMap
 import Data.Kind
+import Data.Maybe (Maybe (Just), fromMaybe, maybe)
+import Data.Monoid
+import Data.Semigroup
+import GHC.Real (fromIntegral)
+import Lens.Micro (Lens', lens)
 
 import Language.Spectacle.Checker.Fingerprint (Fingerprint (Fingerprint))
 import Language.Spectacle.Checker.MCWorldInfo
@@ -50,13 +51,13 @@ instance Monoid MCCoverageMap where
   {-# INLINE mempty #-}
 
 insert :: Fingerprint -> MCWorldInfo -> MCCoverageMap -> MCCoverageMap
-insert (Fingerprint k) info (MCCoverageMap intmap) = MCCoverageMap (IntMap.alter (Just . maybe info (<> info)) k intmap)
+insert k info (MCCoverageMap intmap) = MCCoverageMap (IntMap.alter (Just . maybe info (<> info)) (fromIntegral k) intmap)
 
 lookup :: Fingerprint -> MCCoverageMap -> Maybe MCWorldInfo
-lookup (Fingerprint k) (MCCoverageMap intmap) = IntMap.lookup k intmap
+lookup k (MCCoverageMap intmap) = IntMap.lookup (fromIntegral k) intmap
 
 member :: Fingerprint -> MCCoverageMap -> Bool
-member (Fingerprint k) (MCCoverageMap intmap) = IntMap.member k intmap
+member k (MCCoverageMap intmap) = IntMap.member (fromIntegral k) intmap
 
 size :: MCCoverageMap -> Int
 size (MCCoverageMap xs) = IntMap.size xs

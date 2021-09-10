@@ -46,7 +46,7 @@ data MCState = MCState
 
 mcStateIsEnabledAt :: World ctxt -> String -> MCState -> Maybe Bool
 mcStateIsEnabledAt (World fingerprint _) action MCState {..} = do
-  enableds <- IntMap.lookup (coerce fingerprint) _mcStateEnabledMap
+  enableds <- IntMap.lookup (fromIntegral fingerprint) _mcStateEnabledMap
   enabled <- find (\(action', _) -> action' == action) enableds
   return (snd enabled)
 
@@ -56,7 +56,7 @@ mcStateSetEnabled (World fingerprint _) action enabled MCState {..} =
     { _mcStateEnabledMap =
         IntMap.insertWith
           Set.union
-          (coerce fingerprint)
+          (fromIntegral fingerprint)
           (Set.singleton (action, enabled))
           _mcStateEnabledMap
     , ..

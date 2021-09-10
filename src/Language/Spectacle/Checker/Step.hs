@@ -76,7 +76,7 @@ makeStep = Step
 --
 -- @since 0.1.0.0
 stepHash :: Fingerprint -> Fingerprint -> Int
-stepHash (Fingerprint fp) (Fingerprint fp') = hashWithSalt fp fp'
+stepHash (Fingerprint fp) (Fingerprint fp') = hashWithSalt (fromIntegral fp) fp'
 {-# INLINE stepHash #-}
 
 -- | Forgets the concrete values in a 'Step' leaving only the fingerprints of the initial and terminal worlds in a

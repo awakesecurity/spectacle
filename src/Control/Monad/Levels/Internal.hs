@@ -9,20 +9,20 @@
 --
 -- @since 0.1.0.0
 module Control.Monad.Levels.Internal
-  ( LevelsT(LevelsT, runLevelsT),
+  ( LevelsT (LevelsT, runLevelsT),
     liftLevelsT,
     wrapLevelsT,
   )
 where
 
-import Control.Applicative
+import Control.Applicative (Alternative (empty, (<|>)))
 import Control.Monad (ap)
 import Control.Monad.Except (MonadError (catchError, throwError))
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (MonadReader (local, reader))
 import Control.Monad.State (MonadState (state))
-import Control.Monad.Writer
-import Control.Monad.Trans (MonadTrans (lift))
-import Data.Kind
+import Control.Monad.Trans.Class (MonadTrans, lift)
+import Data.Kind (Type)
 
 import Control.Hyper (HyperM (HyperM, invokeM))
 import Data.Bag (Bag (None))
@@ -105,8 +105,6 @@ instance MonadError e m => MonadError e (LevelsT m) where
   {-# INLINE catchError #-}
 
 -- | @since 0.1.0.0
-instance MonadWriter w m => MonadWriter w (LevelsT m) where
-  writer = lift . writer
-
-  listen (LevelsT f) = LevelsT \cons nil ->
-    fst <$> listen (f (\x xs -> cons (fmap (, mempty) x) xs) nil)
+instance MonadIO m => MonadIO (LevelsT m) where
+  liftIO m = LevelsT \cons nil -> liftIO m >>= (`cons` nil) . Bag.singleton
+  {-# INLINE liftIO #-}

@@ -14,14 +14,14 @@ module Language.Spectacle.Specification.Variable
   )
 where
 
-import Data.Kind
-import GHC.TypeLits
+import Data.Kind (Type)
+import GHC.TypeLits (Symbol)
 
-import Data.Context
-import Data.Type.Rec (RecT(RConT, RNilT), Name, type (#))
+import Data.Context (CNil, Context, CtxtCat, type (:<))
+import Data.Type.Rec (Name, RecT (RConT, RNilT), type (#))
 import qualified Data.Type.Rec as Rec
-import Language.Spectacle.Lang
-import Language.Spectacle.Syntax.NonDet
+import Language.Spectacle.Lang (Lang)
+import Language.Spectacle.Syntax.NonDet (NonDet)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
