@@ -169,7 +169,7 @@ stepLiveness depth unsatisfied fpHere
       checks <- forAp fpsThere \fpThere -> do
         explored <- LVStateCoverage.member fpThere <$> use lvStateExplored
 
-        if explored || fpHere == fpThere
+        if explored
           then do
             lvStateDepth .= depth
             return unsatisfied'
@@ -179,7 +179,7 @@ stepLiveness depth unsatisfied fpHere
 
       return (Set.singleton (action, checks))
 
-    foldr (\(k, v) xs -> xs >>= scheduleLiveness k v) (pure unsatisfied) checksThere
+    foldr (\(k, v) xs -> xs >>= scheduleLiveness k v) (pure Set.empty) checksThere
 
 scheduleLiveness :: String -> Set String -> Set String -> Liveness (Set String)
 scheduleLiveness action unsatisfied xs = do
@@ -194,7 +194,7 @@ stepLivenessNext depth fingerprint = do
   worldInfoHere <- MCCoverageMap.lookup fingerprint <$> view lvEnvCoverageMap
 
   case worldInfoHere of
-    Nothing -> error "no enabled actions"
+    Nothing -> error ("no enabled actions for fingerprint " ++ show fingerprint)
     Just MCWorldInfo {..} -> do
       let transitions = flip Map.foldMapWithKey mcWorldInfoEnables \k v ->
             Set.singleton (toCanonicalTranition k v)

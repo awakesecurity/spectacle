@@ -15,18 +15,12 @@ module Language.Spectacle.Checker.MCEnv
   )
 where
 
-import Data.IntMap.Strict (IntMap)
+import Data.Kind (Type)
 import Data.Map (Map)
-import qualified Data.Map as Map
-import Data.Set (Set)
-import GHC.Stack (SrcLoc)
 import Lens.Micro (Lens', lens)
-import Data.Kind
 
-import Language.Spectacle.Specification
-import Language.Spectacle.Specification.Action
-import Language.Spectacle.Specification.Prop
-import Data.Context
+import Data.Context (Context)
+import Language.Spectacle.Specification (ActionInfo, ActionSpine, PropInfo)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

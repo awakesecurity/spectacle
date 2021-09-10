@@ -33,14 +33,14 @@ module Language.Spectacle.Checker.MCError
   )
 where
 
-import GHC.Stack (SrcLoc)
 import Data.Set (Set)
+import GHC.Stack (SrcLoc)
 
 import Data.Type.Rec (Rec)
 import Data.World (World)
-import Language.Spectacle.Exception.RuntimeException (RuntimeException)
-import Language.Spectacle.Checker.Step
 import Language.Spectacle.Checker.Fingerprint (Fingerprint)
+import Language.Spectacle.Checker.Step
+import Language.Spectacle.Exception.RuntimeException (RuntimeException)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

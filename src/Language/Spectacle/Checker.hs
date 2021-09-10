@@ -10,10 +10,12 @@ module Language.Spectacle.Checker
 where
 
 import Control.Applicative (Alternative ((<|>)))
-import Control.Monad.Except (ExceptT, MonadError (throwError), runExceptT)
+import Control.Monad (forM)
+import Control.Monad.Except (Except, MonadError (throwError), runExcept)
 import Control.Monad.Reader (MonadReader, ReaderT (runReaderT))
-import Control.Monad.State (MonadState, State, execState)
+import Control.Monad.State (MonadState, StateT, execStateT)
 import Data.Coerce (coerce)
+import qualified Data.Foldable as Foldable
 import Data.Hashable (Hashable)
 import qualified Data.IntMap.Strict as IntMap
 import Data.IntSet (IntSet)
@@ -25,15 +27,15 @@ import qualified Data.Set as Set
 import Lens.Micro ((&), (^.))
 import Lens.Micro.Mtl (use, view, (%=), (.=))
 
-import Control.Monad.Levels (LevelsT (LevelsT), runLevelsA, forAp, (<>=), foldMapAp)
+import Control.Monad.Levels (LevelsT, foldMapAp, runLevelsA)
 import Data.Type.Rec (Rec)
 import Data.World (World (World), worldFingerprint)
 import Language.Spectacle.Checker.Fingerprint (Fingerprint (Fingerprint))
 import Language.Spectacle.Checker.Liveness (livenessCheck)
-import Language.Spectacle.Checker.MCCoverageMap (MCCoverageMap (MCCoverageMap))
 import qualified Language.Spectacle.Checker.MCCoverageMap as MCCoverageMap
 import Language.Spectacle.Checker.MCEnv (MCEnv (MCEnv), mcEnvActionSpine, mcEnvPropInfo)
-import Language.Spectacle.Checker.MCError (MCError (MCActionError, MCImpasseError))
+import Language.Spectacle.Checker.MCError (MCError (MCImpasseError))
+import Language.Spectacle.Checker.MCMetrics (MCMetrics (MCMetrics), _distinctStates, _treeDepth, _treeWidth)
 import Language.Spectacle.Checker.MCState
   ( MCState (MCState),
     mcStateCoverageMap,
@@ -41,6 +43,7 @@ import Language.Spectacle.Checker.MCState
     mcStateMaxWidth,
   )
 import Language.Spectacle.Checker.MCWorldInfo (MCWorldInfo (MCWorldInfo))
+import Language.Spectacle.Checker.Model (modelNextSets)
 import Language.Spectacle.Specification
   ( Spec (Spec),
     Specification,
@@ -52,22 +55,19 @@ import Language.Spectacle.Specification.Action
     ActionSpine,
     HasActions (ActionCtxt, takeActionSpine),
     spineToActionInfo,
-    spineToActionSets,
   )
 import Language.Spectacle.Specification.Prop
   ( HasProp (collectPropInfo),
     PropInfo (propInfoIsAlways, propInfoIsEventually),
   )
 import Language.Spectacle.Specification.Variable (HasVariables (VariableCtxt))
-import Language.Spectacle.Checker.MCMetrics
-import Language.Spectacle.Checker.Model
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
 newtype Model ctxt actions a where
   Model ::
     { runModel ::
-        LevelsT (ExceptT [MCError ctxt] (ReaderT (MCEnv ctxt actions) (State MCState))) a
+        LevelsT (ReaderT (MCEnv ctxt actions) (StateT MCState (Except [MCError ctxt]))) a
     } ->
     Model ctxt actions a
   deriving
@@ -81,6 +81,15 @@ newtype Model ctxt actions a where
     , MonadState MCState
     , MonadError [MCError ctxt]
     )
+
+sendModel :: MCEnv ctxt acts -> Model ctxt acts a -> Either [MCError ctxt] MCState
+sendModel env model =
+  model
+    & runModel
+    & runLevelsA
+    & flip runReaderT env
+    & flip execStateT (MCState IntMap.empty mempty 0 0)
+    & runExcept
 
 modelCheck ::
   forall vars spec prop ctxt acts.
@@ -96,15 +105,10 @@ modelCheck spec@(Spec _ sp) = do
   let initialWorlds :: Set (World ctxt)
       initialWorlds = specInitialWorlds spec
 
-      mcFinalState =
-        stepModel 0 initialWorlds
-          & runModel
-          & runLevelsA
-          & runExceptT
-          & flip runReaderT mcenv
-          & flip execState (MCState IntMap.empty (MCCoverageMap IntMap.empty) 0 0)
+  mcFinalState <- sendModel mcenv (stepModel 0 initialWorlds)
 
-  livenessCheck
+  -- discard result, throws if liveness check fails
+  _ <- livenessCheck
     (takeEventuallyActions propInfo)
     (Set.map (view worldFingerprint) initialWorlds)
     (mcFinalState ^. mcStateCoverageMap)
@@ -150,28 +154,24 @@ stopModel depth = do
   mcStateMaxDepth .= depth
   return Set.empty
 
-stepModelNext ::
-  Hashable (Rec ctxt) =>
-  World ctxt ->
-  Model ctxt acts (Set (World ctxt))
+stepModelNext :: Hashable (Rec ctxt) => World ctxt -> Model ctxt acts (Set (World ctxt))
 stepModelNext worldHere@(World fingerprint _) = do
   explored <- MCCoverageMap.member fingerprint <$> use mcStateCoverageMap
   nextSets <- modelNextSets worldHere =<< view mcEnvActionSpine
-  (stepInfo, worldsThere) <-
-    forAp nextSets \ActionSet {..} -> do
+  worldsThere <-
+    forM nextSets \ActionSet {..} -> do
       nexts <- stepModelCheck actionSetName worldHere actionSetWorlds
       let worldInfo =
             if not (Set.null actionSetWorlds)
               then MCWorldInfo (foldr (takeEnabledActions actionSetName) Map.empty actionSetWorlds)
               else MCWorldInfo Map.empty
 
-      return (worldInfo, nexts)
-
-  mcStateCoverageMap %= MCCoverageMap.insert fingerprint stepInfo
+      mcStateCoverageMap %= MCCoverageMap.insert fingerprint worldInfo
+      return nexts
 
   if explored
     then pure Set.empty
-    else pure worldsThere
+    else pure (Foldable.fold worldsThere)
   where
     takeEnabledActions :: String -> World ctxt -> Map String IntSet -> Map String IntSet
     takeEnabledActions action (World fpThere _) = flip Map.alter action \case
@@ -206,13 +206,3 @@ takeEventuallyActions = Map.foldrWithKey go Set.empty
     go action info xs
       | propInfoIsEventually info = Set.insert action xs
       | otherwise = xs
-
-data Transition ctxt = Transition (World ctxt) (World ctxt)
-
-instance Eq (Transition ctxt) where
-  Transition here1 there1 == Transition here2 there2 = here1 == here2 && there1 == there2
-
-instance Ord (Transition ctxt) where
-  compare (Transition here1 there1) (Transition here2 there2) = case compare here1 here2 of
-    EQ -> compare there1 there2
-    comp -> comp

@@ -41,7 +41,7 @@ modelNextSets worldHere spine =
 modelFairScheduling :: Map String ActionInfo -> Set (String, Set Fingerprint) -> Set (String, Set Fingerprint)
 modelFairScheduling actionInfos = foldMap \(action, nexts) ->
   let fairness = maybe Unfair actionInfoFairness (Map.lookup action actionInfos)
-   in if fairness == Unfair
+   in if fairness == Unfair && not (Set.null nexts)
         then Set.empty
         else Set.singleton (action, nexts)
 {-# INLINE modelFairScheduling #-}

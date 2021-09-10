@@ -184,7 +184,9 @@ stepReplayer depth worldHere@(World fingerprint _) = do
   depthTarget <- view rpEnvTargetDepth
   explored <- IntSet.member (coerce fingerprint) <$> use rpStateCoverage
 
-  if explored || depthTarget <= depth
+  Debug.trace (show depth ++ ", " ++ show worldHere) (pure ())
+
+  if explored && depthTarget < depth
     then empty
     else do
       actionInfo <- view rpEnvActionInfo
@@ -194,7 +196,7 @@ stepReplayer depth worldHere@(World fingerprint _) = do
 
       let fairNexts = flip foldMap actionSets \ActionSet {..} ->
             let fairness = maybe Unfair actionInfoFairness (Map.lookup actionSetName actionInfo)
-            in if fairness == Unfair
+            in if fairness == Unfair || Set.null actionSetWorlds
                  then Set.empty
                  else Set.singleton (actionSetName, actionSetWorlds)
 
@@ -202,11 +204,11 @@ stepReplayer depth worldHere@(World fingerprint _) = do
             then foldMap (\ActionSet {..} -> Set.singleton (actionSetName, actionSetWorlds)) actionSets
             else fairNexts
 
+      Debug.trace (show depth ++ " " ++ show depthTarget ++ ", " ++ show actions) (pure ())
+
       forAp actions \(action, nextWorlds) -> do
         forAp nextWorlds \nextWorld -> do
-          let actionHere = if worldHere == nextWorld
-                then Behavior depth Set.empty
-                else Behavior depth (Set.singleton action)
+          let actionHere = Behavior depth (Set.singleton action)
 
           if view worldFingerprint nextWorld == finalTarget && depth + 1 == depthTarget
             then return actionHere

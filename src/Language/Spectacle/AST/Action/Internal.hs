@@ -9,27 +9,25 @@ module Language.Spectacle.AST.Action.Internal
   )
 where
 
+import Control.Applicative
 import Data.Kind (Type)
-import Data.Set (Set)
-import GHC.TypeLits (KnownSymbol, Symbol)
 
-import Data.Type.Rec (Ascribe, Rec, type (#), type (.|))
-import Data.World (World)
+import Data.Context
+import Data.Type.Rec (type (#), type (.|))
 import Language.Spectacle.Exception.RuntimeException (RuntimeException)
-import Language.Spectacle.Lang (EffectK, Lang, scope)
+import Language.Spectacle.Lang (EffectK, Lang, scope, Member)
 import Language.Spectacle.Syntax.Closure.Internal
 import Language.Spectacle.Syntax.Error.Internal (Error)
 import Language.Spectacle.Syntax.Logic.Internal (Logic)
 import Language.Spectacle.Syntax.NonDet.Internal (NonDet)
 import Language.Spectacle.Syntax.Plain.Internal
-import Data.Context
 import Language.Spectacle.Syntax.Quantifier.Internal (Quantifier)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
 newtype Action :: Context -> Type -> Type where
-  Action :: { getAction :: Lang ctxt ActionSyntax a } -> Action ctxt a
-  deriving (Functor, Applicative, Monad)
+  Action :: {getAction :: Lang ctxt ActionSyntax a} -> Action ctxt a
+  deriving (Functor, Applicative, Monad, Alternative)
 
 instance Contextual (Action ctxt a) where
   type Ctxt (Action ctxt a) = ctxt

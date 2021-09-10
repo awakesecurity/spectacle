@@ -8,6 +8,7 @@ module Language.Spectacle.Specification.Prop
     type (/\),
     Always,
     Eventually,
+    type (~~>),
 
     -- *
     HasProp,
@@ -30,16 +31,15 @@ module Language.Spectacle.Specification.Prop
   )
 where
 
-import Data.Kind
-import GHC.TypeLits
-import Data.Set
-import qualified Data.Set as Set
-import Data.Proxy
-import Data.Map.Strict
+import Data.Kind (Type)
+import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
+import Data.Proxy (Proxy (Proxy))
+import Data.Set (Set)
+import qualified Data.Set as Set
+import GHC.TypeLits (KnownSymbol, symbolVal)
 
-import Data.Context
-import Language.Spectacle.Specification.Action
+import Data.Context (Context)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -91,6 +91,11 @@ instance (KnownSymbol action, HasProp (Eventually actions)) => HasProp (Eventual
 instance (KnownSymbol p, KnownSymbol q) => HasProp (p ~~> q) where
   collectPropInfo = Map.singleton (symbolVal (Proxy @p)) (makePropInfoLeadsTo (Set.singleton (symbolVal (Proxy @q))))
   {-# INLINE CONLIKE collectPropInfo #-}
+
+-- | @since 0.1.0.0
+instance (KnownSymbol p) => HasProp (Always (Eventually p)) where
+  collectPropInfo = Map.singleton (symbolVal (Proxy @p)) makePropInfoInfinitelyOften
+  {-# INLINE collectPropInfo #-}
 
 -- | @since 0.1.0.0
 instance (HasProp p, HasProp q) => HasProp (p /\ q) where

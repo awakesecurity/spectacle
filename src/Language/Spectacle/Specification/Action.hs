@@ -34,21 +34,18 @@ module Language.Spectacle.Specification.Action
   )
 where
 
-import Control.Applicative
-import Data.Hashable
-import Data.Kind
+import Data.Hashable (Hashable)
+import Data.Kind (Constraint, Type)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
-import qualified Data.Set as Set
-import GHC.TypeLits
-import Language.Spectacle.Exception.RuntimeException
+import Language.Spectacle.Exception.RuntimeException (RuntimeException)
 
-import Data.Context
-import Data.Name
-import Data.Type.Rec
-import Data.World
-import Language.Spectacle.AST.Action
+import Data.Context (Context)
+import Data.Name (Name)
+import Data.Type.Rec (Rec)
+import Data.World (World (World))
+import Language.Spectacle.AST.Action (Action, runAction)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
