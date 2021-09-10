@@ -3,38 +3,48 @@ module Fingerprint
   )
 where
 
-import Data.Hashable (Hashable, hash)
-import GHC.Exts (fromList)
-import Hedgehog (MonadGen, Property, Range, assert, forAll, property)
+import Hedgehog (MonadGen, Property, Range, annotate, annotateShow, assert, failure, forAll, property, (===))
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.Hedgehog (testProperty)
 
-import Data.Fingerprint (Fingerprint, insert, member)
+import Text.Megaparsec (runParser)
 
--- -----------------------------------------------------------------------------
+import Language.Spectacle.Checker.Fingerprint
+import Language.Spectacle.Interaction.Parse
 
--- | Generate a 'Fingerprint' structure.
-genFingerprint :: (Hashable a, MonadGen m) => Range Int -> m a -> m Fingerprint
-genFingerprint range gen =
-  fromList <$> Gen.list range (fromIntegral . hash <$> gen)
+-- ---------------------------------------------------------------------------------------------------------------------
 
--- | Generate a value to hash.
-genHash :: MonadGen m => m String
-genHash = Gen.string (Range.constant 0 10) Gen.alphaNum
+genFingerprint :: MonadGen m => m Fingerprint
+genFingerprint = Fingerprint <$> Gen.word32 Range.constantBounded
 
--- | Making sure fingerprint never drops a hash.
-prop_insert_lookup :: Property
-prop_insert_lookup = property do
-  xs <- forAll $ Gen.list (Range.constant 0 10) genHash
-  fps <- forAll $ genFingerprint (Range.constant 0 10) genHash
-  let fps' = foldl (flip insert) fps $ map (fromIntegral . hash) xs
-  mapM_ (assert . (`member` fps')) xs
+prop_fingerPrintNominalParseIso :: Property
+prop_fingerPrintNominalParseIso = property do
+  fpInt <- forAll genFingerprint
+
+  case runParser parseFingerprint "<no name>" (show fpInt) of
+    Left err -> do
+      annotate "could not parse fingerprint"
+      annotateShow err
+      failure
+    Right fpStr -> fpInt === fpStr
+
+prop_fingerPrintRepParseIso :: Property
+prop_fingerPrintRepParseIso = property do
+  fpInt <- forAll genFingerprint
+
+  case runParser parseFingerprint "<no name>" (show fpInt) of
+    Left err -> do
+      annotate "could not parse fingerprint"
+      annotateShow err
+      failure
+    Right fpStr -> getFingerprint fpInt === getFingerprint fpStr
 
 tests :: TestTree
 tests =
   testGroup
     "Data.Fingerprint"
-    [ testProperty "insertion and lookup" $ prop_insert_lookup
+    [ testProperty "id = parse . show . fingerprint" $ prop_fingerPrintNominalParseIso
+    , testProperty "id = parse . show . fingerprint" $ prop_fingerPrintRepParseIso
     ]
