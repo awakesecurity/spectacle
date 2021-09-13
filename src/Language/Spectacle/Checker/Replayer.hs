@@ -6,10 +6,25 @@
 --
 -- @since 0.1.0.0
 module Language.Spectacle.Checker.Replayer
-  ( -- *
+  ( -- * Replayer
     Replayer (Replayer),
     runReplayer,
     replayModelTrace,
+
+    -- ** Replayer Environment
+    RPEnv (RPEnv),
+    _rpEnvInitial,
+    _rpEnvFinal,
+    _rpEnvTargetDepth,
+    _rpEnvActionSpine,
+    _rpEnvActionInfo,
+
+    -- *** Lenses
+    rpEnvInitial,
+    rpEnvFinal,
+    rpEnvTargetDepth,
+    rpEnvActionSpine,
+    rpEnvActionInfo,
 
     -- * Behavior
     Behavior (Behavior),

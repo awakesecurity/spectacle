@@ -5,8 +5,7 @@
 -- @since 0.1.0.0
 module Language.Spectacle.Checker.MCError
   ( MCError
-      ( MCInitialError,
-        MCNoInitialStatesError,
+      ( MCNoInitialStatesError,
         MCActionError,
         MCImpasseError,
         MCEventuallyError,
@@ -39,7 +38,7 @@ import GHC.Stack (SrcLoc)
 import Data.Type.Rec (Rec)
 import Data.World (World)
 import Language.Spectacle.Checker.Fingerprint (Fingerprint)
-import Language.Spectacle.Checker.Step
+import Language.Spectacle.Checker.Step ( Step )
 import Language.Spectacle.Exception.RuntimeException (RuntimeException)
 
 -- ---------------------------------------------------------------------------------------------------------------------
@@ -48,10 +47,7 @@ import Language.Spectacle.Exception.RuntimeException (RuntimeException)
 --
 -- @since 0.1.0.0
 data MCError ctxt
-  = -- | 'MCInitialError' reports a 'RuntimeException' that occured while evaluating a model's initial action.
-    MCInitialError
-      RuntimeException
-  | -- | 'MCNoInitialStatesError' is reported when the initial action is evaluated to an empty set.
+  = -- | 'MCNoInitialStatesError' is reported when the initial action is evaluated to an empty set.
     MCNoInitialStatesError
   | -- | 'MCActionError' is an error occuring in the expansion of a model's next-state relation. It gives the world the
     -- action cannot be run from along with the 'RuntimeException' raised when evaluating the next-state relation.

@@ -16,11 +16,13 @@ import Control.Monad.State (MonadState, StateT, runStateT)
 import Control.Monad.Writer (MonadWriter (tell), WriterT (runWriterT), censor)
 import Data.Foldable (maximumBy)
 import Data.Function (on, (&))
+import Data.Functor ((<&>))
 import Data.IntSet (IntSet)
 import qualified Data.IntSet as IntSet
 import Data.Kind (Type)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
+import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Lens.Micro (Lens', SimpleGetter, lens, to)
@@ -155,7 +157,7 @@ stepLiveness depth unsatisfied fpHere
     return unsatisfied
   | otherwise = do
     futureActions <- view lvEnvFutureActions
-    nexts <- stepLivenessNext depth fpHere
+    nexts <- stepLivenessNext fpHere
 
     lvStateExplored %= LVStateCoverage.insert fpHere
     tell [fpHere]
@@ -189,20 +191,20 @@ scheduleLiveness action unsatisfied xs = do
     then return (Set.union unsatisfied xs)
     else return (Set.intersection unsatisfied xs)
 
-stepLivenessNext :: Int -> Fingerprint -> Liveness (Set (String, Set Fingerprint))
-stepLivenessNext depth fingerprint = do
-  worldInfoHere <- MCCoverageMap.lookup fingerprint <$> view lvEnvCoverageMap
+stepLivenessNext :: Fingerprint -> Liveness (Set (String, Set Fingerprint))
+stepLivenessNext fingerprint = do
+  MCWorldInfo {..} <-
+    view lvEnvCoverageMap
+      <&> MCCoverageMap.lookup fingerprint
+      <&> fromMaybe mempty
 
-  case worldInfoHere of
-    Nothing -> error ("no enabled actions for fingerprint " ++ show fingerprint)
-    Just MCWorldInfo {..} -> do
-      let transitions = flip Map.foldMapWithKey mcWorldInfoEnables \k v ->
-            Set.singleton (toCanonicalTranition k v)
-      fairSteps <- existsScheduledFairAction fingerprint transitions
+  let transitions = flip Map.foldMapWithKey mcWorldInfoEnables \k v ->
+        Set.singleton (toCanonicalTranition k v)
+  fairSteps <- existsScheduledFairAction fingerprint transitions
 
-      if Set.null fairSteps
-        then return transitions
-        else return fairSteps
+  if Set.null fairSteps
+    then return transitions
+    else return fairSteps
 
 existsScheduledFairAction ::
   Fingerprint ->

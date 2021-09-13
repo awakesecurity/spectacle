@@ -7,7 +7,6 @@ module Language.Spectacle.Interaction.Render
 
     -- * Error Docs
     renderMCError,
-    renderMCInitialErrorDoc,
     renderMCNoInitialStatesErrorDoc,
     renderMCImpasseErrorDoc,
     renderMCActionErrorDoc,
@@ -68,7 +67,6 @@ import Language.Spectacle.Checker.MCError
         MCFormulaError,
         MCFormulaRuntimeError,
         MCImpasseError,
-        MCInitialError,
         MCInternalError,
         MCNoInitialStatesError,
         MCStrongLivenessError,
@@ -117,7 +115,6 @@ renderMCMetrics metrics =
 
 renderMCError :: Show (Rec ctx) => MCError ctx -> IO (Doc AnsiStyle)
 renderMCError = \case
-  MCInitialError exc -> return (renderMCInitialErrorDoc exc)
   MCNoInitialStatesError -> return renderMCNoInitialStatesErrorDoc
   MCActionError world exc -> return (renderMCActionErrorDoc world exc)
   MCImpasseError world -> return (renderMCImpasseErrorDoc world)
@@ -128,13 +125,6 @@ renderMCError = \case
   MCFormulaRuntimeError step exc -> return (renderMCFormulaRuntimeErrorDoc step exc)
   MCStrongLivenessError srcLoc -> renderMCStrongLivenessErrorDoc srcLoc
   MCInternalError errorK -> return (renderMCInternalErrorDoc errorK)
-
-renderMCInitialErrorDoc :: RuntimeException -> Doc AnsiStyle
-renderMCInitialErrorDoc exc =
-  vsep
-    [ annotate (bold <> color White) (initialLocDoc <> ":") <+> errorDoc
-    , renderNotesDoc 2 [initialExceptionNote exc]
-    ]
 
 renderMCNoInitialStatesErrorDoc :: Doc AnsiStyle
 renderMCNoInitialStatesErrorDoc =
@@ -348,14 +338,6 @@ impasseNote world =
     <> hardline
     <> indent 2 (worldNote world)
 {-# INLINE impasseNote #-}
-
-initialExceptionNote :: RuntimeException -> Doc AnsiStyle
-initialExceptionNote exc =
-  vsep
-    [ annotate italicized "exception thrown," <+> "exception raised while evaluating the initial action"
-    , indent 2 (annotate (bold <> color Red) (enclose hardline hardline (pretty (show exc))))
-    ]
-{-# INLINE initialExceptionNote #-}
 
 actionExceptionNote :: Show (Rec ctx) => World ctx -> RuntimeException -> Doc AnsiStyle
 actionExceptionNote world exc =
