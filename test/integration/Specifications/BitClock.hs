@@ -5,6 +5,9 @@ module Specifications.BitClock where
 import Data.Word (Word8)
 
 import Language.Spectacle (Action, (.=), plain)
+import Language.Spectacle.Checker (modelCheck)
+import Language.Spectacle.Checker.MCError (MCError)
+import Language.Spectacle.Checker.MCMetrics (MCMetrics)
 import Language.Spectacle.Interaction (defaultInteraction)
 import Language.Spectacle.Specification
   ( Always,
@@ -32,6 +35,9 @@ next = do
 
 spec :: BitClockSpec
 spec = Spec (#clock := return 0) (WeakFairAction #next next)
+
+test :: Either [MCError (VariableCtxt BitClockSpec)] MCMetrics
+test = modelCheck spec
 
 check :: IO ()
 check = defaultInteraction spec

@@ -3,7 +3,7 @@ module Fingerprint
   )
 where
 
-import Hedgehog (MonadGen, Property, Range, annotate, annotateShow, assert, failure, forAll, property, (===))
+import Hedgehog (MonadGen, Property, annotate, annotateShow, failure, forAll, property, (===))
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 import Test.Tasty (TestTree, testGroup)
@@ -11,8 +11,8 @@ import Test.Tasty.Hedgehog (testProperty)
 
 import Text.Megaparsec (runParser)
 
-import Language.Spectacle.Checker.Fingerprint
-import Language.Spectacle.Interaction.Parse
+import Language.Spectacle.Checker.Fingerprint (Fingerprint(Fingerprint), getFingerprint)
+import Language.Spectacle.Interaction.Parse (parseFingerprint)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

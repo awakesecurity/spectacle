@@ -6,16 +6,42 @@
 
 module Specifications.DijkstraMutex where
 
-import Control.Applicative
+import Control.Applicative ((<|>))
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.List as List
 
 import Language.Spectacle
-import Language.Spectacle.Interaction
+  ( Action,
+    exists,
+    forall,
+    oneOf,
+    plain,
+    (.=),
+  )
+import Language.Spectacle.Interaction (defaultInteraction)
+import Language.Spectacle.Checker.MCError (MCError)
+import Language.Spectacle.Checker.MCMetrics (MCMetrics)
+import Language.Spectacle.Checker (modelCheck)
 import Language.Spectacle.Specification
+  ( Always,
+    Fairness (WeakFair),
+    Spec (Spec),
+    Var ((:=)),
+    VariableCtxt,
+    type (!>) (WeakFairAction),
+    type (:.) ((:.)),
+    type (\/) ((:\/:)),
+  )
 
 import Specifications.DijkstraMutex.Process
+  ( Process (Process),
+    ProcessLabel (ProcessLabel),
+    StepLabel (Critical, Li0, Li1, Li2, Li3a, Li3b, Li3c, Li4a, Li4b, Li5, Li6, Noncritical),
+    iterState,
+    pix,
+    procStep,
+  )
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -191,7 +217,7 @@ mutualExclusion = do
 
 spec :: DijkstraMutexSpec
 spec =
-  let Constants {..} = mkProcesses 6
+  let Constants {..} = mkProcesses 3
 
       specInit =
         #isLooping := return (HashMap.fromList [(pid, True) | pid <- processSet])
@@ -207,6 +233,9 @@ spec =
   where
     mkProcesses :: Int -> Constants
     mkProcesses n = Constants n (ProcessLabel <$> [0 .. n - 1])
+
+test :: Either [MCError (VariableCtxt DijkstraMutexSpec)] MCMetrics
+test = modelCheck spec
 
 check :: IO ()
 check = defaultInteraction spec

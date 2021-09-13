@@ -179,10 +179,10 @@ test-suite integration-tests
   build-depends:
       spectacle
     , hashable
+    , hedgehog
     , tasty
-    , tasty-hunit
+    , tasty-hedgehog
     , unordered-containers
-    , containers
 
 benchmark benchmark
   import:         common

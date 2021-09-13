@@ -8,19 +8,21 @@
 -- @since 0.1.0.0
 module Specifications.RateLimit where
 
-import Data.Functor
-import Data.Hashable
+import Data.Hashable (Hashable)
 
 import Language.Spectacle (Action, (.=), plain)
+import Language.Spectacle.Checker (modelCheck)
+import Language.Spectacle.Checker.MCError (MCError)
+import Language.Spectacle.Checker.MCMetrics (MCMetrics)
 import Language.Spectacle.Interaction (defaultInteraction)
 import Language.Spectacle.Specification
   ( Always,
     Eventually,
-    Fairness (Unfair, WeakFair),
+    Fairness (Unfair),
     Spec(Spec),
     Var((:=)),
     type VariableCtxt,
-    type (!>)(UnfairAction, WeakFairAction),
+    type (!>)(UnfairAction),
     type (/\),
     type (\/)((:\/:)),
   )
@@ -71,6 +73,9 @@ spec = Spec specInit specNext
       let ?constants = RateLimitConsts { window = 2 , msgLimit = 5 }
       in UnfairAction #sendMessage sendMessage
            :\/: UnfairAction #passTime passTime
+
+test :: Either [MCError (VariableCtxt RateLimitSpec)] MCMetrics
+test = modelCheck spec
 
 check :: IO ()
 check = defaultInteraction spec

@@ -3,6 +3,9 @@
 module Specifications.Diehard where
 
 import Language.Spectacle (Action, plain, prime, (.=))
+import Language.Spectacle.Checker (modelCheck)
+import Language.Spectacle.Checker.MCError (MCError)
+import Language.Spectacle.Checker.MCMetrics (MCMetrics)
 import Language.Spectacle.Interaction (defaultInteraction)
 import Language.Spectacle.Specification
   ( Always,
@@ -102,6 +105,9 @@ spec = Spec specInit specNext
         :\/: WeakFairAction #smallToBig smallToBig
         :\/: WeakFairAction #bigToSmall bigToSmall
         :\/: WeakFairAction #isSolution isSolution
+
+test :: Either [MCError (VariableCtxt DiehardSpec)] MCMetrics
+test = modelCheck spec
 
 check :: IO ()
 check = defaultInteraction spec
