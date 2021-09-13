@@ -1,13 +1,19 @@
--- |
+-- | Liveness coverage map, an 'IntSet' wrapper tracking unwrapped 'Fingerprints'.
 --
 -- @since 0.1.0.0
 module Language.Spectacle.Checker.LVStateCoverage
-  ( -- *
+  ( -- * LVStateCoverage
     LVStateCoverage (LVStateCoverage),
     getLVStateCoverage,
+
+    -- * Construction
     empty,
+
+    -- ** Insertion
     insert,
     union,
+
+    -- ** Query
     member,
   )
 where

@@ -1,16 +1,16 @@
 {-# LANGUAGE RecordWildCards #-}
 
--- |
+-- | Model checker state.
 --
 -- @since 0.1.0.0
 module Language.Spectacle.Checker.MCState
-  ( -- *
+  ( -- * MCState
     MCState (MCState),
     _mcStateEnabledMap,
     _mcStateMaxDepth,
     _mcStateMaxWidth,
 
-    -- **
+    -- ** Lenses
     mcStateCoverageMap,
     mcStateIsEnabledAt,
     mcStateSetEnabled,
@@ -43,6 +43,7 @@ mcStateIsEnabledAt (World fingerprint _) action MCState {..} = do
   enableds <- IntMap.lookup (fromIntegral fingerprint) _mcStateEnabledMap
   enabled <- find (\(action', _) -> action' == action) enableds
   return (snd enabled)
+{-# INLINE mcStateIsEnabledAt #-}
 
 mcStateSetEnabled :: World ctxt -> String -> Bool -> MCState -> MCState
 mcStateSetEnabled (World fingerprint _) action enabled MCState {..} =
@@ -55,12 +56,16 @@ mcStateSetEnabled (World fingerprint _) action enabled MCState {..} =
           _mcStateEnabledMap
     , ..
     }
+{-# INLINE mcStateSetEnabled #-}
 
 mcStateCoverageMap :: Lens' MCState MCCoverageMap
 mcStateCoverageMap = lens _mcStateCoverageMap \MCState {..} x -> MCState {_mcStateCoverageMap = x, ..}
+{-# INLINE mcStateCoverageMap #-}
 
 mcStateMaxDepth :: Lens' MCState Int
 mcStateMaxDepth = lens _mcStateMaxDepth \MCState {..} x -> MCState {_mcStateMaxDepth = max _mcStateMaxDepth x, ..}
+{-# INLINE mcStateMaxDepth #-}
 
 mcStateMaxWidth :: Lens' MCState Int
 mcStateMaxWidth = lens _mcStateMaxWidth \MCState {..} x -> MCState {_mcStateMaxWidth = max _mcStateMaxWidth x, ..}
+{-# INLINE mcStateMaxWidth #-}

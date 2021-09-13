@@ -46,16 +46,20 @@ instance Semigroup MCCoverageMap where
 -- | @since 0.1.0.0
 instance Monoid MCCoverageMap where
   mempty = MCCoverageMap IntMap.empty
-  {-# INLINE mempty #-}
+  {-# INLINE CONLIKE mempty #-}
 
 insert :: Fingerprint -> MCWorldInfo -> MCCoverageMap -> MCCoverageMap
 insert k info (MCCoverageMap intmap) = MCCoverageMap (IntMap.alter (Just . maybe info (<> info)) (fromIntegral k) intmap)
+{-# INLINE insert #-}
 
 lookup :: Fingerprint -> MCCoverageMap -> Maybe MCWorldInfo
 lookup k (MCCoverageMap intmap) = IntMap.lookup (fromIntegral k) intmap
+{-# INLINE lookup #-}
 
 member :: Fingerprint -> MCCoverageMap -> Bool
 member k (MCCoverageMap intmap) = IntMap.member (fromIntegral k) intmap
+{-# INLINE member #-}
 
 size :: MCCoverageMap -> Int
 size (MCCoverageMap xs) = IntMap.size xs
+{-# INLINE size #-}

@@ -66,6 +66,7 @@ instance Monad m => Alternative (LevelsT m) where
   {-# INLINE empty #-}
 
   LevelsT f <|> LevelsT g = LevelsT \cons nil ->
+    -- NOTE: The instance given here yields O(n) complexity for (<|>) and is outlined in "Algebras for weighted search."
     let fcons x xs = pure (\k -> k (HyperM xs) x)
         fnil = pure \k -> k (HyperM fnil) None
 

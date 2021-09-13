@@ -17,11 +17,6 @@ module Language.Spectacle.Syntax
     (<=>),
     iff,
 
-    -- * Modal Operators
-    always,
-    eventually,
-    upUntil,
-
     -- * Nondeterminism
     oneOf,
 
@@ -43,7 +38,6 @@ import Language.Spectacle.Syntax.Closure ((.=))
 import Language.Spectacle.Syntax.Enabled (enabled)
 import Language.Spectacle.Syntax.Error (catchE, throwE)
 import Language.Spectacle.Syntax.Logic (Logic, complement, conjunct, disjunct, iff, implies)
-import Language.Spectacle.Syntax.Modal (always, eventually, upUntil)
 import Language.Spectacle.Syntax.NonDet (oneOf)
 import Language.Spectacle.Syntax.Plain (plain)
 import Language.Spectacle.Syntax.Prime (prime)

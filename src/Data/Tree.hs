@@ -1,3 +1,0 @@
--- |
-
-module Data.Tree where

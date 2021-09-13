@@ -4,17 +4,11 @@ module Language.Spectacle
 
     -- * Syntax
     type Action,
-    type Terminate,
 
     -- ** Variables
     plain,
     prime,
     type (#),
-
-    -- ** Modal Operators
-    always,
-    eventually,
-    upUntil,
 
     -- ** Operators
     (.=),
@@ -41,17 +35,14 @@ where
 import Data.Type.Rec (type (#))
 import Language.Spectacle.AST
   ( Action,
-    Terminate,
   )
 import Language.Spectacle.Interaction (defaultInteraction)
 import Language.Spectacle.Syntax
-  ( always,
-    catchE,
+  ( catchE,
     complement,
     conjunct,
     disjunct,
     enabled,
-    eventually,
     exists,
     forall,
     iff,
@@ -60,7 +51,6 @@ import Language.Spectacle.Syntax
     plain,
     prime,
     throwE,
-    upUntil,
     (.=),
     (/\),
     (<=>),

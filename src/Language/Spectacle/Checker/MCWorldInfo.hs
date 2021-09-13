@@ -1,12 +1,10 @@
--- |
+-- | Per world information tracked by the model checker.
 --
 -- @since 0.1.0.0
 module Language.Spectacle.Checker.MCWorldInfo
-  ( -- *
+  ( -- * MCWorldInfo
     MCWorldInfo (MCWorldInfo),
     mcWorldInfoEnables,
-
-    -- **
   )
 where
 
