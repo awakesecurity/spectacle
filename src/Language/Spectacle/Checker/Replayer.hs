@@ -85,7 +85,7 @@ rpEnvInitial = to _rpEnvInitial
 {-# INLINE rpEnvInitial #-}
 
 rpEnvFinal :: SimpleGetter (RPEnv ctxt acts) Fingerprint
-rpEnvFinal = to _rpEnvInitial
+rpEnvFinal = to _rpEnvFinal
 {-# INLINE rpEnvFinal #-}
 
 rpEnvTargetDepth :: SimpleGetter (RPEnv ctxt acts) Int
@@ -156,7 +156,7 @@ replayModelTrace ::
   Spec vars spec prop ->
   Either [MCError ctxt] (Set Behavior)
 replayModelTrace initial target depth spec@(Spec _ sp) = do
-  resultTrace <- foldMapAp (stepReplayer 0) initialWorlds
+  resultTrace <- foldMapAp (stepReplayer 1) initialWorlds
     & runReplayer
     & runLevelsA
     & runExceptT

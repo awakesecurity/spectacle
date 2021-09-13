@@ -54,14 +54,15 @@ worldViewRec = lens _worldViewRec \WorldView {..} x -> WorldView {_worldViewRec 
 newWorldView :: ViewableSignature sig => World sig -> WorldView sig
 newWorldView (World fingerprint xs) = WorldView fingerprint (mapRecView xs)
 
-ppWorldView :: ViewableSignature sig => Int -> String -> WorldView sig -> AnsiDoc
-ppWorldView depth action WorldView {..} =
+ppWorldView :: ViewableSignature sig => Int -> String -> Fingerprint -> WorldView sig -> AnsiDoc
+ppWorldView depth action fpFrom WorldView {..} =
   "<world:"
     <> pretty depth
     <> ":"
     <> prettyAnsi _worldViewHash
     <> "> from"
     <+> pretty action
+    <> enclose "<" ">" (prettyAnsi fpFrom)
     <> line
     <> indent 2 (ppRecView _worldViewRec)
 

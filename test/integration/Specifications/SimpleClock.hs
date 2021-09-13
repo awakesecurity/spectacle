@@ -12,11 +12,11 @@ import Language.Spectacle.Interaction (defaultInteraction)
 import Language.Spectacle.Specification
   ( Always,
     Eventually,
-    Fairness (WeakFair),
+    Fairness (WeakFair, Unfair),
     Spec(Spec),
     Var((:=)),
     type VariableCtxt,
-    type (!>)(WeakFairAction),
+    type (!>)(WeakFairAction, UnfairAction),
     type (/\),
     type (\/)((:\/:)),
   )
@@ -26,7 +26,7 @@ import Language.Spectacle.Specification
 type ClockSpec =
   Spec
     (Var "hours" Int)
-    ("tick" !> 'WeakFair \/ "rollover" !> 'WeakFair)
+    ("tick" !> 'Unfair \/ "rollover" !> 'Unfair)
     (Always "tick" /\ Eventually "rollover")
 
 tick :: Action (VariableCtxt ClockSpec) Bool
@@ -47,7 +47,7 @@ rollover = do
 spec :: ClockSpec
 spec = Spec (#hours := return 0) specNext
   where
-    specNext = WeakFairAction #tick tick :\/: WeakFairAction #rollover rollover
+    specNext = UnfairAction #tick tick :\/: UnfairAction #rollover rollover
 
 check :: IO ()
 check = defaultInteraction spec

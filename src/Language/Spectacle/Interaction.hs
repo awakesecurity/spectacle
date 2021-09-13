@@ -8,7 +8,7 @@ module Language.Spectacle.Interaction
   )
 where
 
-import Control.Monad (forM_)
+import Control.Monad (forM_, forM, when)
 import Control.Monad.Except
   ( ExceptT,
     MonadIO (liftIO),
@@ -120,6 +120,13 @@ defaultInteraction spec = do
             exitFailure
           Right excTrace -> emitReplayTrace replayFrom replayTo spec excTrace
 
+data HoareTriple ctxt = HoareTriple
+  { hoarePrecond :: World ctxt
+  , hoareAction :: String
+  , hoarePostcond :: World ctxt
+  }
+  deriving (Eq, Ord)
+
 emitReplayTrace ::
   forall vars spec prop ctxt acts.
   ( Specification vars spec prop
@@ -141,7 +148,10 @@ emitReplayTrace fpFrom fpTo spec@(Spec _ sp) behavior' = do
       & runExceptT
 
   case emit of
-    Left errs -> putDoc =<< renderModelErrorsDoc errs
+    Left errs -> do
+
+
+      putDoc =<< renderModelErrorsDoc errs
     Right _ -> return ()
   where
     spine :: ActionSpine ctxt acts
@@ -157,20 +167,35 @@ emitReplayTrace fpFrom fpTo spec@(Spec _ sp) behavior' = do
     traceBFS worldsHere behavior = case Set.minView behavior of
       Nothing -> return ()
       Just (Behavior depth actions, xs) -> do
-        actionSets <- foldMapAp (`modelNextSets` spine) worldsHere
-        nextWorlds <- forAp actionSets \ActionSet {..} ->
-          if actionSetName `elem` actions
-            then return (Set.map (actionSetName,) actionSetWorlds)
-            else return Set.empty
+        triples <- forAp worldsHere \worldHere -> do
+          nexts <- modelNextSets worldHere spine
+
+          when (depth == 1) do
+            let worldView = newWorldView worldHere
+                fpHere = view worldFingerprint worldHere
+                worldDoc =
+                  if fpHere == fpTo || fpHere == fpFrom
+                    then annotate (bold <> color Red) (ppWorldView 0 "<initial>" fpHere worldView <> hardline)
+                    else ppWorldView 0 "<initial>" fpHere worldView <> hardline
+
+            liftIO (putDoc worldDoc)
+
+          forAp nexts \ActionSet {..} -> do
+            if actionSetName `elem` actions
+              then return (Set.map (HoareTriple worldHere actionSetName) actionSetWorlds)
+              else return Set.empty
 
         liftIO do
-          forM_ nextWorlds \(action, nextWorld) -> do
-            let worldView = newWorldView nextWorld
+          forM_ triples \HoareTriple {..} -> do
+            let worldView = newWorldView hoarePostcond
+                fpPrecond = view worldFingerprint hoarePrecond
+                fpPostcond = view worldFingerprint hoarePostcond
+
                 worldDoc =
-                  if view worldFingerprint nextWorld == fpTo || view worldFingerprint nextWorld == fpFrom
-                    then annotate (bold <> color Red) (ppWorldView depth action worldView <> hardline)
-                    else ppWorldView depth action worldView <> hardline
+                  if fpPostcond == fpTo || fpPostcond == fpFrom
+                    then annotate (bold <> color Red) (ppWorldView depth hoareAction fpPrecond worldView <> hardline)
+                    else ppWorldView depth hoareAction fpPrecond worldView <> hardline
 
             putDoc worldDoc
 
-        return () <|> traceBFS (Set.map snd nextWorlds) xs
+        return () <|> traceBFS (Set.map hoarePostcond triples) xs

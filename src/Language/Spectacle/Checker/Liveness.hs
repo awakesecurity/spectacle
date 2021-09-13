@@ -13,8 +13,8 @@ where
 import Control.Applicative (Alternative ((<|>)))
 import Control.Monad.Reader (MonadReader, ReaderT (runReaderT))
 import Control.Monad.State (MonadState, StateT, runStateT)
-import Control.Monad.Writer (MonadWriter (tell), WriterT (runWriterT))
-import Data.Foldable (maximumBy)
+import Control.Monad.Writer (MonadWriter (tell), censor, WriterT (runWriterT))
+import Data.Foldable (maximumBy, minimumBy)
 import Data.Function (on, (&))
 import Data.IntSet (IntSet)
 import qualified Data.IntSet as IntSet
@@ -36,6 +36,7 @@ import Language.Spectacle.Checker.MCError (MCError (MCEventuallyError))
 import Language.Spectacle.Checker.MCWorldInfo (MCWorldInfo (MCWorldInfo, mcWorldInfoEnables))
 import Language.Spectacle.Specification.Action (ActionInfo (actionInfoFairness), Fairness (Unfair))
 import Language.Spectacle.Checker.Model
+import qualified Debug.Trace as Debug
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -131,14 +132,16 @@ livenessCheck unsatisfied fingerprints coverageMap actionInfo = do
           (initialWorld, (lvst, unsat, trace)) =
             counterexamples
               & zip (Set.toList fingerprints)
-              & maximumBy (compare `on` (length . \(_, (_, _, xs)) -> xs))
+              & maximumBy (compare `on` (length . \(_, (_, _, xs)) ->xs))
 
-      Left [MCEventuallyError initialWorld (last trace) unsat (lvst ^. lvStateDepth)]
+      mapM (\counterexample -> Debug.trace (show counterexample) (pure ())) counterexamples
+
+      Left [MCEventuallyError initialWorld (last trace) unsat (length trace - 1)]
 
 stepLivenessInitial :: Set Fingerprint -> Liveness (Set String)
 stepLivenessInitial fingerprints = do
   futureActions <- view lvEnvFutureActions
-  satisfied <- traverse (stepLiveness 0 futureActions) (Set.toList fingerprints)
+  satisfied <- traverse (\fp -> censor (fp :) (stepLiveness 1 futureActions fp)) (Set.toList fingerprints)
 
   return (foldr Set.intersection futureActions satisfied)
 

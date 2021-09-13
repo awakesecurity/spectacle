@@ -9,19 +9,33 @@ module Language.Spectacle.AST.Action.Internal
   )
 where
 
-import Control.Applicative
+import Control.Applicative (Alternative)
 import Data.Kind (Type)
 
-import Data.Context
+import Data.Context (Context, Contextual (..))
 import Data.Type.Rec (type (#), type (.|))
 import Language.Spectacle.Exception.RuntimeException (RuntimeException)
-import Language.Spectacle.Lang (EffectK, Lang, scope, Member)
+import Language.Spectacle.Lang (EffectK, Lang, scope)
 import Language.Spectacle.Syntax.Closure.Internal
+  ( Closure,
+    ClosureIntro (..),
+    Effect (Close),
+  )
 import Language.Spectacle.Syntax.Error.Internal (Error)
 import Language.Spectacle.Syntax.Logic.Internal (Logic)
 import Language.Spectacle.Syntax.NonDet.Internal (NonDet)
 import Language.Spectacle.Syntax.Plain.Internal
-import Language.Spectacle.Syntax.Quantifier.Internal (Quantifier)
+  ( Effect (PlainVar),
+    Plain,
+    PlainIntro (plainIntro),
+  )
+import Language.Spectacle.Syntax.Quantifier.Internal
+  ( Effect (Exists, Forall),
+    Quantifier,
+    QuantifierIntro,
+    existsIntro,
+    forallIntro,
+  )
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -40,6 +54,12 @@ instance (s # a .| ctxt) => PlainIntro (Action ctxt) s a where
 -- | @since 0.1.0.0
 instance (s # a .| ctxt) => ClosureIntro (Action ctxt) s a where
   closureIntro name expr = Action (scope (Close name expr))
+
+-- | @since 0.1.0.0
+instance QuantifierIntro (Action ctxt) where
+  forallIntro xs p = Action (scope (Forall xs (getAction . p)))
+
+  existsIntro xs p = Action (scope (Exists xs (getAction . p)))
 
 type ActionSyntax :: [EffectK]
 type ActionSyntax =

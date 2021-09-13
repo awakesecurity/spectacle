@@ -21,7 +21,7 @@ import Text.Megaparsec (MonadParsec (takeWhile1P), Parsec, between)
 import Text.Megaparsec.Char (hexDigitChar, space, space1, string)
 
 import Data.Foldable (foldr')
-import Language.Spectacle.Checker.Fingerprint ( Fingerprint (Fingerprint))
+import Language.Spectacle.Checker.Fingerprint (Fingerprint (Fingerprint))
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

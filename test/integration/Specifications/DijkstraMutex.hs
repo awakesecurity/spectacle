@@ -6,215 +6,207 @@
 
 module Specifications.DijkstraMutex where
 
-import Control.Applicative (Applicative (liftA2))
-import Control.Monad (forM)
+import Control.Applicative
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
-import Data.Hashable (Hashable)
 import qualified Data.List as List
-import Numeric.Natural (Natural)
 
-import Data.Type.Rec (Name, type (#), type (.|))
 import Language.Spectacle
-  ( Action,
-    Initial,
-    Invariant,
-    always,
-    defaultInteraction,
-    define,
-    eventually,
-    exists,
-    modelCheck,
-    oneOf,
-    plain,
-    weakFair,
-    (.=),
-    (/\),
-    (==>),
-  )
-import Language.Spectacle.RTS.Registers (RelationTerm)
+import Language.Spectacle.Interaction
 import Language.Spectacle.Specification
-  ( Specification
-      ( Specification,
-        fairnessConstraint,
-        initialAction,
-        nextAction,
-        temporalFormula,
-        terminationFormula
-      ),
-  )
 
 import Specifications.DijkstraMutex.Process
-  ( Process (Process, procStep, iterState, pix),
-    ProcessLabel (ProcessLabel),
-    StepLabel
-      ( Critical,
-        Li0,
-        Li1,
-        Li2,
-        Li3a,
-        Li3b,
-        Li3c,
-        Li4a,
-        Li4b,
-        Li5,
-        Li6,
-        Noncritical
-      ),
-  )
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
 data Constants = Constants
-  { numProcesses :: Natural
+  { numProcesses :: Int
   , processSet :: [ProcessLabel]
   }
 
 type DijkstraMutexSpec =
-  '[ "isLooping" # HashMap ProcessLabel Bool
-   , "goCritical" # HashMap ProcessLabel Bool
-   , "procIx" # ProcessLabel
-   , "procs" # HashMap ProcessLabel Process
-   ]
+  Spec
+    ( Var "isLooping" (HashMap ProcessLabel Bool)
+        :. Var "goCritical" (HashMap ProcessLabel Bool)
+        :. Var "procIx" ProcessLabel
+        :. Var "procs" (HashMap ProcessLabel Process)
+    )
+    ( "next" !> 'WeakFair
+        \/ "mutualExclusion" !> 'WeakFair
+    )
+    ( Always "next"
+    )
 
-initial :: (?constants :: Constants) => Initial DijkstraMutexSpec ()
-initial = do
+next ::
+  (?constants :: Constants) =>
+  Action (VariableCtxt DijkstraMutexSpec) Bool
+next = do
   let Constants {..} = ?constants
-  #isLooping `define` return (HashMap.fromList [(pid, True) | pid <- processSet])
 
-  #goCritical `define` return (HashMap.fromList [(pid, True) | pid <- processSet])
-
-  #procIx `define` return (ProcessLabel 0)
-
-  #procs `define` do
-    HashMap.fromList <$> forM processSet \pid -> do
-      return (pid, Process Li0 (ProcessLabel 0) processSet)
-
-next :: (?constants :: Constants) => Action DijkstraMutexSpec Bool
-next = nextProc
-
-nextProc :: (?constants :: Constants) => Action DijkstraMutexSpec Bool
-nextProc = do
-  let Constants {..} = ?constants
   exists processSet \pid -> do
-    Process {..} <- (HashMap.! pid) <$> plain #procs
-    case procStep of
-      Li0 -> do
-        #isLooping .= #isLooping `except` (pid, False)
-        #procs .= #procs `except` (pid, Process {procStep = Li1, ..})
-      Li1 -> do
-        procIx <- plain #procIx
-        if procIx /= pid
-          then #procs .= #procs `except` (pid, Process {procStep = Li2, ..})
-          else #procs .= #procs `except` (pid, Process {procStep = Li4a, ..})
-      Li2 -> do
-        #goCritical .= #goCritical `except` (pid, True)
-        #procs .= #procs `except` (pid, Process {procStep = Li3a, ..})
-      Li3a -> do
-        procIx <- plain #procIx
-        #procs .= #procs `except` (pid, Process {pix = procIx, procStep = Li3b, ..})
-      Li3b -> do
-        looping <- (HashMap.! pix) <$> plain #isLooping
-        if looping
-          then #procs .= #procs `except` (pid, Process {procStep = Li3c, ..})
-          else #procs .= #procs `except` (pid, Process {procStep = Li1, ..})
-      Li3c -> do
-        #procIx .= return pid
-        #procs .= #procs `except` (pid, Process {procStep = Li1, ..})
-      Li4a -> do
-        #goCritical .= #goCritical `except` (pid, False)
-        #procs .= #procs `except` (pid, Process {procStep = Li4b, iterState = List.delete pid processSet, ..})
-      Li4b -> do
-        if iterState /= []
-          then do
-            pid' <- oneOf processSet
-            goCrit <- (HashMap.! pid') <$> plain #goCritical
-            let iterState' = List.delete pid' iterState
-            if not goCrit
-              then #procs .= #procs `except` (pid, Process {procStep = Li1, iterState = iterState', ..})
-              else #procs .= #procs `except` (pid, Process {procStep = Li4b, iterState = iterState', ..})
-          else do
-            #procs .= #procs `except` (pid, Process {procStep = Critical, ..})
-      Critical -> do
-        #procs .= #procs `except` (pid, Process {procStep = Li5, ..})
-      Li5 -> do
-        #goCritical .= #goCritical `except` (pid, True)
-        #procs .= #procs `except` (pid, Process {procStep = Li6, ..})
-      Li6 -> do
-        #isLooping .= #isLooping `except` (pid, True)
-        #procs .= #procs `except` (pid, Process {procStep = Noncritical, ..})
-      Noncritical -> do
-        #procs .= #procs `except` (pid, Process {procStep = Li0, ..})
-    return True
+    nextLi0 pid
+      <|> nextLi1 pid
+      <|> nextLi2 pid
+      <|> nextLi3a pid
+      <|> nextLi3b pid
+      <|> nextLi3c pid
+      <|> nextLi4a pid
+      <|> nextLi4b pid
+      <|> nextCrit pid
+      <|> nextLi5 pid
+      <|> nextLi6 pid
+      <|> nextNoncrit pid
 
-except :: (Eq a, Hashable a, s # HashMap a b .| ctx) => Name s -> (a, b) -> RelationTerm ctx (HashMap a b)
-except name (k, v) = HashMap.insert k v <$> plain name
+nextLi0 :: ProcessLabel -> Action (VariableCtxt DijkstraMutexSpec) Bool
+nextLi0 pid = do
+  Process {..} <- (HashMap.! pid) <$> plain #procs
+  #isLooping .= (HashMap.insert pid False <$> plain #isLooping)
+  #procs .= (HashMap.insert pid Process {procStep = Li1, ..} <$> plain #procs)
+  return (procStep == Li0)
 
-formula :: (?constants :: Constants) => Invariant DijkstraMutexSpec Bool
-formula = do
-  mutualExclusion /\ starvationFree
+nextLi1 :: ProcessLabel -> Action (VariableCtxt DijkstraMutexSpec) Bool
+nextLi1 pid = do
+  Process {..} <- (HashMap.! pid) <$> plain #procs
+  procIx <- plain #procIx
 
-mutualExclusion :: (?constants :: Constants) => Invariant DijkstraMutexSpec Bool
-mutualExclusion = always do
+  if procIx /= pid
+    then #procs .= (HashMap.insert pid Process {procStep = Li2, ..} <$> plain #procs)
+    else #procs .= (HashMap.insert pid Process {procStep = Li4a, ..} <$> plain #procs)
+
+  return (procStep == Li1)
+
+nextLi2 :: ProcessLabel -> Action (VariableCtxt DijkstraMutexSpec) Bool
+nextLi2 pid = do
+  Process {..} <- (HashMap.! pid) <$> plain #procs
+
+  #goCritical .= (HashMap.insert pid True <$> plain #goCritical)
+  #procs .= (HashMap.insert pid Process {procStep = Li3a, ..} <$> plain #procs)
+
+  return (procStep == Li2)
+
+nextLi3a :: ProcessLabel -> Action (VariableCtxt DijkstraMutexSpec) Bool
+nextLi3a pid = do
+  Process {..} <- (HashMap.! pid) <$> plain #procs
+  procIx <- plain #procIx
+
+  #procs .= (HashMap.insert pid Process {procStep = Li3b, pix = procIx, ..} <$> plain #procs)
+
+  return (procStep == Li3a)
+
+nextLi3b :: ProcessLabel -> Action (VariableCtxt DijkstraMutexSpec) Bool
+nextLi3b pid = do
+  Process {..} <- (HashMap.! pid) <$> plain #procs
+  isLooping <- (HashMap.! pix) <$> plain #isLooping
+
+  if isLooping
+    then #procs .= (HashMap.insert pid Process {procStep = Li3c, ..} <$> plain #procs)
+    else #procs .= (HashMap.insert pid Process {procStep = Li1, ..} <$> plain #procs)
+
+  return (procStep == Li3b)
+
+nextLi3c :: ProcessLabel -> Action (VariableCtxt DijkstraMutexSpec) Bool
+nextLi3c pid = do
+  Process {..} <- (HashMap.! pid) <$> plain #procs
+
+  #procIx .= return pid
+  #procs .= (HashMap.insert pid Process {procStep = Li1, ..} <$> plain #procs)
+
+  return (procStep == Li3c)
+
+nextLi4a :: (?constants :: Constants) => ProcessLabel -> Action (VariableCtxt DijkstraMutexSpec) Bool
+nextLi4a pid = do
   let Constants {..} = ?constants
-  and <$> forM processSet \i ->
-    and <$> forM processSet \j -> do
-      if i /= j
-        then do
-          p_i <- (HashMap.! i) <$> plain #procs
-          p_j <- (HashMap.! j) <$> plain #procs
-          return (not (procStep p_i == Critical && procStep p_j == Critical))
-        else return True
+  Process {..} <- (HashMap.! pid) <$> plain #procs
 
-starvationFree :: (?constants :: Constants) => Invariant DijkstraMutexSpec Bool
-starvationFree = do
-  areAllFirstStep ==> eventually willGoCritical
+  #goCritical .= (HashMap.insert pid False <$> plain #goCritical)
+  #procs .= (HashMap.insert pid Process {procStep = Li4b, iterState = List.delete pid processSet, ..} <$> plain #procs)
+
+  return (procStep == Li4a)
+
+nextLi4b ::
+  (?constants :: Constants) =>
+  ProcessLabel ->
+  Action (VariableCtxt DijkstraMutexSpec) Bool
+nextLi4b pid = do
+  let Constants {..} = ?constants
+  Process {..} <- (HashMap.! pid) <$> plain #procs
+
+  if iterState /= []
+    then do
+      pid' <- oneOf processSet
+      goCrit <- (HashMap.! pid') <$> plain #goCritical
+      let iterState' = List.delete pid' iterState
+
+      if not goCrit
+        then #procs .= (HashMap.insert pid Process {procStep = Li1, iterState = iterState', ..} <$> plain #procs)
+        else #procs .= (HashMap.insert pid Process {procStep = Li4b, iterState = iterState', ..} <$> plain #procs)
+    else do
+      #procs .= (HashMap.insert pid Process {procStep = Critical, ..} <$> plain #procs)
+
+  return (procStep == Li4b)
+
+nextCrit :: ProcessLabel -> Action (VariableCtxt DijkstraMutexSpec) Bool
+nextCrit pid = do
+  Process {..} <- (HashMap.! pid) <$> plain #procs
+
+  #procs .= (HashMap.insert pid Process {procStep = Li5, ..} <$> plain #procs)
+
+  return (procStep == Critical)
+
+nextLi5 :: ProcessLabel -> Action (VariableCtxt DijkstraMutexSpec) Bool
+nextLi5 pid = do
+  Process {..} <- (HashMap.! pid) <$> plain #procs
+
+  #goCritical .= (HashMap.insert pid True <$> plain #goCritical)
+
+  return (procStep == Li5)
+
+nextLi6 :: ProcessLabel -> Action (VariableCtxt DijkstraMutexSpec) Bool
+nextLi6 pid = do
+  Process {..} <- (HashMap.! pid) <$> plain #procs
+
+  #isLooping .= (HashMap.insert pid True <$> plain #isLooping)
+  #procs .= (HashMap.insert pid Process {procStep = Noncritical, ..} <$> plain #procs)
+
+  return (procStep == Li6)
+
+nextNoncrit :: ProcessLabel -> Action (VariableCtxt DijkstraMutexSpec) Bool
+nextNoncrit pid = do
+  Process {..} <- (HashMap.! pid) <$> plain #procs
+
+  #procs .= (HashMap.insert pid Process {procStep = Li0, ..} <$> plain #procs)
+
+  return (procStep == Noncritical)
+
+mutualExclusion :: (?constants :: Constants) => Action (VariableCtxt DijkstraMutexSpec) Bool
+mutualExclusion = do
+  let Constants {..} = ?constants
+
+  forall processSet \i ->
+    forall processSet \j -> do
+      procI <- (HashMap.! i) <$> plain #procs
+      procJ <- (HashMap.! j) <$> plain #procs
+
+      return (not (procStep procI == Critical && procStep procJ == Critical) || i == j)
+
+spec :: DijkstraMutexSpec
+spec =
+  let Constants {..} = mkProcesses 6
+
+      specInit =
+        #isLooping := return (HashMap.fromList [(pid, True) | pid <- processSet])
+          :. #goCritical := return (HashMap.fromList [(pid, True) | pid <- processSet])
+          :. #procIx := return (ProcessLabel 0)
+          :. #procs := return (HashMap.fromList [(pid, Process Li0 (ProcessLabel 0) processSet) | pid <- processSet])
+
+      specNext =
+        let ?constants = Constants {..}
+         in WeakFairAction #next next
+              :\/: WeakFairAction #mutualExclusion mutualExclusion
+   in Spec specInit specNext
   where
-    areAllFirstStep :: (?constants :: Constants) => Invariant DijkstraMutexSpec Bool
-    areAllFirstStep = do
-      let Constants {..} = ?constants
-          xs = flip map processSet \pid -> do
-            p <- (HashMap.! pid) <$> plain #procs
-            return (procStep p == Critical)
-      foldr (liftA2 (&&)) (pure True) xs
-
-    willGoCritical :: (?constants :: Constants) => Invariant DijkstraMutexSpec Bool
-    willGoCritical = do
-      let Constants {..} = ?constants
-      and <$> forM processSet \pid -> do
-        p <- (HashMap.! pid) <$> plain #procs
-        return (procStep p == Critical)
-
-
-
-check :: IO ()
-check = do
-  let ?constants = mkProcesses 2
-  let spec :: Specification DijkstraMutexSpec
-      spec =
-        Specification
-          { initialAction = initial
-          , nextAction = next
-          , temporalFormula = formula
-          , terminationFormula = Nothing
-          , fairnessConstraint = weakFair
-          }
-  defaultInteraction (modelCheck spec)
-  where
-    mkProcesses :: Natural -> Constants
+    mkProcesses :: Int -> Constants
     mkProcesses n = Constants n (ProcessLabel <$> [0 .. n - 1])
 
--- ghciCheck :: IO ()
--- ghciCheck = do
---   let ?constants = mkProcesses 2
---   case modelCheck initial next invariant Nothing WeaklyFair of
---     (Left (ModelCheckerException ws exc), _) -> do
---       putStrLn "model check failed with checker exception:"
---       print ws
---       print exc
---     (Left (RuntimeException ws exc), _) -> do
---       putStrLn "model check failed with runtime exception:"
---       mapM_ print ws
---       print exc
---     (Right _, _) -> do
---       putStrLn "model success, final state: ..."
+check :: IO ()
+check = defaultInteraction spec

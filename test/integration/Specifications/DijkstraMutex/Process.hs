@@ -22,9 +22,9 @@ data Process = Process
   deriving anyclass (Hashable)
 
 -- | The type of process labels to choose from.
-newtype ProcessLabel = ProcessLabel Natural
+newtype ProcessLabel = ProcessLabel Int
   deriving stock (Generic)
-  deriving (Enum, Eq, Ord, Show) via Natural
+  deriving (Enum, Eq, Ord, Show) via Int
   deriving anyclass (Hashable)
 
 -- |
