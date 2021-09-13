@@ -20,10 +20,10 @@ module Data.Context
   )
 where
 
-import Data.Kind
-import GHC.TypeLits
+import Data.Kind (Constraint, Type)
+import GHC.TypeLits (Symbol)
 
-import Data.Ascript
+import Data.Ascript (Ascribe)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

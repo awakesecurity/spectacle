@@ -18,35 +18,45 @@ module Language.Spectacle.Checker.Replayer
   )
 where
 
-import Control.Applicative
-import Control.Monad.Except
-import Control.Monad.Reader
-import Control.Monad.State
-import Control.Monad.Writer
-import Data.Coerce
-import Data.Hashable
+import Control.Applicative (Alternative ((<|>)))
+import Control.Monad.Except (ExceptT, MonadError, runExceptT)
+import Control.Monad.Reader (MonadReader, ReaderT (runReaderT))
+import Control.Monad.State (MonadState, State, evalState)
+import Data.Hashable (Hashable)
 import Data.IntSet (IntSet)
 import qualified Data.IntSet as IntSet
-import Data.Kind
+import Data.Kind (Type)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Lens.Micro
-import Lens.Micro.Mtl
-import qualified Data.Foldable as Foldable
+import Lens.Micro (Lens', SimpleGetter, lens, to, (&))
+import Lens.Micro.Mtl (use, view, (%=))
 
 import Control.Monad.Levels
-import Data.Context
-import Data.Type.Rec
-import Data.World
-import Language.Spectacle.Checker.Fingerprint
-import Language.Spectacle.Checker.MCError
-import Language.Spectacle.Checker.Model
-import Language.Spectacle.Exception.RuntimeException
+  ( LevelsT (LevelsT),
+    foldMapAp,
+    forAp,
+    runLevelsA,
+  )
+import Data.Context (Context)
+import Data.Type.Rec (Rec)
+import Data.World (World (World), worldFingerprint)
+import Language.Spectacle.Checker.Fingerprint (Fingerprint)
+import Language.Spectacle.Checker.MCError (MCError)
+import Language.Spectacle.Checker.Model (modelNextSets)
 import Language.Spectacle.Specification
-import Language.Spectacle.Specification.Action
-import Language.Spectacle.Specification.Variable
+  ( ActionInfo (actionInfoFairness),
+    ActionSet (ActionSet, actionSetName, actionSetWorlds),
+    ActionSpine,
+    Fairness (Unfair),
+    HasActions (ActionCtxt, takeActionSpine),
+    HasVariables (VariableCtxt),
+    Spec (Spec),
+    Specification,
+    specInitialWorlds,
+    spineToActionInfo,
+  )
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -120,7 +130,7 @@ data Behavior = Behavior
   { behaviorDepth :: Int
   , behaviorActions :: Set String
   }
-  deriving Show
+  deriving (Show)
 
 -- | @since 0.1.0.0
 instance Eq Behavior where
@@ -156,12 +166,13 @@ replayModelTrace ::
   Spec vars spec prop ->
   Either [MCError ctxt] (Set Behavior)
 replayModelTrace initial target depth spec@(Spec _ sp) = do
-  resultTrace <- foldMapAp (stepReplayer 1) initialWorlds
-    & runReplayer
-    & runLevelsA
-    & runExceptT
-    & flip runReaderT (RPEnv initial target depth spine (spineToActionInfo spine))
-    & flip evalState mempty
+  resultTrace <-
+    foldMapAp (stepReplayer 1) initialWorlds
+      & runReplayer
+      & runLevelsA
+      & runExceptT
+      & flip runReaderT (RPEnv initial target depth spine (spineToActionInfo spine))
+      & flip evalState mempty
 
   return (foldMap Set.singleton resultTrace)
   where
@@ -192,13 +203,14 @@ stepReplayer depth worldHere@(World fingerprint _) = do
 
       let fairNexts = flip foldMap actionSets \ActionSet {..} ->
             let fairness = maybe Unfair actionInfoFairness (Map.lookup actionSetName actionInfo)
-            in if fairness == Unfair || Set.null actionSetWorlds
-                 then Set.empty
-                 else Set.singleton (actionSetName, actionSetWorlds)
+             in if fairness == Unfair || Set.null actionSetWorlds
+                  then Set.empty
+                  else Set.singleton (actionSetName, actionSetWorlds)
 
-          actions = if Set.null fairNexts
-            then foldMap (\ActionSet {..} -> Set.singleton (actionSetName, actionSetWorlds)) actionSets
-            else fairNexts
+          actions =
+            if Set.null fairNexts
+              then foldMap (\ActionSet {..} -> Set.singleton (actionSetName, actionSetWorlds)) actionSets
+              else fairNexts
 
       forAp actions \(action, nextWorlds) -> do
         forAp nextWorlds \nextWorld -> do

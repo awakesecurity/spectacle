@@ -6,13 +6,11 @@ module Language.Spectacle.AST.Terminate.Internal
 where
 
 import Data.Kind (Type)
-import GHC.TypeLits (Symbol)
 
-import Data.Type.Rec (Ascribe)
+import Data.Context (Context)
 import Language.Spectacle.Lang (EffectK, Lang)
 import Language.Spectacle.Syntax.Enabled.Internal (Enabled)
 import Language.Spectacle.Syntax.Plain.Internal (Plain)
-import Data.Context
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

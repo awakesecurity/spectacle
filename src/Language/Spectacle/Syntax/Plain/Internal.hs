@@ -1,7 +1,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE TypeFamilyDependencies #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeFamilyDependencies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Language.Spectacle.Syntax.Plain.Internal
@@ -12,13 +12,12 @@ module Language.Spectacle.Syntax.Plain.Internal
   )
 where
 
-import Data.Kind
+import Data.Kind (Constraint, Type)
 import Data.Void (Void)
-import GHC.TypeLits
+import GHC.TypeLits (Symbol)
 
-import Data.Type.Rec (Name, type (#), type (.|), Ascribe)
-import Language.Spectacle.Lang (Effect, EffectK, Lang, Member, send, scope)
-import Data.Context
+import Data.Type.Rec (Name, type (#), type (.|))
+import Language.Spectacle.Lang (Effect, EffectK, Lang)
 
 -- -------------------------------------------------------------------------------------------------
 

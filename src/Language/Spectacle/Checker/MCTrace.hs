@@ -15,12 +15,12 @@ module Language.Spectacle.Checker.MCTrace
   )
 where
 
-import Lens.Micro
+import Data.Maybe (fromMaybe)
 import Data.Set (Set)
-import Data.Maybe
 import qualified Data.Set as Set
+import Lens.Micro (Lens', SimpleGetter, lens, to)
 
-import Data.World
+import Data.World (World)
 import Language.Spectacle.Checker.MCStepMap (MCStepMap)
 import qualified Language.Spectacle.Checker.MCStepMap as MCStepMap
 
@@ -46,7 +46,7 @@ mcTraceActionsTaken :: Lens' MCTrace MCStepMap
 mcTraceActionsTaken =
   lens
     _mcTraceActionsTaken
-    \MCTrace{..} x -> MCTrace {_mcTraceActionsTaken = MCStepMap.union x _mcTraceActionsTaken, ..}
+    \MCTrace {..} x -> MCTrace {_mcTraceActionsTaken = MCStepMap.union x _mcTraceActionsTaken, ..}
 {-# INLINE CONLIKE mcTraceActionsTaken #-}
 
 mcTraceEventuallysTaken :: Lens' MCTrace (Set String)

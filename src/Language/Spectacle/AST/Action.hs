@@ -12,16 +12,14 @@ module Language.Spectacle.AST.Action
 where
 
 import Data.Function ((&))
-import Data.Proxy
-import Data.Set
+import Data.Hashable (Hashable)
+import Data.Set (Set)
 import qualified Data.Set as Set
-import Data.Hashable
-import GHC.TypeLits
 
 import Data.Functor.Loom (hoist, runLoom, (~>~))
 import Data.Type.Rec (Rec)
-import Data.World
-import Language.Spectacle.AST.Action.Internal
+import Data.World (World, makeWorld)
+import Language.Spectacle.AST.Action.Internal (Action (Action), ActionSyntax)
 import Language.Spectacle.Exception.RuntimeException (RuntimeException)
 import Language.Spectacle.Lang
   ( Lang (Op, Pure, Scoped),
@@ -33,6 +31,9 @@ import Language.Spectacle.Lang
   )
 import Language.Spectacle.RTS.Registers (RuntimeState, emptyRuntimeState, newValues)
 import Language.Spectacle.Syntax.Closure
+  ( Closure,
+    runActionClosure,
+  )
 import Language.Spectacle.Syntax.Env (Env, runEnv)
 import Language.Spectacle.Syntax.Error (runError)
 import Language.Spectacle.Syntax.Logic

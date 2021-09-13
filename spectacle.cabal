@@ -88,8 +88,6 @@ library
     , Language.Spectacle.AST
     , Language.Spectacle.AST.Action
     , Language.Spectacle.AST.Action.Internal
-    , Language.Spectacle.AST.Invariant
-    , Language.Spectacle.AST.Invariant.Internal
     , Language.Spectacle.AST.Terminate
     , Language.Spectacle.AST.Terminate.Internal
     , Language.Spectacle.Checker

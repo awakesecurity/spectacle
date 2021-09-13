@@ -4,7 +4,6 @@ module Language.Spectacle
 
     -- * Syntax
     type Action,
-    type Invariant,
     type Terminate,
 
     -- ** Variables
@@ -42,10 +41,8 @@ where
 import Data.Type.Rec (type (#))
 import Language.Spectacle.AST
   ( Action,
-    Invariant,
     Terminate,
   )
-import Language.Spectacle.Checker
 import Language.Spectacle.Interaction (defaultInteraction)
 import Language.Spectacle.Syntax
   ( always,

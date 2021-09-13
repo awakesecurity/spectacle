@@ -22,15 +22,18 @@ import Language.Spectacle.Exception.RuntimeException
 import Language.Spectacle.Lang
   ( Effect,
     Lang (Op, Pure, Scoped),
-    Member,
     Members,
     decomposeOp,
     decomposeS,
-    scope,
   )
 import Language.Spectacle.Syntax.Error (Error, catchE, throwE)
 import Language.Spectacle.Syntax.NonDet (NonDet, foldMapA, msplit, oneOf)
-import Language.Spectacle.Syntax.Quantifier.Internal (Effect (Exists, Forall), Quantifier (Quantifier), QuantifierIntro (forallIntro), existsIntro)
+import Language.Spectacle.Syntax.Quantifier.Internal
+  ( Effect (Exists, Forall),
+    Quantifier (Quantifier),
+    QuantifierIntro (forallIntro),
+    existsIntro,
+  )
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

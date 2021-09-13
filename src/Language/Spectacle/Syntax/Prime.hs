@@ -30,16 +30,20 @@ import Language.Spectacle.Exception.RuntimeException
 import Language.Spectacle.Lang
   ( Effect,
     Lang (Op, Pure, Scoped),
-    Member,
     Members,
     Op (OHere, OThere),
     Scoped (SHere, SThere),
     decomposeOp,
     decomposeS,
     runLang,
-    scope,
   )
 import Language.Spectacle.RTS.Registers
+  ( RuntimeState (RuntimeState, callStack, plains, primes),
+    StateFun (getStateFun),
+    Thunk (Evaluated, Thunk, Unchanged),
+    getRegister,
+    setRegister,
+  )
 import Language.Spectacle.Syntax.Env
   ( Env,
     get,
@@ -52,6 +56,10 @@ import Language.Spectacle.Syntax.Error (Error, runError, throwE)
 import Language.Spectacle.Syntax.NonDet (NonDet, oneOf, runNonDetA)
 import Language.Spectacle.Syntax.Plain (runPlain)
 import Language.Spectacle.Syntax.Prime.Internal
+  ( Effect (PrimeVar),
+    Prime (Prime),
+    PrimeIntro (primeIntro),
+  )
 
 -- -------------------------------------------------------------------------------------------------
 
@@ -59,7 +67,7 @@ import Language.Spectacle.Syntax.Prime.Internal
 --
 -- @since 0.1.0.0
 prime :: PrimeIntro m s a => Name s -> m a
-prime name = primeIntro name
+prime = primeIntro
 {-# INLINE prime #-}
 
 -- | Discharges a 'Prime' effect. This interpreter carries out the substitution of primed variables

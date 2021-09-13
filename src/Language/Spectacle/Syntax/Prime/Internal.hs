@@ -4,13 +4,13 @@ module Language.Spectacle.Syntax.Prime.Internal
   ( Prime (Prime),
     Effect (PrimeVar),
     PrimeIntro,
-    primeIntro
+    primeIntro,
   )
 where
 
+import Data.Kind (Constraint, Type)
 import Data.Void (Void)
-import Data.Kind
-import GHC.TypeLits
+import GHC.TypeLits (Symbol)
 
 import Data.Type.Rec (Name, type (#), type (.|))
 import Language.Spectacle.Lang (Effect, EffectK, Lang)

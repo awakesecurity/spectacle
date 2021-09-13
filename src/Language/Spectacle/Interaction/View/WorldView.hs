@@ -25,16 +25,23 @@ module Language.Spectacle.Interaction.View.WorldView
   )
 where
 
-import Data.Kind
+import Data.Kind (Constraint, Type)
 import Data.Text.Prettyprint.Doc
-import Lens.Micro
+  ( Pretty (pretty),
+    enclose,
+    indent,
+    line,
+    vsep,
+    (<+>),
+  )
+import Lens.Micro (Lens', lens)
 
-import Data.Ascript
-import Data.Context
-import Data.Type.Rec
-import Data.World
-import Language.Spectacle.Checker.Fingerprint
-import Language.Spectacle.Interaction.AnsiDoc
+import Data.Ascript (type (#))
+import Data.Context (Context (CtxtCon, CtxtNil))
+import Data.Type.Rec (Name, Rec, RecT (RConT, RNilT), pattern RCon, pattern RNil)
+import Data.World (World (World))
+import Language.Spectacle.Checker.Fingerprint (Fingerprint)
+import Language.Spectacle.Interaction.AnsiDoc (AnsiDoc, AnsiPretty (prettyAnsi))
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

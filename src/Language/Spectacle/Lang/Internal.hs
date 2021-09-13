@@ -14,16 +14,14 @@ import Control.Applicative (Alternative (empty, (<|>)))
 import Control.Monad (MonadPlus (mplus, mzero), (>=>))
 import Data.Bool (bool)
 import Data.Kind (Type)
-import GHC.TypeLits (Symbol)
 
-import Data.Ascript (Ascribe)
-import Data.Functor.Loom (bind, (~>~), Loom (Loom))
+import Data.Context (Context)
+import Data.Functor.Loom (Loom (Loom), bind, (~>~))
 import qualified Data.Functor.Loom as Loom
 import Language.Spectacle.Lang.Member (Member (inject, injectS))
 import Language.Spectacle.Lang.Op (Op)
 import Language.Spectacle.Lang.Scoped (Effect, EffectK, Scoped)
 import Language.Spectacle.Syntax.NonDet.Internal (NonDet (Choose, Empty))
-import Data.Context
 
 -- -------------------------------------------------------------------------------------------------
 
@@ -87,7 +85,6 @@ instance Monad (Lang ctx effs) where
   Pure x >>= f = f x
   Op u k >>= f = Op u (k >=> f)
   Scoped u loom >>= f = Scoped u (loom ~>~ bind f)
-
   {-# INLINE (>>=) #-}
 
 -- | @since 0.1.0.0

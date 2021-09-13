@@ -118,9 +118,8 @@ fromActionDecl = \case
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
-data ActionInfo = ActionInfo
-  { actionInfoFairness :: Fairness
-  }
+newtype ActionInfo = ActionInfo
+  {actionInfoFairness :: Fairness}
   deriving (Show)
 
 type ActionSet :: Context -> Type
@@ -165,7 +164,7 @@ spineToActionSets ::
   World ctxt ->
   ActionSpine ctxt actions ->
   Either RuntimeException [ActionSet ctxt]
-spineToActionSets worldHere@(World _ state) = go
+spineToActionSets (World _ state) = go
   where
     go :: ActionSpine ctxt actions' -> Either RuntimeException [ActionSet ctxt]
     go = \case

@@ -37,9 +37,9 @@ module Language.Spectacle.Interaction.Render
   )
 where
 
+import Data.Function ((&))
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Data.Function
 import Data.Text.Prettyprint.Doc
   ( Doc,
     Pretty (pretty),
@@ -77,7 +77,7 @@ import Language.Spectacle.Checker.MCError
     PropertyKind (AlwaysPropK, EventuallyPropK, InfinitelyOftenPropK, StaysAsPropK, UpUntilPropK),
     StutterKind (FiniteStutterK, InfiniteStutterK),
   )
-import Language.Spectacle.Checker.MCMetrics
+import Language.Spectacle.Checker.MCMetrics (MCMetrics, distinctStates, treeDepth, treeWidth)
 import Language.Spectacle.Checker.Step (Step)
 import Language.Spectacle.Exception.RuntimeException (RuntimeException)
 

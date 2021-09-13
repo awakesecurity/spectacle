@@ -12,9 +12,9 @@ where
 import Data.Coerce (coerce)
 import Data.Void (absurd)
 
+import Data.Context (Contextual (Ctxt))
 import Data.Functor.Loom (hoist, runLoom, (~>~))
-import Data.Context
-import Data.Type.Rec (Name, setRec, type (#), type (.|))
+import Data.Type.Rec (Name, setRec)
 import Language.Spectacle.Exception.RuntimeException (RuntimeException)
 import Language.Spectacle.Lang
   ( Effect,
@@ -26,19 +26,20 @@ import Language.Spectacle.Lang
     scope,
   )
 import Language.Spectacle.RTS.Registers
-  ( StateFun,
-    RuntimeState (newValues),
+  ( RuntimeState (newValues),
+    StateFun,
     Thunk (Evaluated, Thunk, Unchanged),
     getRegister,
     setThunk,
   )
-import Language.Spectacle.Syntax.Closure.Internal
+import Language.Spectacle.Syntax.Closure.Internal (Closure (Closure), ClosureIntro (closureIntro), Effect (Close))
 import Language.Spectacle.Syntax.Env (Env, gets, modify)
 import Language.Spectacle.Syntax.Error (Error)
 import Language.Spectacle.Syntax.NonDet (NonDet)
 import Language.Spectacle.Syntax.Prime (RuntimeState (primes), substitute)
 
 -- ---------------------------------------------------------------------------------------------------------------------
+
 -- | The ('.=') operator relates the variable @s@ to the primed values it can access in the next temporal frame. For
 -- example, a relation which increments a variable named "x" with any number 1 through 5 each frame of time would be
 -- written as:

@@ -19,22 +19,21 @@ module Language.Spectacle.RTS.Registers
 where
 
 import Data.Kind (Type)
-import GHC.TypeLits (Symbol)
 
-import Data.Ascript (Ascribe, type (#))
+import Data.Ascript (type (#))
+import Data.Context (Context, type (:<))
 import Data.Type.Rec (HasSel (getRecT, setRecT), Name, Rec, RecT, fieldMap, type (.|))
 import Language.Spectacle.Exception.RuntimeException (RuntimeException)
 import Language.Spectacle.Lang (EffectK, Lang, scope)
 import Language.Spectacle.Syntax.Error.Internal (Error)
 import Language.Spectacle.Syntax.NonDet.Internal (NonDet)
-import Language.Spectacle.Syntax.Plain.Internal
-import Language.Spectacle.Syntax.Prime.Internal
-import Data.Context
+import Language.Spectacle.Syntax.Plain.Internal (Effect (PlainVar), Plain, PlainIntro (plainIntro))
+import Language.Spectacle.Syntax.Prime.Internal (Effect (PrimeVar), Prime, PrimeIntro (primeIntro))
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
 newtype StateFun :: Context -> Type -> Type where
-  StateFun :: { getStateFun :: Lang ctxt StateFunSyntax a } -> StateFun ctxt a
+  StateFun :: {getStateFun :: Lang ctxt StateFunSyntax a} -> StateFun ctxt a
   deriving (Functor, Applicative, Monad)
 
 instance s # a .| ctxt => PlainIntro (StateFun ctxt) s a where

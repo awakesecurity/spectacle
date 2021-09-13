@@ -19,21 +19,19 @@ module Language.Spectacle.Checker.MCCoverageMap
   )
 where
 
-import Data.Bifunctor (first)
-import Data.Bool
-import Data.Function
-import Data.Int
+import Data.Bool (Bool)
+import Data.Function ((.))
+import Data.Int (Int)
 import Data.IntMap.Strict as IntMap (IntMap)
 import qualified Data.IntMap.Strict as IntMap
-import Data.Kind
-import Data.Maybe (Maybe (Just), fromMaybe, maybe)
-import Data.Monoid
-import Data.Semigroup
+import Data.Kind (Type)
+import Data.Maybe (Maybe (Just), maybe)
+import Data.Monoid (Monoid (mempty), (<>))
+import Data.Semigroup (Semigroup)
 import GHC.Real (fromIntegral)
-import Lens.Micro (Lens', lens)
 
-import Language.Spectacle.Checker.Fingerprint (Fingerprint (Fingerprint))
-import Language.Spectacle.Checker.MCWorldInfo
+import Language.Spectacle.Checker.Fingerprint (Fingerprint)
+import Language.Spectacle.Checker.MCWorldInfo (MCWorldInfo)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

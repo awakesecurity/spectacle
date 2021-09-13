@@ -8,18 +8,24 @@ module Language.Spectacle.Interaction
   )
 where
 
-import Control.Monad (forM_, forM, when)
+import Control.Monad (forM_, when)
 import Control.Monad.Except
   ( ExceptT,
     MonadIO (liftIO),
     runExceptT,
   )
-import Data.Function ((&))
 import Data.Hashable (Hashable)
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Data.Text.Prettyprint.Doc (annotate, hardline)
 import Data.Text.Prettyprint.Doc.Render.Terminal
-import Data.Text.Prettyprint.Doc
+  ( Color (Red),
+    bold,
+    color,
+    putDoc,
+  )
+import Lens.Micro ((&))
+import Lens.Micro.Mtl (view)
 import System.Environment (getArgs)
 import System.Exit (exitFailure, exitSuccess)
 import System.IO
@@ -29,19 +35,16 @@ import System.IO
     stdout,
   )
 import Text.Megaparsec (runParser, (<|>))
-import Lens.Micro
-import Lens.Micro.Mtl
 
 import Control.Monad.Levels
   ( LevelsT,
-    foldMapAp,
     forAp,
     runLevelsA,
   )
 import Data.Type.Rec (Rec)
 import Data.World (World, worldFingerprint)
 import Language.Spectacle.Checker (modelCheck)
-import Language.Spectacle.Checker.Fingerprint
+import Language.Spectacle.Checker.Fingerprint (Fingerprint)
 import Language.Spectacle.Checker.MCError (MCError)
 import Language.Spectacle.Checker.Model (modelNextSets)
 import Language.Spectacle.Checker.Replayer
@@ -149,8 +152,6 @@ emitReplayTrace fpFrom fpTo spec@(Spec _ sp) behavior' = do
 
   case emit of
     Left errs -> do
-
-
       putDoc =<< renderModelErrorsDoc errs
     Right _ -> return ()
   where

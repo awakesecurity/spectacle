@@ -13,15 +13,17 @@ import Data.Coerce (coerce)
 import Data.Void (absurd)
 
 import Data.Functor.Loom (hoist, runLoom, (~>~))
-import Data.Type.Rec (Name, Rec, getRec, type (#), type (.|))
+import Data.Type.Rec (Name, Rec, getRec)
 import Language.Spectacle.Lang
-  ( Lang (Pure, Op, Scoped),
-    Members,
+  ( Lang (Op, Pure, Scoped),
     decomposeOp,
     decomposeS,
-    scope,
   )
 import Language.Spectacle.Syntax.Plain.Internal
+  ( Effect (PlainVar),
+    Plain (Plain),
+    PlainIntro (plainIntro),
+  )
 
 -- -------------------------------------------------------------------------------------------------
 
@@ -29,7 +31,7 @@ import Language.Spectacle.Syntax.Plain.Internal
 --
 -- @since 0.1.0.0
 plain :: PlainIntro m s a => Name s -> m a
-plain name = plainIntro name
+plain = plainIntro
 {-# INLINE plain #-}
 
 -- | Discharge a 'Plain' effect, substituting instances of 'PlainVar' for the values in the given

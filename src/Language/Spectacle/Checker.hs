@@ -14,7 +14,6 @@ import Control.Monad (forM)
 import Control.Monad.Except (Except, MonadError (throwError), runExcept)
 import Control.Monad.Reader (MonadReader, ReaderT (runReaderT))
 import Control.Monad.State (MonadState, StateT, execStateT)
-import Data.Coerce (coerce)
 import qualified Data.Foldable as Foldable
 import Data.Hashable (Hashable)
 import qualified Data.IntMap.Strict as IntMap
@@ -30,7 +29,7 @@ import Lens.Micro.Mtl (use, view, (%=), (.=))
 import Control.Monad.Levels (LevelsT, foldMapAp, runLevelsA)
 import Data.Type.Rec (Rec)
 import Data.World (World (World), worldFingerprint)
-import Language.Spectacle.Checker.Fingerprint (Fingerprint (Fingerprint))
+import Language.Spectacle.Checker.Fingerprint (Fingerprint)
 import Language.Spectacle.Checker.Liveness (livenessCheck)
 import qualified Language.Spectacle.Checker.MCCoverageMap as MCCoverageMap
 import Language.Spectacle.Checker.MCEnv (MCEnv (MCEnv), mcEnvActionSpine, mcEnvPropInfo)

@@ -35,17 +35,20 @@ module Data.Type.Rec
 where
 
 import Control.Natural (type (~>))
-import Data.Functor.Identity (Identity (Identity, runIdentity))
-import Data.Hashable (Hashable (hashWithSalt))
-import Data.Kind (Constraint, Type)
-import GHC.TypeLits (KnownSymbol, Symbol)
-import Prelude (Monoid(mempty), String, const, show, (<>), (.))
+import Data.Functor.Identity (Identity (Identity))
+import Prelude (Monoid (mempty), String, const, show, (.), (<>))
 
-import Data.Ascript
-import Data.Name
-import Data.Context
-import Data.Type.Rec.Internal
+import Data.Ascript (Ascribe, type (#))
+import Data.Context (CtxtCat)
+import Data.Name (Name (Name))
+import Data.Type.Rec.Internal (pattern RCon, pattern RNil, Rec, RecT (RConT, RNilT))
 import Data.Type.Rec.Selector
+  ( HasSel (getRecT, setRecT),
+    ReflectRow (repeatRow),
+    getRec,
+    setRec,
+    type (.|),
+  )
 
 -- -------------------------------------------------------------------------------------------------
 

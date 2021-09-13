@@ -10,16 +10,28 @@ module Language.Spectacle.Interaction.AnsiDoc
   )
 where
 
-import Data.Kind
-import Data.Proxy
-import Data.Text.Prettyprint.Doc
-import Data.Text.Prettyprint.Doc.Render.Terminal
+import Data.Kind (Constraint, Type)
+import Data.Proxy (Proxy (Proxy))
+import Data.Text.Prettyprint.Doc (Doc, Pretty (pretty), indent, line, (<+>))
+import Data.Text.Prettyprint.Doc.Render.Terminal (AnsiStyle)
 import GHC.Generics
-import GHC.TypeLits
+  ( C1,
+    D1,
+    Generic (Rep, from),
+    K1 (K1),
+    M1 (M1),
+    Meta (MetaCons, MetaData, MetaSel),
+    S1,
+    U1 (U1),
+    V1,
+    type (:*:) ((:*:)),
+    type (:+:) (L1, R1),
+  )
+import GHC.TypeLits (KnownSymbol, symbolVal)
 
-import Data.Type.Rec
-import Data.World
-import Language.Spectacle.Checker.Fingerprint
+import Data.Type.Rec (Rec)
+import Data.World (World (World))
+import Language.Spectacle.Checker.Fingerprint (Fingerprint)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -97,8 +109,3 @@ instance (GAnsiPretty f, GAnsiPretty g) => GAnsiPretty (f :+: g) where
 instance (GAnsiPretty f, GAnsiPretty g) => GAnsiPretty (f :*: g) where
   gPrettyAnsi (x :*: y) = gPrettyAnsi x <> line <> gPrettyAnsi y
   {-# INLINE gPrettyAnsi #-}
-
--- | @since 0.1.0.0
--- instance {\-# OVERLAPS #-\} (AnsiPretty c1, AnsiPretty c2) => GAnsiPretty (K1 i1 c1 :*: K1 i2 c2) where
---   gPrettyAnsi (x :*: y) = gPrettyAnsi x <+> ":*:" <+> gPrettyAnsi y
---   {\-# INLINE gPrettyAnsi #-\}

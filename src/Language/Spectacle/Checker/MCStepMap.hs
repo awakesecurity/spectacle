@@ -21,16 +21,15 @@ module Language.Spectacle.Checker.MCStepMap
   )
 where
 
-import Data.Kind
-import Data.World
-import Data.Coerce
+import Data.Kind ( Type )
+import Data.World ( World(World) )
+import Data.Coerce ( coerce )
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.IntMap.Strict (IntMap)
 import qualified Data.IntMap.Strict as IntMap
 
-import Data.Context
-import Language.Spectacle.Checker.Fingerprint
+import Language.Spectacle.Checker.Fingerprint ( Fingerprint )
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

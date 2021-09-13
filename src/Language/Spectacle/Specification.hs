@@ -17,8 +17,8 @@ module Language.Spectacle.Specification
     takeInitialActions,
 
     -- ** Actions
-    type (!>)(UnfairAction, WeakFairAction, StrongFairAction),
-    type (\/)((:\/:)),
+    type (!>) (UnfairAction, WeakFairAction, StrongFairAction),
+    type (\/) ((:\/:)),
 
     -- *** Meta Information
     Fairness (Unfair, WeakFair, StrongFair),
@@ -79,14 +79,21 @@ import Language.Spectacle.Specification.Action
     actionInfoFairness,
     spineToActionInfo,
     spineToActionSets,
-    type (!>)(UnfairAction, WeakFairAction, StrongFairAction),
-    type (\/)((:\/:)),
+    type (!>) (StrongFairAction, UnfairAction, WeakFairAction),
+    type (\/) ((:\/:)),
   )
 import Language.Spectacle.Specification.Prop
   ( Always,
     Eventually,
-    HasProp (..),
-    PropInfo (..),
+    HasProp (collectPropInfo),
+    PropInfo
+      ( PropInfo,
+        propInfoIsAlways,
+        propInfoIsEventually,
+        propInfoIsInfinitelyOften,
+        propInfoLeadsTo,
+        propInfoIsStaysAs
+      ),
     makePropInfoAlways,
     makePropInfoEventually,
     makePropInfoInfinitelyOften,

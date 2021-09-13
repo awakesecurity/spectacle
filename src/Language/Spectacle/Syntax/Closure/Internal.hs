@@ -9,17 +9,16 @@ module Language.Spectacle.Syntax.Closure.Internal
   )
 where
 
+import Data.Kind (Constraint, Type)
 import Data.Void (Void)
-import Data.Kind
-import GHC.TypeLits
+import GHC.TypeLits (Symbol)
 
 import Data.Ascript (type (#))
+import Data.Context (Contextual (Ctxt))
 import Data.Name (Name)
-import Data.Context
 import Data.Type.Rec (type (.|))
 import Language.Spectacle.Lang (Effect, EffectK, Lang, ScopeK)
 import Language.Spectacle.RTS.Registers (StateFun)
-import Language.Spectacle.Syntax.NonDet (NonDet)
 
 -- -------------------------------------------------------------------------------------------------
 

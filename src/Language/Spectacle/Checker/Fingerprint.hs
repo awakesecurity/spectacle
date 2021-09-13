@@ -16,7 +16,7 @@ where
 
 import Data.Bits (Bits (rotateR, (.&.)))
 import Data.Hashable (Hashable, hash)
-import Data.Word
+import Data.Word ( Word32 )
 
 import Data.Type.Rec (Rec)
 

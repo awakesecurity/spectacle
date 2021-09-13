@@ -17,7 +17,7 @@ import qualified Data.Map.Strict as Map
 
 -- -------------------------------------------------------------------------------------------------------------------
 
-data MCWorldInfo = MCWorldInfo
+newtype MCWorldInfo = MCWorldInfo
   { mcWorldInfoEnables :: Map String IntSet
   }
   deriving Show

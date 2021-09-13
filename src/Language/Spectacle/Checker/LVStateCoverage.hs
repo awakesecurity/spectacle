@@ -12,12 +12,11 @@ module Language.Spectacle.Checker.LVStateCoverage
   )
 where
 
-import Data.Coerce (coerce)
 import Data.IntSet (IntSet)
 import qualified Data.IntSet as IntSet
 import Data.Kind (Type)
 
-import Language.Spectacle.Checker.Fingerprint (Fingerprint (Fingerprint))
+import Language.Spectacle.Checker.Fingerprint (Fingerprint)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

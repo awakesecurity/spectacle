@@ -2,8 +2,6 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 -- |
---
---
 module Data.Type.Rec.Selector
   ( -- * Record Selectors
     type (.|),
@@ -21,14 +19,14 @@ module Data.Type.Rec.Selector
   )
 where
 
-import Data.Functor.Identity
-import GHC.TypeLits
-import Data.Kind
+import Data.Functor.Identity (Identity (Identity, runIdentity))
+import Data.Kind (Constraint, Type)
+import GHC.TypeLits (KnownSymbol, Symbol)
 
-import Data.Ascript
-import Data.Name
-import Data.Type.Rec.Internal
-import Data.Context
+import Data.Ascript (Ascribe, AscriptName, AscriptType, type (#))
+import Data.Context (CNil, Context, type (:<))
+import Data.Name (Name, inferName)
+import Data.Type.Rec.Internal (Rec, RecT (RConT, RNilT))
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

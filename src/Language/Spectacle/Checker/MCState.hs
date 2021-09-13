@@ -19,21 +19,15 @@ module Language.Spectacle.Checker.MCState
   )
 where
 
-import Data.Coerce
-import Data.Foldable
-import Data.Hashable
+import Data.Foldable (find)
 import Data.IntMap.Strict (IntMap)
 import qualified Data.IntMap.Strict as IntMap
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Lens.Micro
+import Lens.Micro (Lens', lens)
 
-import Data.World
-import Data.Type.Rec
-import Language.Spectacle.Checker.Fingerprint
+import Data.World (World (World))
 import Language.Spectacle.Checker.MCCoverageMap (MCCoverageMap)
-import qualified Language.Spectacle.Checker.MCCoverageMap as MCCoverageMap
-import Language.Spectacle.Checker.MCWorldInfo
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

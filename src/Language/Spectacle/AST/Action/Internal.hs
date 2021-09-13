@@ -12,13 +12,13 @@ where
 import Control.Applicative (Alternative)
 import Data.Kind (Type)
 
-import Data.Context (Context, Contextual (..))
+import Data.Context (Context, Contextual(Ctxt))
 import Data.Type.Rec (type (#), type (.|))
 import Language.Spectacle.Exception.RuntimeException (RuntimeException)
 import Language.Spectacle.Lang (EffectK, Lang, scope)
 import Language.Spectacle.Syntax.Closure.Internal
   ( Closure,
-    ClosureIntro (..),
+    ClosureIntro (closureIntro),
     Effect (Close),
   )
 import Language.Spectacle.Syntax.Error.Internal (Error)

@@ -13,8 +13,8 @@ where
 import Control.Applicative (Alternative ((<|>)))
 import Control.Monad.Reader (MonadReader, ReaderT (runReaderT))
 import Control.Monad.State (MonadState, StateT, runStateT)
-import Control.Monad.Writer (MonadWriter (tell), censor, WriterT (runWriterT))
-import Data.Foldable (maximumBy, minimumBy)
+import Control.Monad.Writer (MonadWriter (tell), WriterT (runWriterT), censor)
+import Data.Foldable (maximumBy)
 import Data.Function (on, (&))
 import Data.IntSet (IntSet)
 import qualified Data.IntSet as IntSet
@@ -23,20 +23,19 @@ import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Lens.Micro (Lens', SimpleGetter, lens, to, (^.))
+import Lens.Micro (Lens', SimpleGetter, lens, to)
 import Lens.Micro.Mtl (use, view, (%=), (.=))
 
 import Control.Monad.Levels (LevelsT, forAp, runLevelsA)
-import Language.Spectacle.Checker.Fingerprint (Fingerprint (Fingerprint))
+import Language.Spectacle.Checker.Fingerprint (Fingerprint)
 import Language.Spectacle.Checker.LVStateCoverage (LVStateCoverage)
 import qualified Language.Spectacle.Checker.LVStateCoverage as LVStateCoverage
 import Language.Spectacle.Checker.MCCoverageMap (MCCoverageMap)
 import qualified Language.Spectacle.Checker.MCCoverageMap as MCCoverageMap
 import Language.Spectacle.Checker.MCError (MCError (MCEventuallyError))
 import Language.Spectacle.Checker.MCWorldInfo (MCWorldInfo (MCWorldInfo, mcWorldInfoEnables))
+import Language.Spectacle.Checker.Model (modelFairScheduling)
 import Language.Spectacle.Specification.Action (ActionInfo (actionInfoFairness), Fairness (Unfair))
-import Language.Spectacle.Checker.Model
-import qualified Debug.Trace as Debug
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -129,12 +128,10 @@ livenessCheck unsatisfied fingerprints coverageMap actionInfo = do
     then return fingerprints
     else do
       let counterexamples = filter (\(_, unsat', _) -> not (Set.null unsat')) result
-          (initialWorld, (lvst, unsat, trace)) =
+          (initialWorld, (_, unsat, trace)) =
             counterexamples
               & zip (Set.toList fingerprints)
-              & maximumBy (compare `on` (length . \(_, (_, _, xs)) ->xs))
-
-      mapM (\counterexample -> Debug.trace (show counterexample) (pure ())) counterexamples
+              & maximumBy (compare `on` (length . \(_, (_, _, xs)) -> xs))
 
       Left [MCEventuallyError initialWorld (last trace) unsat (length trace - 1)]
 

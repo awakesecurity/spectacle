@@ -1,24 +1,22 @@
 -- |
---
---
 module Data.Type.Rec.Internal
   ( -- * Extensible Records Transformer
-    RecT(RNilT, RConT),
+    RecT (RNilT, RConT),
 
     -- * Extensible Records
     type Rec,
     pattern RNil,
-    pattern RCon
+    pattern RCon,
   )
 where
 
-import Data.Hashable
-import Data.Kind
-import Data.Functor.Identity
+import Data.Functor.Identity (Identity (Identity))
+import Data.Hashable (Hashable (hashWithSalt))
+import Data.Kind (Type)
 
-import Data.Name
-import Data.Ascript
-import Data.Context
+import Data.Ascript (type (#))
+import Data.Context (CNil, Context, type (:<))
+import Data.Name (Name)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -77,15 +75,17 @@ instance (Ord (f x), Ord (RecT f ctxt)) => Ord (RecT f (s # x :< ctxt)) where
 --
 -- @since 0.1.0.0
 type Rec :: Context -> Type
+
 type Rec ctxt = RecT Identity ctxt
 
 -- |
 --
 -- @since 0.1.0.0
 pattern RNil :: () => CNil ~ ctxt => Rec ctxt
-pattern RNil <- RNilT
-  where RNil = RNilT
-{-# COMPLETE RNil #-}
+pattern RNil <-
+  RNilT
+  where
+    RNil = RNilT
 
 -- |
 --
@@ -95,4 +95,5 @@ pattern RCon n x r <-
   RConT n (Identity x) r
   where
     RCon n x r = RConT n (Identity x) r
-{-# COMPLETE RCon #-}
+
+{-# COMPLETE RCon, RNil #-}

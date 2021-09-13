@@ -8,20 +8,28 @@ module Language.Spectacle.Checker.Model
   )
 where
 
-import Control.Monad.Except
-import Data.Hashable
-import Data.Kind
+import Control.Monad.Except (MonadError (throwError))
+import Data.Hashable (Hashable)
+import Data.Kind (Type)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 
-import Data.Context
-import Data.Type.Rec
-import Data.World
-import Language.Spectacle.Checker.Fingerprint
+import Data.Context (Context)
+import Data.Type.Rec (Rec)
+import Data.World (World)
+import Language.Spectacle.Checker.Fingerprint (Fingerprint)
 import Language.Spectacle.Checker.MCError
+  ( MCError (MCActionError),
+  )
 import Language.Spectacle.Specification.Action
+  ( ActionInfo (actionInfoFairness),
+    ActionSet,
+    ActionSpine,
+    Fairness (Unfair),
+    spineToActionSets,
+  )
 
 -- ---------------------------------------------------------------------------------------------------------------------
 -- Model Operations
@@ -45,8 +53,6 @@ modelFairScheduling actionInfos = foldMap \(action, nexts) ->
         then Set.empty
         else Set.singleton (action, nexts)
 {-# INLINE modelFairScheduling #-}
-
-
 
 -- stepModelNextSets ::
 --   forall ctxt acts.
