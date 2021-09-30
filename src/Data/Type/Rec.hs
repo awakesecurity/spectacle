@@ -41,7 +41,7 @@ import Prelude (Monoid (mempty), String, const, show, (.), (<>))
 import Data.Ascript (Ascribe, type (#))
 import Data.Context (CtxtCat)
 import Data.Name (Name (Name))
-import Data.Type.Rec.Internal (pattern RCon, pattern RNil, Rec, RecT (RConT, RNilT))
+import Data.Type.Rec.Internal (Rec, RecT (RConT, RNilT), pattern RCon, pattern RNil)
 import Data.Type.Rec.Selector
   ( HasSel (getRecT, setRecT),
     ReflectRow (repeatRow),
