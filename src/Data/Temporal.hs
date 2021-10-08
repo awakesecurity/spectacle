@@ -62,12 +62,22 @@ import Data.Temporal.Future (F (F), endoF, future, getF, idealF)
 import Data.Temporal.Global (GL (GL), endoGL, getGL)
 import Data.Temporal.K (K (InL, InR), inL, inR, parK, pureK, sumK, toF, toGL, unwrapK)
 import Data.Temporal.RSet
-  ( Lift (..),
-    RSet (..),
+  ( Lift (Lift),
+    RSet (RSet),
     fromAction,
+    getRSet,
     intoInterval,
     intoTime,
     liftEval,
     liftRenew,
   )
-import Data.Temporal.Time (Interval (Interval), Time (TimeInf), timeExtract, pattern Inf, pattern Time)
+import Data.Temporal.Time
+  ( Interval (Interval),
+    Time (TimeInf),
+    getTime,
+    timeAfter,
+    timeBefore,
+    timeExtract,
+    pattern Inf,
+    pattern Time,
+  )
