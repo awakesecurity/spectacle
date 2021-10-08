@@ -6,6 +6,7 @@
 module Data.Temporal.Time
   ( -- * Time
     Time (TimeInf),
+    getTime,
     pattern Time,
     pattern Inf,
     timeExtract,
@@ -17,8 +18,8 @@ module Data.Temporal.Time
   )
 where
 
-import Data.Bifunctor
-import Data.Kind
+import Data.Bifunctor (Bifunctor (bimap))
+import Data.Kind (Type)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

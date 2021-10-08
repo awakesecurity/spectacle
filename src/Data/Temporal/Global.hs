@@ -1,36 +1,51 @@
--- |
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
+-- | 'GL' is the temporal comonad defining the global/always modality. Invariant formulas @G p@ are expanded as
+-- @G p := p /\ G p'@, 'GL' implements this expansion by taking the cofree constructo '(:<)' to be conjunction.
+--
+-- Repeated applications of bind/extract on 'GL' is equivalent to traversing semi-open intervals of 'Time' with the
+-- infinite represented as 'empty' of the monad transformed by 'GL'.
 --
 -- @since 0.1.0.0
 module Data.Temporal.Global
   ( -- * Global/Always Modality
-    Global (Global),
-    getGlobal,
+    GL (GL),
+    getGL,
+
+    -- ** Natural Transformations
+    endoGL,
   )
 where
 
-import Control.Comonad
-import Data.Kind
-
-import Data.Temporal.RSet
+import Control.Applicative (Applicative (liftA2))
+import Control.Comonad (Comonad (extend, extract))
+import Control.Comonad.Cofree (Cofree ((:<)), ComonadCofree (unwrap))
+import Data.Kind (Type)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
-newtype Global :: (Type -> Type) -> Type -> Type -> Type where
-  Global :: {getGlobal :: w (a -> b)} -> Global w a b
-  deriving (Functor)
+newtype GL :: (Type -> Type) -> Type -> Type where
+  GL :: {getGL :: Cofree w a} -> GL w a
+  deriving (Functor, Applicative, Monad)
 
 -- | @since 0.1.0.0
-instance (Comonad w, Applicative w) => Applicative (Global w a) where
-  pure x = Global (pure (const x))
-  {-# INLINE pure #-}
-
-  Global k <*> Global w = Global (extend (\f x -> extract k x (extract f x)) w)
-  {-# INLINE (<*>) #-}
-
--- | @since 0.1.0.0
-instance (Monoid a, Comonad w) => Comonad (Global w a) where
-  extract (Global f) = extract f mempty
+instance Functor w => Comonad (GL w) where
+  extract = extract . getGL
   {-# INLINE extract #-}
 
-  extend f (Global k) = Global (extend (\w xs -> f (Global (fmap (. mappend xs) w))) k)
+  extend f (GL w) = GL (extend (f . GL) w)
   {-# INLINE extend #-}
+
+-- | 'endoGL' is the natural transformation defining the global modality. Given a 'GL' we can apply the rules
+--
+-- @
+-- GL (GL f a -> GL f a), by necessity ('pure')
+-- GL f (GL f a) -> GL f a, by distribution over arrow
+-- GL f a -> f (GL f a), unwrapping 'Cofree',
+-- @
+--
+-- defining G p = p /\ G p' where '(:<)' is analogous to conjunction.
+--
+-- @since 0.1.0.0
+endoGL :: Applicative f => GL f a -> f (GL f a)
+endoGL (GL (_ :< ts)) = fmap GL (liftA2 (:<) (fmap extract ts) (fmap unwrap ts))
