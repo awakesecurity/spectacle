@@ -7,6 +7,7 @@
 module Language.Spectacle.Specification.Variable
   ( -- *
     Var ((:=)),
+    HasVars,
     type (:.) ((:.)),
     HasVariables,
     type VariableCtxt,
@@ -14,7 +15,7 @@ module Language.Spectacle.Specification.Variable
   )
 where
 
-import Data.Kind (Type)
+import Data.Kind (Constraint, Type)
 import GHC.TypeLits (Symbol)
 
 import Data.Context (CNil, Context, CtxtCat, type (:<))
@@ -31,6 +32,9 @@ data Var :: Symbol -> Type -> Type where
 infixr 5 :.
 data (:.) :: forall k1 k2. k1 -> k2 -> Type where
   (:.) :: a -> b -> a :. b
+
+type HasVars :: Type -> Context -> Constraint
+type HasVars vars ctxt = (HasVariables vars, VariableCtxt vars ~ ctxt)
 
 class HasVariables a where
   type VariableCtxt a :: Context

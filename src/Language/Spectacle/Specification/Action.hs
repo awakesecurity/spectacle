@@ -45,7 +45,7 @@ import Data.Context (Context)
 import Data.Name (Name)
 import Data.Type.Rec (Rec)
 import Data.World (World (World))
-import Language.Spectacle.AST.Action (Action, runAction)
+import Language.Spectacle.AST.Action (Action, runAction, runExceptionalAction)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -127,6 +127,7 @@ data ActionSet ctxt = ActionSet
   { actionSetName :: String
   , actionSetWorlds :: Set (World ctxt)
   }
+  deriving (Eq, Ord)
 
 -- | @since 0.1.0.0
 deriving instance Show (Rec ctxt) => Show (ActionSet ctxt)
@@ -170,7 +171,7 @@ spineToActionSets (World _ state) = go
     go = \case
       ActionSpineNil -> Right []
       ActionSpineCon actionDecl sp -> do
-        worlds <- runAction state (fromActionDecl actionDecl)
+        worlds <- runExceptionalAction state (fromActionDecl actionDecl)
         actionSets <- go sp
         return (ActionSet (actionDeclName actionDecl) worlds : actionSets)
 
