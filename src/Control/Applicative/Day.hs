@@ -12,6 +12,8 @@
 module Control.Applicative.Day
   ( Day (Day),
     getDay,
+    section,
+    rep,
     wrapDay,
   )
 where
@@ -24,6 +26,12 @@ import Data.Kind (Type)
 
 newtype Day :: (Type -> Type) -> Type -> Type where
   Day :: {getDay :: forall x. f x -> f (a, x)} -> Day f a
+
+section :: Applicative f => f a -> Day f a
+section x = Day (liftA2 (,) x)
+
+rep :: Applicative f => Day f a -> f a
+rep (Day f) = fmap fst (f (pure ()))
 
 wrapDay :: Monad m => m (Day m a) -> Day m a
 wrapDay f = Day \x -> (($ x) . getDay) =<< f
@@ -38,5 +46,5 @@ instance Functor f => Applicative (Day f) where
   pure x = Day (fmap (x,))
   {-# INLINE pure #-}
 
-  liftA2 c (Day fs) (Day gs) = Day (fmap (\(x, (y, z)) -> (c x y, z)) . fs . gs)
-  {-# INLINE liftA2 #-}
+  Day fs <*> Day xs = Day (fmap (\(f, (x, xs)) -> (f x, xs)) . fs . xs)
+  {-# INLINE (<*>) #-}

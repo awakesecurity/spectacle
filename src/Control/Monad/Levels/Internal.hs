@@ -13,16 +13,18 @@ module Control.Monad.Levels.Internal
     liftLevelsT,
     wrapLevelsT,
     zipLevelsWithT,
+    zipLevelsWith,
   )
 where
 
-import Control.Applicative (Alternative (empty, (<|>)))
+import Control.Applicative (Alternative (empty, (<|>)), Applicative (liftA2))
 import Control.Monad (ap, join)
 import Control.Monad.Except (MonadError (catchError, throwError))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (MonadReader (local, reader))
 import Control.Monad.State (MonadState (state))
 import Control.Monad.Trans.Class (MonadTrans, lift)
+import Control.Monad.Zip
 import Data.Kind (Type)
 
 import Control.Hyper (HyperM (HyperM, invokeM))
@@ -49,8 +51,15 @@ zipLevelsWithT :: Monad m => (Bag a -> Bag b -> m (Bag c)) -> LevelsT m a -> Lev
 zipLevelsWithT op (LevelsT f) (LevelsT g) = LevelsT \cons nil ->
   let fs x xs = pure (\k -> k (HyperM xs) x)
       gs y ys = pure (\k x -> op x y >>= (`cons` join (invokeM k <*> ys)))
-  in join (f fs (pure (const nil)) <*> g gs (pure \_ _ -> nil))
+   in join (f fs (pure (const nil)) <*> g gs (pure \_ _ -> nil))
 {-# INLINE zipLevelsWithT #-}
+
+zipLevelsWith :: Monad m => (a -> b -> c) -> LevelsT m a -> LevelsT m b -> LevelsT m c
+zipLevelsWith op (LevelsT f) (LevelsT g) = LevelsT \cons nil ->
+  let fs x xs = pure (\k -> k (HyperM xs) x)
+      gs y ys = pure (\k x -> cons (liftA2 op x y) (join (invokeM k <*> ys)))
+   in join (f fs (pure (const nil)) <*> g gs (pure \_ _ -> nil))
+{-# INLINE zipLevelsWith #-}
 
 -- | @since 0.1.0.0
 instance Functor (LevelsT m) where
@@ -87,6 +96,11 @@ instance Monad m => Alternative (LevelsT m) where
         gnil xk x = cons x (invokeM xk >>= ($ gnil))
      in f fcons fnil >>= (g gcon (pure gnil) >>=)
   {-# INLINE (<|>) #-}
+
+-- | @since 0.1.0.0
+instance Monad m => MonadZip (LevelsT m) where
+  mzipWith = zipLevelsWith
+  {-# INLINE mzipWith #-}
 
 -- | @since 0.1.0.0
 instance MonadTrans LevelsT where
