@@ -72,11 +72,11 @@ instance Ord a => Ord (Time a) where
 
 data Interval a b = Interval
   { timeBefore :: a
-  , timeAfter :: Time b
+  , timeAfter :: b
   }
   deriving (Eq, Ord, Functor, Show)
 
 -- | @since 0.1.0.0
 instance Bifunctor Interval where
-  bimap f g (Interval t t') = Interval (f t) (fmap g t')
+  bimap f g (Interval t t') = Interval (f t) (g t')
   {-# INLINE bimap #-}

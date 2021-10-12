@@ -17,7 +17,7 @@ module Data.Temporal.Global
   )
 where
 
-import Control.Applicative (Applicative (liftA2))
+import Control.Applicative (Applicative (liftA2), Alternative, empty)
 import Control.Comonad (Comonad (extend, extract))
 import Control.Comonad.Cofree (Cofree ((:<)), ComonadCofree (unwrap))
 import Data.Kind (Type)

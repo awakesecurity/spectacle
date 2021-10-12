@@ -17,7 +17,7 @@ module Data.Temporal
     -- * Reactive Types
     RSet (RSet, getRSet),
     fromAction,
-    intoTime,
+    -- intoTime,
     intoInterval,
 
     -- * Lifted Types
@@ -31,10 +31,10 @@ module Data.Temporal
     K (InL, InR),
     pureK,
     inR,
-    inL,
+    -- inL,
     unwrapK,
     toGL,
-    toF,
+    -- toF,
 
     -- *** Universal Properties
     sumK,
@@ -53,21 +53,23 @@ module Data.Temporal
 
     -- *** Natural transformations
     future,
+    captureF,
+    delayF,
     endoF,
     idealF,
   )
 where
 
-import Data.Temporal.Future (F (F), endoF, future, getF, idealF)
+import Data.Temporal.Future (F (F), captureF, delayF, endoF, future, getF, idealF)
 import Data.Temporal.Global (GL (GL), endoGL, getGL)
-import Data.Temporal.K (K (InL, InR), inL, inR, parK, pureK, sumK, toF, toGL, unwrapK)
+import Data.Temporal.K (K (InL, InR), inR, parK, pureK, sumK, toGL, unwrapK)
 import Data.Temporal.RSet
   ( Lift (Lift),
     RSet (RSet),
     fromAction,
     getRSet,
     intoInterval,
-    intoTime,
+    -- intoTime,
     liftEval,
     liftRenew,
   )

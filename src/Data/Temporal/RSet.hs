@@ -1,5 +1,6 @@
 {-# LANGUAGE Arrows #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TupleSections #-}
 
 -- |
 --
@@ -8,7 +9,7 @@ module Data.Temporal.RSet
   ( -- * Reactive Types
     RSet (RSet, getRSet),
     fromAction,
-    intoTime,
+    -- intoTime,
     intoInterval,
 
     -- * Lifted Types
@@ -25,9 +26,10 @@ import Data.Hashable (Hashable)
 import Data.Kind (Type)
 import Data.Profunctor (Profunctor, Strong)
 import Data.Set (Set)
+import qualified Data.Set as Set
 import Lens.Micro.Mtl (view)
 
-import Data.Temporal.Time (Interval (Interval), Time, pattern Inf, pattern Time)
+import Data.Temporal.Time (Interval (Interval), pattern Inf, pattern Time)
 import Data.Type.Rec (Rec)
 import Data.World (World, worldValues)
 import Language.Spectacle.AST.Action (Action, runAction)
@@ -39,20 +41,23 @@ newtype RSet :: Type -> Type -> Type where
   deriving (Functor, Applicative)
   deriving (Arrow, ArrowChoice, Category, Profunctor, Strong) via (->)
 
+-- | @since 0.1.0.0
+instance Semigroup b => Semigroup (RSet a b) where
+  RSet f <> RSet g = RSet (\x -> f x <> g x)
+  {-# INLINE (<>) #-}
+
+-- | @since 0.1.0.0
+instance Monoid b => Monoid (RSet a b) where
+  mempty = RSet (const mempty)
+  {-# INLINE CONLIKE mempty #-}
+
 fromAction :: Hashable (Rec ctxt) => Action ctxt Bool -> RSet (World ctxt) (Set (World ctxt))
 fromAction act = RSet ((`runAction` act) . view worldValues)
 
-intoTime :: Eq m => (a -> m) -> RSet a m -> RSet a (Time m)
-intoTime sing ty = proc dom -> do
-  codom <- ty -< dom
-  if sing dom == codom
-    then returnA -< Inf
-    else returnA -< Time codom
-
-intoInterval :: RSet a (Time b) -> RSet a (Interval a b)
-intoInterval ty = proc dom -> do
-  codom <- ty -< dom
-  returnA -< Interval dom codom
+intoInterval :: Ord a => RSet a (Set (String, Set a)) -> RSet (Set a) (Set (Interval a (String, a)))
+intoInterval ty = RSet $ foldMap \x ->
+  let theres = foldMap (\(name, ys) -> Set.map (name,) ys) (getRSet ty x)
+   in Set.map (Interval x) theres
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

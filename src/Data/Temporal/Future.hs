@@ -16,6 +16,8 @@ module Data.Temporal.Future
 
     -- ** Natural transformations
     future,
+    captureF,
+    delayF,
     endoF,
     idealF,
   )
@@ -23,11 +25,15 @@ where
 
 import Control.Applicative (Alternative, Applicative (liftA2))
 import Control.Comonad.Cofree (Cofree ((:<)))
+import Control.Monad.Zip
 import Data.Kind (Type)
+import Data.Set (Set)
+import qualified Data.Set as Set
 
 import Control.Applicative.Day (Day (Day, getDay))
 import Control.Applicative.Phases (Phases (Here, There))
-import Control.Applicative.Queue (Queue, later, now, wrapQueue)
+import Control.Applicative.Queue (Queue, later, now, tensor)
+import qualified Control.Applicative.Queue as Queue
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -46,11 +52,19 @@ instance (Applicative f, Alternative f) => Applicative (F f) where
 -- | Lift a 'Cofree' stream into the future modality.
 --
 -- @since 0.1.0.0
-future :: Monad f => Cofree f a -> F f a
-future (t :< ts) =
-  let here = pure t
-      there = fmap pure (wrapQueue (fmap (getF . future) ts))
-   in F (liftA2 (:<) (now here) (later there))
+future :: Monad f => Cofree f (Set a) -> F f (Set a)
+future (t :< ts)
+  | Set.null t = F (now (pure (t :< ts)))
+  | otherwise =
+    let here = pure t
+        there = fmap pure (Queue.wrap (fmap (getF . future) ts))
+     in F (liftA2 (:<) (now here) (later there))
+
+captureF :: Applicative f => Cofree f a -> F f a
+captureF w = F (now (pure w))
+
+delayF :: Applicative f => F f a -> F f a
+delayF (F f) = F (later f)
 
 -- | 'endF' is the natural transformation defining the future modality. The transformation is defined by choosing when to
 -- stop extracting from the inner 'Cofree' stream based on if the 'Queue' is 'Here' or 'There'. Witnessing 'Here' is
@@ -67,4 +81,4 @@ endoF (F q) = F $ Day \case
 --
 -- @since 0.1.0.0
 idealF :: Monad f => f (F f a) -> F f a
-idealF fx = F (wrapQueue (fmap getF fx))
+idealF fx = F (Queue.wrap (fmap getF fx))

@@ -10,10 +10,10 @@ module Data.Temporal.K
     K (InL, InR),
     pureK,
     inR,
-    inL,
+    -- inL,
     unwrapK,
     toGL,
-    toF,
+    -- toF,
 
     -- ** Universal Properties
     sumK,
@@ -45,11 +45,11 @@ pureK = InR . pure
 inR :: Cofree f a -> K f a
 inR = InR
 
--- | Inject a cofree stream into a future modality.
---
--- @since 0.1.0.0
-inL :: Monad f => Cofree f a -> K f a
-inL = InL . getF . future
+-- -- | Inject a cofree stream into a future modality.
+-- --
+-- -- @since 0.1.0.0
+-- inL :: Monad f => Cofree f a -> K f a
+-- inL = InL . getF . future
 
 -- | Unwrap a single step of 'K'.
 --
@@ -68,9 +68,9 @@ toGL (InR w) = pure (GL w)
 -- | Extract 'K' into a future modality.
 --
 -- @since 0.1.0.0
-toF :: Monad f => K f a -> F f a
-toF (InL q) = F q
-toF (InR w) = future w
+-- toF :: Monad f => K f a -> F f a
+-- toF (InL q) = F q
+-- toF (InR w) = future w
 
 -- | 'sumK' is the span of some @a@. Provided a choice of morphisms @f :: a -> F f b@ and @g :: a -> GL f b@; we can
 -- construct a unique morphism @a -> K f b@.
