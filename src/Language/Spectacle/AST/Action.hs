@@ -5,6 +5,7 @@ module Language.Spectacle.AST.Action
 
     -- ** Interpreters
     runAction,
+    runExceptionalAction,
     rewriteLogic,
     applyComplement,
     introduceEnv,
@@ -51,8 +52,9 @@ import Language.Spectacle.Syntax.Quantifier
     Quantifier,
     exists,
     forall,
-    runQuantifier,
+    runQuantifier, runExceptionalQuantifier
   )
+import Data.Either
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -60,20 +62,20 @@ import Language.Spectacle.Syntax.Quantifier
 -- by the action given.
 --
 -- @since 0.1.0.0
-runAction ::
+runExceptionalAction ::
   forall ctxt.
   Hashable (Rec ctxt) =>
   Rec ctxt ->
   Action ctxt Bool ->
   Either RuntimeException (Set (World ctxt))
-runAction knowns (Action action) = do
+runExceptionalAction knowns (Action action) = do
   states <-
     action
       & introduceEnv
       & rewriteLogic
       & runLogic
       & runActionClosure
-      & runQuantifier
+      & runExceptionalQuantifier
       & runEnv (emptyRuntimeState knowns)
       & runPlain knowns
       & runNonDetA
@@ -81,6 +83,36 @@ runAction knowns (Action action) = do
       & runLang
 
   return (takeRelatedSet states)
+  where
+    takeRelatedSet :: [(RuntimeState ctxt, Bool)] -> Set (World ctxt)
+    takeRelatedSet = foldMap \(rst, rel) ->
+      if rel
+        then Set.singleton (makeWorld (newValues rst))
+        else Set.empty
+{-# INLINE runExceptionalAction #-}
+
+runAction ::
+  forall ctxt.
+  Hashable (Rec ctxt) =>
+  Rec ctxt ->
+  Action ctxt Bool ->
+  Set (World ctxt)
+runAction knowns (Action action) =
+  let states =
+        action
+          & introduceEnv
+          & rewriteLogic
+          & runLogic
+          & runActionClosure
+          & runQuantifier
+          & runEnv (emptyRuntimeState knowns)
+          & runPlain knowns
+          & runNonDetA
+          & runError
+          & runLang
+          & fromRight []
+
+  in takeRelatedSet states
   where
     takeRelatedSet :: [(RuntimeState ctxt, Bool)] -> Set (World ctxt)
     takeRelatedSet = foldMap \(rst, rel) ->

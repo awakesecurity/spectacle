@@ -5,6 +5,7 @@ module Control.Monad.Levels
     runLevelsA,
     liftLevelsT,
     wrapLevelsT,
+    zipLevelsWithT,
     foldMapAp,
     forAp,
     foldMapAlt,
@@ -15,7 +16,7 @@ where
 
 import Control.Applicative (Alternative (empty, (<|>)), liftA2)
 
-import Control.Monad.Levels.Internal (LevelsT (LevelsT), liftLevelsT, runLevelsT, wrapLevelsT)
+import Control.Monad.Levels.Internal (LevelsT (LevelsT), liftLevelsT, runLevelsT, wrapLevelsT, zipLevelsWithT)
 import Data.Bag (Bag (None))
 
 -- ---------------------------------------------------------------------------------------------------------------------
