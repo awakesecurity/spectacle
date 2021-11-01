@@ -12,6 +12,7 @@ module Language.Spectacle.Model.Classifier
     propBinder,
 
     -- ** Lenses
+    ixDepth,
     ixWorld,
     propBinderIdx,
 
@@ -26,6 +27,8 @@ module Language.Spectacle.Model.Classifier
     -- ** Lenses
     nextNodes,
     nodeTruths,
+    ixMaybeProp,
+    ixProp,
   )
 where
 
@@ -35,6 +38,7 @@ import Data.IntSet (IntSet)
 import qualified Data.IntSet as IntSet
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
+import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Lens.Micro (Lens', SimpleGetter, at, ix, lens, to, (<&>), (^.))
@@ -48,7 +52,9 @@ import Language.Spectacle.Checker.Fingerprint (Fingerprint)
 data Tabula = Tabula
   { getTabula :: IntMap TabulaNode
   , propBinder :: Map String Int
+  , searchDepth :: {-# UNPACK #-} !Int
   }
+  deriving (Show)
 
 -- | @since 0.1.0.0
 type instance Index Tabula = Fingerprint
@@ -77,13 +83,18 @@ instance At Tabula where
 
 -- | @since 0.1.0.0
 instance Semigroup Tabula where
-  Tabula tab1 ros1 <> Tabula tab2 ros2 =
-    Tabula (IntMap.unionWith (<>) tab1 tab2) (Map.union ros1 ros2)
+  Tabula tab1 ros1 d1 <> Tabula tab2 ros2 d2 =
+    Tabula (IntMap.unionWith (<>) tab1 tab2) (Map.union ros1 ros2) (d1 `max` d2)
   {-# INLINE (<>) #-}
 
 ixWorld :: World ctxt -> Lens' Tabula (Maybe TabulaNode)
 ixWorld (World fp _) = at fp
 {-# INLINE ixWorld #-}
+
+ixDepth :: Lens' Tabula Int
+ixDepth = lens searchDepth \Tabula {..} d ->
+  Tabula {searchDepth = max d searchDepth, ..}
+{-# INLINE ixDepth #-}
 
 propBinderIdx :: String -> SimpleGetter Tabula (Maybe Int)
 propBinderIdx prop = to (Map.lookup prop . propBinder)
@@ -93,22 +104,23 @@ ixTruth :: String -> World ctxt -> Tabula -> Maybe Bool
 ixTruth prop world tabula = do
   propIx <- tabula ^. propBinderIdx prop
   node <- tabula ^. ixWorld world
-  pure (IntSet.member propIx (propTruth node))
+  pure (IntMap.member propIx (propTruth node))
 
 data TabulaNode = TabulaNode
   { nextNodes :: Set Fingerprint
-  , propTruth :: IntSet
+  , propTruth :: IntMap Bool
   }
+  deriving (Show)
 
 -- | @since 0.1.0.0
 instance Semigroup TabulaNode where
   TabulaNode ns1 ts1 <> TabulaNode ns2 ts2 =
-    TabulaNode (Set.union ns1 ns2) (IntSet.union ts1 ts2)
+    TabulaNode (Set.union ns1 ns2) (IntMap.unionWith (||) ts1 ts2)
   {-# INLINE (<>) #-}
 
 -- | @since 0.1.0.0
 instance Monoid TabulaNode where
-  mempty = TabulaNode Set.empty IntSet.empty
+  mempty = TabulaNode Set.empty IntMap.empty
   {-# INLINE mempty #-}
 
 nodeNexts :: Lens' TabulaNode (Set Fingerprint)
@@ -116,7 +128,17 @@ nodeNexts = lens nextNodes \TabulaNode {..} x ->
   TabulaNode {nextNodes = Set.union x nextNodes, ..}
 {-# INLINE nodeNexts #-}
 
-nodeTruths :: Lens' TabulaNode IntSet
+nodeTruths :: Lens' TabulaNode (IntMap Bool)
 nodeTruths = lens propTruth \TabulaNode {..} x ->
-  TabulaNode {propTruth = IntSet.union x propTruth, ..}
+  TabulaNode {propTruth = IntMap.unionWith (||) x propTruth, ..}
 {-# INLINE nodeTruths #-}
+
+ixMaybeProp :: Int -> Lens' TabulaNode (Maybe Bool)
+ixMaybeProp idx = lens (IntMap.lookup idx . propTruth) \TabulaNode {..} x ->
+  TabulaNode {propTruth = IntMap.insertWith (||) idx (fromMaybe False x) propTruth, ..}
+{-# INLINE ixMaybeProp #-}
+
+ixProp :: Int -> Lens' TabulaNode Bool
+ixProp idx = lens (fromMaybe False . IntMap.lookup idx . propTruth) \TabulaNode {..} x ->
+  TabulaNode {propTruth = IntMap.insertWith (||) idx x propTruth, ..}
+{-# INLINE ixProp #-}
