@@ -13,11 +13,14 @@ module Language.Spectacle.Model where
 import Control.Applicative
 import Control.Arrow (returnA)
 import Control.Comonad.Cofree
+import Control.Comonad.Store
+import Control.Monad.Codensity
 import Control.Monad.Except
 import Control.Monad.IO.Class
 import Control.Monad.Logic
 import Control.Monad.Reader
 import Control.Monad.State.Strict
+import Data.Function
 import Data.Functor.Identity
 import Data.Hashable
 import Data.IntMap (IntMap)
@@ -36,7 +39,6 @@ import Control.Applicative.Day
 import Control.Applicative.Phases (Phases (Here, There))
 import Control.Applicative.Queue
 import Control.Comonad
-import Control.Monad.Codensity
 import Control.Monad.Levels
 import Data.Bag (Bag (None, Some), zipBagWith)
 import qualified Data.Bag as Bag
@@ -64,10 +66,7 @@ import Language.Spectacle.Syntax.NonDet
 -- ---------------------------------------------------------------------------------------------------------------------
 
 initialTimes ::
-  ( ctxt ~ VariableCtxt vars
-  , Hashable (Rec ctxt)
-  , HasVariables vars
-  ) =>
+  (ctxt ~ VariableCtxt vars, Hashable (Rec ctxt), HasVariables vars) =>
   vars ->
   Either [MCError ctxt] (Set (World ctxt))
 initialTimes spec = do
@@ -95,7 +94,7 @@ setupActionInfo ::
   Map String (Fairness, PropInfo)
 setupActionInfo acts propInfos =
   let elements :: [(Fairness, PropInfo)]
-      elements = foldMap (\(fair, name, _) -> [(fair, propInfos Map.! name)]) acts
+      elements = foldMap (\(fair, name, _) -> Debug.trace (show propInfos) [(fair, propInfos Map.! name)]) acts
 
       keyIdents :: [String]
       keyIdents = foldMap (\(_, name, _) -> [name]) acts
@@ -123,12 +122,6 @@ setupActions = reflectActs . takeActionSpine
               StrongFairAction name f -> (StrongFair, show name, f)
          in act : reflectActs acts
 
--- setupRSet ::
---   Hashable (Rec ctxt) =>
---   [(String, Action ctxt Bool)] ->
---   RSet (World ctxt) (Set (Interval (World ctxt) (Set (World ctxt))))
--- setupRSet = spanRSets . map (uncurry fromAction)
-
 runModelCheck ::
   forall vars spec prop ctxt acts.
   ( Specification vars spec prop
@@ -143,25 +136,174 @@ runModelCheck ::
 runModelCheck spec@(Spec vs sp) = do
   let actions = setupActions sp
       actInfo = setupActionInfo actions (collectPropInfo @prop)
+      tabula = (setupTabula `on` Set.fromList) (map (view _2) actions) (Map.keys actInfo)
 
   case initialTimes vs of
     Left err -> return (Left err)
     Right initWorlds -> do
-      let acts :: [Action ctxt Bool]
-          acts = map (\(_, _, act) -> act) actions
-
-          canonicalAction :: World ctxt -> Set (World ctxt)
-          canonicalAction (World _ vars) = foldMap (runAction vars) acts
-
-          testSearch :: MonadIO f => LevelsT f (Bool, World ctxt)
-          testSearch = do
-            initWorld <- sumFoldable initWorlds
-            pure (True, initWorld) <|> globalF 0 initWorld canonicalAction
-
       testResult <-
-        testSearch
+        runCoK (checkLoop 0 actions actInfo initWorlds) (wrap . pure . fst)
           & observeLevelsT
+          & flip runStateT tabula
+
+      print "result:"
+      print (fst testResult)
       pure (Right ())
+
+-- case initialTimes vs of
+--   Left err -> return (Left err)
+--   Right initWorlds -> do
+--     let [f, g] = map (\(_, _, act) -> act) actions
+
+--         -- canonicalAction :: World ctxt -> Set (World ctxt)
+--         -- canonicalAction (World _ vars) = foldMap (runAction vars) acts
+
+--         testS ::
+--           (MonadIO m, MonadState Tabula m) =>
+--           Set (World ctxt) ->
+--           CoK (Set (World ctxt)) m (Set (World ctxt), Bool)
+--         testS worlds = do
+--           when (Set.null worlds) empty
+--           (xs, xHolds) <-
+--             globalM
+--               (pure . not . Set.null)
+--               (foldMap (\x -> runAction (view worldValues x) f) worlds, True)
+--           (ys, yHolds) <-
+--             futureM
+--               (pure . not . Set.null)
+--               (foldMap (\x -> runAction (view worldValues x) g) worlds, False)
+--           --   >>= \(xs, t) -> do
+--           -- let xs' = foldMap (\x -> runAction (view worldValues x) g) xs
+--           -- pure (xs', t)
+
+--           zs <- CoK \_ -> handleWorlds (Set.union xs ys) True
+--           lift (liftIO (print zs))
+--           testS zs
+
+--     testResult <-
+--       runCoK (testS initWorlds) (pure . fst)
+--         & execLevelsT
+--         & flip runStateT (Tabula IntMap.empty Map.empty 0)
+
+--     -- print testResult
+--     pure (Right ())
+
+checkLoop ::
+  (MonadIO m, MonadState Tabula m, Hashable (Rec ctxt), Show (Rec ctxt)) =>
+  Int ->
+  [(Fairness, String, Action ctxt Bool)] ->
+  Map String (Fairness, PropInfo) ->
+  Set (World ctxt) ->
+  CoK (Time (World ctxt)) m (Time (World ctxt), Bool)
+checkLoop depth actions actInfo worlds
+  | Set.null worlds = do
+    nexts <- forAp actions \(fair, ident, action) ->
+      case snd <$> Map.lookup ident actInfo of
+        Nothing -> empty
+        Just propInfo ->
+          fst <$> makeActionCoK (fair, ident, action) propInfo Infinity
+    lift (liftIO (putStrLn ("final: " ++ show depth)))
+    empty
+  | otherwise = do
+    nexts <- forAp actions \(fair, ident, action) ->
+      forAp worlds \here -> do
+      case snd <$> Map.lookup ident actInfo of
+        Nothing -> empty
+        Just propInfo -> do
+          let nexts = actionLambda action here
+          let adjacent = Set.map (view worldFingerprint) (fromTime nexts)
+
+          (nexts', _) <-
+            makeActionCoK (fair, ident, action) propInfo nexts >>= \(xs, t) -> do
+              let xs' = foldMap (actionLambda action) (fromTime xs)
+              actIdx <- lift (gets (ixAction ident))
+              pure (xs', t)
+          lift (liftIO (putStrLn ident))
+          lift (liftIO (print $ here))
+
+          pure [(here, fromTime nexts')]
+
+    unMarked <- filterM (fmap isNothing . lift . use . ixWorld . fst) nexts
+
+    nexts' <- forM unMarked \(here, there) -> do
+      let adjacent = Set.map (view worldFingerprint) there
+      lift (ixWorld here %= (<> Just (TabulaNode adjacent IntMap.empty)))
+      pure there
+
+    lift (liftIO (putStrLn "--"))
+    -- lift (liftIO (putStrLn (show ident)))
+    -- lift (liftIO (putStrLn ("here: " ++ show worlds)))
+    -- lift (liftIO (putStrLn ("there: " ++ show nexts')))
+    checkLoop (1 + depth) actions actInfo (Set.unions nexts')
+
+makeActionCoK ::
+  (MonadIO m, MonadState Tabula m, Hashable (Rec ctxt), Show (Rec ctxt)) =>
+  (Fairness, String, Action ctxt Bool) ->
+  PropInfo ->
+  Time (World ctxt) ->
+  CoK (Time (World ctxt)) m (Time (World ctxt), Bool)
+makeActionCoK (fair, ident, act) actInfo worlds
+  | propInfoIsAlways actInfo = do
+    (worlds', truth) <- globalM (pure . inhabited) (worlds, True)
+    return (worlds', truth)
+  | propInfoIsEventually actInfo = do
+    (worlds', truth) <- futureM (pure . inhabited) (worlds, False)
+    return (worlds', truth)
+  | propInfoIsInfinitelyOften actInfo =
+    undefined
+  | propInfoIsStaysAs actInfo =
+    undefined
+  | not (Set.null (propInfoLeadsTo actInfo)) =
+    undefined
+  | otherwise =
+    undefined
+
+setupTabula :: Set String -> Set String -> Tabula
+setupTabula props acts =
+  let propBinders = Map.fromList (zip (Set.toList props) [1 ..])
+      actBinders = Map.fromList (zip (Set.toList acts) [1 ..])
+   in Tabula IntMap.empty propBinders actBinders 0
+{-# INLINE setupTabula #-}
+
+inhabited :: Time a -> Bool
+inhabited Infinity = False
+inhabited (Time xs) = not (Set.null xs)
+
+actionLambda :: Hashable (Rec ctxt) => Action ctxt Bool -> World ctxt -> Time (World ctxt)
+actionLambda action here =
+  let nexts = runAction (view worldValues here) action
+   in Time nexts
+{-# INLINE actionLambda #-}
+
+handleWorlds :: (Hashable (Rec ctxt), MonadState Tabula m) => Set (World ctxt) -> LevelsT m (Set (World ctxt))
+handleWorlds worlds = do
+  pruned <- pruneMarked worlds
+  let adjacent = Set.map (view worldFingerprint) worlds
+  undefined
+
+handleWorld :: (Hashable (Rec ctxt), MonadState Tabula m) => World ctxt -> m (Maybe (World ctxt))
+handleWorld world = do
+  isMarked <- isJust <$> use (ixWorld world)
+
+  undefined
+
+-- forAp worlds \world -> do
+--   let truths = IntMap.singleton 0 True
+
+--   isMarked <- isJust <$> use (ixWorld world)
+
+--   if isMarked
+--     then pure Set.empty
+--     else do
+--       ixWorld world %= (<> Just (TabulaNode adjacent truths))
+--       pure (Set.singleton world)
+
+pruneMarked :: (MonadState Tabula m) => Set (World ctxt) -> m (Set (World ctxt))
+pruneMarked =
+  let go w ws idx
+        | isJust idx = ws
+        | otherwise = Set.insert w ws
+   in Set.foldr (\w ws -> liftA2 (go w) ws (use (ixWorld w))) (pure Set.empty)
 
 -- let actions = setupActions sp
 --     actInfo = setupActionInfo actions (collectPropInfo @prop)
@@ -197,221 +339,59 @@ runModelCheck spec@(Spec vs sp) = do
 --     observeAllT there >>= mapM_ (goCofree (depth + 1))
 
 -- semGlobal propIdx \nt p -> loop nt p True initWorld
-globalF ::
-  forall f ctxt.
-  (MonadIO f, Show (Rec ctxt)) =>
-  Int ->
-  World ctxt ->
-  (World ctxt -> Set (World ctxt)) ->
-  LevelsT f (Bool, World ctxt)
-globalF propIdx initWorld act = derived \nt p -> loop nt p True initWorld
-  where
-    derived ::
-      (forall g. Monad g => (LevelsT f ~> g) -> (World ctxt -> g Bool) -> g (World ctxt)) ->
-      LevelsT f (Bool, World ctxt)
-    derived phi =
-      runK
-        (phi lift (semGlobal propIdx))
-        predicate
-        (Tabula IntMap.empty Map.empty 0)
 
-    loop ::
-      Monad g =>
-      (LevelsT f ~> g) ->
-      (World ctxt -> g Bool) ->
-      Bool ->
-      World ctxt ->
-      g (World ctxt)
-    loop nt p propHolds world
-      | propHolds = do
-        holdsNext <- p world
-        nextWorld <- nt (sumFoldable (act world))
+globalS ::
+  forall m a.
+  (MonadIO m, Show a) =>
+  (Set a -> m Bool) ->
+  Set a ->
+  CoK (Set a) m (Set a, Bool)
+globalS p here = CoK \nextS -> do
+  let nextK :: Set a -> Bool -> CoK Bool m (Set a)
+      nextK xs holdsNow
+        | Set.null xs = CoK \_ -> nextS (xs, holdsNow)
+        | otherwise = CoK \predicate -> do
+          later <- nextS (xs, holdsNow)
+          runCoK (globalK later nextK) predicate
 
-        loop nt p holdsNext nextWorld
-      | otherwise = undefined -- TODO
+  xs <- runCoK (nextK here True) (lift . p)
+  pure (xs, True)
 
-    predicate :: World ctxt -> Tabula -> LevelsT f (Bool, World ctxt)
-    predicate world tabula = case view (ixWorld world) tabula of
-      Nothing -> undefined -- TODO: error? ixWorld should always exist in the tabula by the point the predicate is applied
-      Just node -> pure (view (ixProp propIdx) node, world)
-
-semGlobal :: (Alternative m, MonadIO m, Show (Rec ctxt)) => Int -> World ctxt -> K (Bool, World ctxt) Tabula m Bool
-semGlobal propIdx here = K \k ctx -> case view (ixWorld here) ctx of
-  Just node -> empty
-  Nothing -> do
-    let node =
-          view (ixWorld here) ctx
-            & fromMaybe mempty
-            & set (ixProp propIdx) True
-
-        ctx' =
-          ctx
-            & ixWorld here .~ Just node
-            & ixDepth %~ (1 +)
-
-    liftIO $ putStrLn (show (view ixDepth ctx) ++ ": " ++ show here)
-
-    k True ctx' >>= \case
-      (False, here') -> return (False, here')
-      (True, here') -> return (True, here') <|> k True ctx'
-
--- layer :: (MonadIO m, Show a) => Cofree (LogicT m) a -> Queue (LogicT m) (LevelsT m a)
--- layer (here :< there) = liftA2 (<|>) (now (pure (pure here))) (later (wrap (fmap layer there)))
-
--- toSearch ::
---   Show (Rec ctxt) =>
---   String ->
---   Cofree (LogicT (Except [MCError ctxt])) (Set (Interval (World ctxt) (Set (World ctxt)))) ->
---   LevelsT (Except [MCError ctxt]) (Int, Set (Interval (World ctxt) (Set (World ctxt))))
--- toSearch prop w = fromLogicT (runQueue (getG (semGlobal prop w))) >>= fromSearchSpace 0
-
--- fromSearchSpace ::
---   Monad m =>
---   Int ->
---   Cofree (LogicT m) (Set (Interval a (Set a))) ->
---   LevelsT m (Int, Set (Interval a (Set a)))
--- fromSearchSpace depth (here :< there)
---   | Set.null here = empty -- pure (0, Set.empty)
---   | otherwise = pure (depth, here) <|> (fromLogicT there >>= fromSearchSpace (1 + depth))
-
-fromLogicT :: Monad f => LogicT f a -> LevelsT f a
-fromLogicT (LogicT m) = wrapLevelsT (m (fmap . (<|>) . pure) (pure empty))
-
--- result <-
---   modelCheck reactive initialWorlds
---     & runSearchT
---     & runLevelsM
---     & runBaseT
---     & flip runReaderT (MCEnv actInfo)
---     & flip evalStateT (MCState Set.empty)
---     & runExcept
---     & pure
-
--- return result
-
--- modelCheck ::
---   (Show (Rec ctxt), Ord (Rec ctxt)) =>
---   RSet (World ctxt) (Set (Interval (World ctxt) (Set (World ctxt)))) ->
---   Set (World ctxt) ->
---   SearchT ctxt Identity ()
--- modelCheck reactive initials = do
---   globalQuals <- Map.keys . Map.filter (propInfoIsAlways . snd) <$> view mcEnvPropInfo
---   futureQuals <- Map.keys . Map.filter (propInfoIsEventually . snd) <$> view mcEnvPropInfo
---   staysQuals <- Map.keys . Map.filter (propInfoIsStaysAs . snd) <$> view mcEnvPropInfo
-
---   Debug.trace (show futureQuals) (pure ())
---   Debug.trace (show globalQuals) (pure ())
---   Debug.trace (show staysQuals) (pure ())
-
---   let stream = pruneCycles (streamBehaviors globalQuals reactive initials)
-
---   xs <- searchFuture staysQuals stream
---   Debug.trace (show xs) (pure ())
-
---   return ()
+globalK ::
+  Monad m =>
+  Set a ->
+  (Set a -> Bool -> CoK Bool m (Set a)) ->
+  CoK Bool m (Set a)
+globalK here nextK = CoK \predicate -> do
+  holds <- predicate here
+  if holds
+    then pure here <|> runCoK (nextK here True) predicate
+    else runCoK (nextK here False) (pure . const False)
 
 -- ---------------------------------------------------------------------------------------------------------------------
-
--- toSearchT ::
---   (Show a) =>
---   Int ->
---   Cofree (Except [MCError ctxt]) (Set (Interval a (String, a))) ->
---   SearchT ctxt Identity (Int, Set (Interval a (String, a)))
--- toSearchT depth (here :< there)
---   | Set.null here = case runExcept there of
---     Left errs -> throwError errs
---     Right _ -> pure (depth, Set.empty)
---   | otherwise = case runExcept there of
---     Left errs -> throwError errs
---     Right nexts -> pure (depth, here) <|> toSearchT (1 + depth) nexts
-
--- searchFuture ::
---   Show (Rec ctxt) =>
---   [String] ->
---   Cofree (Except [MCError ctxt]) (Set (Interval (World ctxt) (Set (World ctxt)))) ->
---   SearchT ctxt Identity (Set (Interval (World ctxt) (Set (World ctxt))))
--- searchFuture names w =
---   let futures = foldr (tensor . fmap (fmap snd . toSearchT 0) . getF) (pure (pure Set.empty)) (makeFutures names w)
---    in case runExcept (runQueue futures) of
---         Left errs -> throwError errs
---         Right intervals -> intervals
---   where
---     makeFutures ::
---       Show (Rec ctxt) =>
---       [String] ->
---       Cofree (Except [MCError ctxt]) (Set (Interval (World ctxt) (Set (World ctxt)))) ->
---       [F (Except [MCError ctxt]) (Set (Interval (World ctxt) (Set (World ctxt))))]
---     makeFutures names w = foldMap (pure . (`semStaysF` w)) names
-
--- semFuture ::
---   (Show (Rec ctxt)) =>
---   String ->
---   Cofree (Except [MCError ctxt]) (Set (Interval (World ctxt) (String, World ctxt))) ->
---   F (Except [MCError ctxt]) (Set (Interval (World ctxt) (String, World ctxt)))
--- semFuture name (here :< there)
---   | Set.null here = error ("eventually error: " ++ name)
---   | otherwise =
---     let witnesses = Set.filter ((== name) . fst . timeAfter) here
---      in if Set.null witnesses
---           then case runExcept there of
---             Left errs -> F (now (throwError errs))
---             Right nexts -> Debug.trace ("F(" ++ show name ++ "): " ++ show here) (delayF (semFuture name nexts))
---           else captureF (here :< there)
-
--- semStaysF ::
---   (Show (Rec ctxt)) =>
---   String ->
---   Cofree (Except [MCError ctxt]) (Set (Interval (World ctxt) (String, World ctxt))) ->
---   F (Except [MCError ctxt]) (Set (Interval (World ctxt) (String, World ctxt)))
--- semStaysF name (here :< there)
---   | Set.null here = undefined
---   | otherwise =
---     let witnesses = Set.filter ((== name) . fst . timeAfter) here
---      in case runExcept there of
---           Left errs -> F (now (throwError errs))
---           Right nexts
---             | Set.null witnesses -> Debug.trace ("FG[F x](" ++ show name ++ "): " ++ show here) (delayF (semStaysF name nexts))
---             | otherwise -> Debug.trace ("FG[F !](" ++ show name ++ "): " ++ show here) (delayF (semStaysG name nexts))
-
--- semStaysG ::
---   (Show (Rec ctxt)) =>
---   String ->
---   Cofree (Except [MCError ctxt]) (Set (Interval (World ctxt) (String, World ctxt))) ->
---   F (Except [MCError ctxt]) (Set (Interval (World ctxt) (String, World ctxt)))
--- semStaysG name (here :< there)
---   | Set.null here = undefined
---   | otherwise =
---     let witnesses = Set.filter ((== name) . fst . timeAfter) here
---      in case runExcept there of
---           Left errs -> F (now (throwError errs))
---           Right nexts
---             | Set.null witnesses -> Debug.trace ("FG[G x](" ++ name ++ "): " ++ show here) (delayF (semStaysF name nexts))
---             | otherwise -> Debug.trace ("FG[G !](" ++ name ++ "): " ++ show here) (delayF (semStaysG name nexts))
 
 type TestSpec =
   Spec
     (Var "x" Int :. Var "y" Int) -- :. Var "z" Int)
     ("incX" !> 'Unfair \/ "incY" !> 'Unfair) -- \/ "incZ" !> 'Unfair)
-    (Always "incX" /\ Eventually "incZ") -- /\ Eventually (Always "incY"))
+    (Always "incX" /\ Eventually "incY") -- /\ Eventually (Always "incY"))
 
 incX :: Action (VariableCtxt TestSpec) Bool
 incX = do
   x <- plain #x
-  if x < 4
+  if x < 7
     then do
       n <- oneOf [1 .. 2]
       #x .= pure (n + x)
-    else do
-      -- nil <- oneOf []
-      #x .= pure 0
+    else #x .= pure 0
   return True
 
 incY :: Action (VariableCtxt TestSpec) Bool
 incY = do
   x <- plain #x
   y <- plain #y
-  #y .= pure 1 -- (x + y `mod` 5)
-  return True
+  #y .= pure (x + y `mod` 5)
+  return True --  (x == 5 || x == 6)
 
 -- incY :: Action (VariableCtxt TestSpec) Bool
 -- incY = do

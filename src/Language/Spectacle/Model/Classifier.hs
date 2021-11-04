@@ -14,10 +14,12 @@ module Language.Spectacle.Model.Classifier
     -- ** Lenses
     ixDepth,
     ixWorld,
+    ixSeen,
     propBinderIdx,
 
     -- ** Query
     ixTruth,
+    ixAction,
 
     -- * Tabula Nodes
     TabulaNode (TabulaNode),
@@ -52,6 +54,7 @@ import Language.Spectacle.Checker.Fingerprint (Fingerprint)
 data Tabula = Tabula
   { getTabula :: IntMap TabulaNode
   , propBinder :: Map String Int
+  , actBinder :: Map String Int
   , searchDepth :: {-# UNPACK #-} !Int
   }
   deriving (Show)
@@ -83,8 +86,12 @@ instance At Tabula where
 
 -- | @since 0.1.0.0
 instance Semigroup Tabula where
-  Tabula tab1 ros1 d1 <> Tabula tab2 ros2 d2 =
-    Tabula (IntMap.unionWith (<>) tab1 tab2) (Map.union ros1 ros2) (d1 `max` d2)
+  Tabula tab1 ps1 as1 d1 <> Tabula tab2 ps2 as2 d2 =
+    Tabula
+      (IntMap.unionWith (<>) tab1 tab2)
+      (Map.union ps1 ps2)
+      (Map.union as1 as2)
+      (d1 `max` d2)
   {-# INLINE (<>) #-}
 
 ixWorld :: World ctxt -> Lens' Tabula (Maybe TabulaNode)
@@ -96,6 +103,9 @@ ixDepth = lens searchDepth \Tabula {..} d ->
   Tabula {searchDepth = max d searchDepth, ..}
 {-# INLINE ixDepth #-}
 
+ixSeen :: World ctxt -> SimpleGetter Tabula Bool
+ixSeen (World fp _) = to (IntMap.member (fromIntegral fp) . getTabula)
+
 propBinderIdx :: String -> SimpleGetter Tabula (Maybe Int)
 propBinderIdx prop = to (Map.lookup prop . propBinder)
 {-# INLINE propBinderIdx #-}
@@ -105,6 +115,9 @@ ixTruth prop world tabula = do
   propIx <- tabula ^. propBinderIdx prop
   node <- tabula ^. ixWorld world
   pure (IntMap.member propIx (propTruth node))
+
+ixAction :: String -> Tabula -> Int
+ixAction prop tabula = actBinder tabula Map.! prop
 
 data TabulaNode = TabulaNode
   { nextNodes :: Set Fingerprint
