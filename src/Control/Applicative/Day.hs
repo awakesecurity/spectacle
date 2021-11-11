@@ -1,4 +1,5 @@
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- | Cayley applicative transformer.
 --
@@ -12,7 +13,7 @@
 module Control.Applicative.Day
   ( Day (Day),
     getDay,
-    section,
+    sec,
     rep,
     wrapDay,
   )
@@ -27,14 +28,15 @@ import Data.Kind (Type)
 newtype Day :: (Type -> Type) -> Type -> Type where
   Day :: {getDay :: forall x. f x -> f (a, x)} -> Day f a
 
-section :: Applicative f => f a -> Day f a
-section x = Day (liftA2 (,) x)
+sec :: Applicative f => f a -> Day f a
+sec x = Day (liftA2 (,) x)
 
 rep :: Applicative f => Day f a -> f a
 rep (Day f) = fmap fst (f (pure ()))
 
 wrapDay :: Monad m => m (Day m a) -> Day m a
-wrapDay f = Day \x -> (($ x) . getDay) =<< f
+wrapDay ma = Day \mx -> ma >>= \case
+  Day k -> k mx
 
 -- | @since 0.1.0.0
 instance Functor f => Functor (Day f) where
@@ -46,5 +48,5 @@ instance Functor f => Applicative (Day f) where
   pure x = Day (fmap (x,))
   {-# INLINE pure #-}
 
-  Day fs <*> Day xs = Day (fmap (\(f, (x, xs)) -> (f x, xs)) . fs . xs)
-  {-# INLINE (<*>) #-}
+  liftA2 f (Day xs) (Day ys) = Day (fmap (\(x, (y, z)) -> (f x y, z)) . xs . ys)
+  {-# INLINE liftA2 #-}
