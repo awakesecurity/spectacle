@@ -45,42 +45,54 @@
 --
 -- @since 0.1.0.0
 module Language.Spectacle.Interaction.Pos
-  ( -- * Buffer Positions
-    Pos (Pos),
+  ( -- * Locations
+    Loc (Loc),
+    locPos,
+    locExt,
+
+    -- * Positions
+    Pos (MkPos),
+    pattern Pos,
+    getPos,
     posRow,
     posCol,
 
     -- ** Lenses
     prow,
     pcol,
-
-    -- * Buffer Intervals/Spans
-    Interval (Interval),
-    intervalMin,
-    intervalMax,
-
-    -- ** Construction
-    fromDiff,
-    fromSpan,
-
-    -- ** Lenses
-    ivmax,
-    ivmin,
   )
 where
 
-import Lens.Micro (Lens', SimpleGetter, to, lens)
+import Data.Function (on)
+import Data.Semigroup (Sum (Sum))
+import Lens.Micro (Lens', lens, set, _1, _2)
+import Lens.Micro.Extras (view)
 
 -- ---------------------------------------------------------------------------------------------------------------------
+
+-- | A 'Loc' is a position annotated with an length/span.
+--
+-- @since 0.1.0.0
+data Loc = Loc
+  { locPos :: {-# UNPACK #-} !Pos
+  , locExt :: {-# UNPACK #-} !Int
+  }
+  deriving (Eq)
+
+-- | @since 0.1.0.0
+instance Ord Loc where
+  compare = compare `on` locPos
 
 -- | Buffer row/column positions.
 --
 -- @since 0.1.0.0
-data Pos = Pos
-  { posRow :: {-# UNPACK #-} !Int
-  , posCol :: {-# UNPACK #-} !Int
-  }
-  deriving (Eq)
+newtype Pos = MkPos {getPos :: (Int, Int)}
+  deriving (Eq, Semigroup, Monoid) via (Sum Int, Sum Int)
+
+pattern Pos :: Int -> Int -> Pos
+pattern Pos {posRow, posCol} = MkPos (posRow, posCol)
+
+{-# COMPLETE Pos #-}
 
 -- | @since 0.1.0.0
 instance Ord Pos where
@@ -95,44 +107,9 @@ instance Show Pos where
   show (Pos r c) = "Pos(" ++ show r ++ ":" ++ show c ++ ")"
 
 prow :: Lens' Pos Int
-prow = lens posRow \Pos {..} r ->
-  Pos {posRow = r, ..}
+prow = lens (view _1 . getPos) \ ~(MkPos p) x -> MkPos (set _1 x p)
 {-# INLINE prow #-}
 
 pcol :: Lens' Pos Int
-pcol = lens posCol \Pos {..} c ->
-  Pos {posCol = c, ..}
+pcol = lens (view _2 . getPos) \ ~(MkPos p) x -> MkPos (set _2 x p)
 {-# INLINE pcol #-}
-
--- ---------------------------------------------------------------------------------------------------------------------
-
-data Interval = Interval
-  { intervalMin :: {-# UNPACK #-} !Int
-  , intervalMax :: {-# UNPACK #-} !Int
-  }
-  deriving Eq
-
--- | Construct an 'Interval' from a minimal point and a distance from the maximal value. No guards are in place to
--- ensure the values provided make sense.
---
--- @since 0.1.0.0
-fromDiff :: Int -> Int -> Interval
-fromDiff x dist = Interval x (x + dist)
-
--- | Constructs an 'Interval' from a minimal point and the length of a 'Foldable' container.
---
--- @since 0.1.0.0
-fromSpan :: Foldable t => Int -> t a -> Interval
-fromSpan x = fromDiff x . length
-
--- | @since 0.1.0.0
-instance Show Interval where
-  show (Interval x y) = "Interval(" ++ show x ++ "," ++ show y ++ ")"
-
-ivmax :: SimpleGetter Interval Int
-ivmax = to intervalMax
-{-# INLINE ivmax #-}
-
-ivmin :: SimpleGetter Interval Int
-ivmin = to intervalMin
-{-# INLINE ivmin #-}

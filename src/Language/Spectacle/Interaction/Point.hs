@@ -14,42 +14,37 @@ module Language.Spectacle.Interaction.Point
     -- ** Construction
     pattern RootPoint,
 
+    -- ** Comparison
+    sameLabel,
+
     -- ** Lenses
+    ptparent,
     ptlabel,
     ptpos,
-    ptinterval,
+    ptspan,
   )
 where
 
 import Data.Function (on)
-import Lens.Micro (Lens', SimpleGetter, (^.), lens, to)
+import Lens.Micro (Lens', SimpleGetter, lens, to)
+import Lens.Micro.Extras (view)
 
-import Data.Type.Rec (Rec)
+import Data.Type.Rec (HasDict)
 import Data.World (World, worldFingerprint)
 import Language.Spectacle.Checker.Fingerprint (Fingerprint)
-import Language.Spectacle.Interaction.Pos (Interval, Pos)
+import Language.Spectacle.Interaction.Pos (Pos)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
 data Point ctx = Point
   { getPoint :: World ctx
   , pointPar :: Maybe (Point ctx)
-  , pointItv :: {-# UNPACK #-} !Interval
+  , pointLen :: {-# UNPACK #-} !Int
   , pointPos :: {-# UNPACK #-} !Pos
   }
 
 -- | @since 0.1.0.0
-instance Show (Rec ctx) => Show (Point ctx) where
-  show (Point w Nothing i p) = "RootPoint(" ++ show p ++ "@" ++ show i ++ "): " ++ show w
-  show (Point w (Just par) i p) =
-    "Point("
-      ++ show p
-      ++ "@"
-      ++ show i
-      ++ ", "
-      ++ show (par ^. ptlabel)
-      ++ "): "
-      ++ show w
+deriving instance HasDict Show ctx => Show (Point ctx)
 
 -- | @since 0.1.0.0
 instance Eq (Point ctx) where
@@ -58,8 +53,17 @@ instance Eq (Point ctx) where
 
 -- | @since 0.1.0.0
 instance Ord (Point ctx) where
-  compare = compare `on` pointPos
+  compare x y = case (compare `on` pointPos) x y of
+    EQ -> (compare `on` getPoint) x y
+    ordering -> ordering
   {-# INLINE compare #-}
+
+sameLabel :: Point ctx -> Point ctx -> Bool
+sameLabel = (==) `on` view ptlabel
+
+ptparent :: SimpleGetter (Point ctx) (Maybe (Point ctx))
+ptparent = to pointPar
+{-# INLINE ptparent #-}
 
 ptlabel :: SimpleGetter (Point ctx) Fingerprint
 ptlabel = to getPoint . worldFingerprint
@@ -70,15 +74,15 @@ ptpos = lens pointPos \pt p ->
   pt {pointPos = p}
 {-# INLINE ptpos #-}
 
-ptinterval :: Lens' (Point ctx) Interval
-ptinterval = lens pointItv \pt i ->
-  pt {pointItv = i}
-{-# INLINE ptinterval #-}
+ptspan :: Lens' (Point ctx) Int
+ptspan = lens pointLen \pt i ->
+  pt {pointLen = i}
+{-# INLINE ptspan #-}
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
 -- | Pattern synonym for constructing a root 'Point' (omits a parent 'Point').
 --
 -- @since 0.1.0.0
-pattern RootPoint :: World ctx -> Interval -> Pos -> Point ctx
+pattern RootPoint :: World ctx -> Int -> Pos -> Point ctx
 pattern RootPoint w i p = Point w Nothing i p
