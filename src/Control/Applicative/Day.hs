@@ -48,5 +48,5 @@ instance Functor f => Applicative (Day f) where
   pure x = Day (fmap (x,))
   {-# INLINE pure #-}
 
-  liftA2 f (Day xs) (Day ys) = Day (fmap (\(x, (y, z)) -> (f x y, z)) . xs . ys)
+  liftA2 c xs ys = Day (fmap (\(x,(y,z)) -> (c x y, z)) . getDay xs . getDay ys)
   {-# INLINE liftA2 #-}

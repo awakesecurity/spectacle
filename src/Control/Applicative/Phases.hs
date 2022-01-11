@@ -11,9 +11,9 @@ module Control.Applicative.Phases
   ( Phases (Here, There),
     hoist,
     lower,
+    lowerR,
     wrap,
     lift,
-    tensor,
   )
 where
 
@@ -49,7 +49,10 @@ instance Applicative f => Applicative (Phases f) where
   liftA2 c (Here x) ys = fmap (c x) ys
   liftA2 c xs (Here y) = fmap (`c` y) xs
   liftA2 c (There f x xs) (There g y ys) =
-    There (\(x', y') (xs', ys') -> c (f x' xs') (g y' ys')) (liftA2 (,) x y) (liftA2 (,) xs ys)
+    There
+      (\(x,y) (xs,ys) -> c (f x xs) (g y ys))
+      (liftA2 (,) x y)
+      (liftA2 (,) xs ys)
   {-# INLINE liftA2 #-}
 
 hoist :: (forall x. f x -> g x) -> Phases f a -> Phases g a
@@ -59,21 +62,14 @@ hoist eta (There f x xs) = There f (eta x) (hoist eta xs)
 lower :: Applicative f => Phases f a -> f a
 lower (Here x) = pure x
 lower (There op x xs) = liftA2 op x (lower xs)
+{-# INLINE lower #-}
+
+lowerR :: Applicative f => Phases f a -> f a
+lowerR (Here x) = pure x
+lowerR (There op x xs) = liftA2 (flip op) (lowerR xs) x
 
 wrap :: Applicative f => Phases f a -> Phases f a
 wrap = There (const id) (pure ())
 
 lift :: Monad f => f (Phases f a) -> Phases f a
 lift f = There const (f >>= lower) (pure ())
-
--- | Tensoring 'Phases' over 'MonadZip', preserves effect layering.
---
--- @since 0.1.0.0
-tensor :: (MonadZip g, Monoid a, Applicative f) => Phases f (g a) -> Phases f (g a) -> Phases f (g a)
-tensor (Here x) (Here y) = Here (mzipWith (<>) x y)
-tensor (Here x) (There g y ys) = There (\z zs -> mzipWith (<>) x (g z zs)) y ys
-tensor (There f x xs) (Here y) = There (\z zs -> mzipWith (<>) (f z zs) y) x xs
-tensor (There f x xs) (There g y ys) =
-  let here = liftA2 (,) x y
-      there = liftA2 (,) xs ys
-   in There (\(z, w) (zs, ws) -> mzipWith (<>) (f z zs) (g w ws)) here there

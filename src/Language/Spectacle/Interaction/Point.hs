@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -7,82 +8,93 @@
 module Language.Spectacle.Interaction.Point
   ( -- * Points
     Point (Point),
-    getPoint,
-    pointPar,
+    pointLabel,
+    pointFields,
     pointPos,
+    pointPar,
+    pointLen,
 
     -- ** Construction
-    pattern RootPoint,
-
-    -- ** Comparison
-    sameLabel,
+    fromWorld,
 
     -- ** Lenses
-    ptparent,
-    ptlabel,
-    ptpos,
-    ptspan,
+    label,
+    parent,
+    fields,
+    column,
+    row,
+    extent,
   )
 where
 
 import Data.Function (on)
 import Lens.Micro (Lens', SimpleGetter, lens, to)
-import Lens.Micro.Extras (view)
+import Prettyprinter (Doc, pretty, viaShow, (<+>))
+import Prettyprinter.Render.Terminal (AnsiStyle)
 
-import Data.Type.Rec (HasDict)
-import Data.World (World, worldFingerprint)
+import Data.Type.Rec (HasDict, Rec, evident, pattern ConE, pattern NilE)
+import Data.World (World (World))
 import Language.Spectacle.Checker.Fingerprint (Fingerprint)
-import Language.Spectacle.Interaction.Pos (Pos)
+import Language.Spectacle.Interaction.Pos (Pos, pcol, prow, pattern Pos)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
-data Point ctx = Point
-  { getPoint :: World ctx
-  , pointPar :: Maybe (Point ctx)
+data Point = Point
+  { pointLabel :: {-# UNPACK #-} !Fingerprint
+  , pointFields :: [Doc AnsiStyle]
+  , pointPar :: {-# UNPACK #-} !(Maybe Fingerprint)
   , pointLen :: {-# UNPACK #-} !Int
   , pointPos :: {-# UNPACK #-} !Pos
   }
+  deriving Show
+
+fromWorld :: HasDict Show ctx => World ctx -> Point
+fromWorld (World hash fs0) = Point hash (docFields fs0) Nothing 0 (Pos 0 0)
+  where
+    docFields :: HasDict Show ctx => Rec ctx -> [Doc AnsiStyle]
+    docFields rs =
+      case evident @Show rs of
+        ConE n x xs -> pretty n <+> "=" <+> viaShow x : docFields xs
+        NilE -> []
 
 -- | @since 0.1.0.0
-deriving instance HasDict Show ctx => Show (Point ctx)
-
--- | @since 0.1.0.0
-instance Eq (Point ctx) where
+instance Eq Point where
   (==) = (==) `on` pointPos
   {-# INLINE (==) #-}
 
 -- | @since 0.1.0.0
-instance Ord (Point ctx) where
+instance Ord Point where
   compare x y = case (compare `on` pointPos) x y of
-    EQ -> (compare `on` getPoint) x y
+    EQ -> (compare `on` pointLabel) x y
     ordering -> ordering
   {-# INLINE compare #-}
 
-sameLabel :: Point ctx -> Point ctx -> Bool
-sameLabel = (==) `on` view ptlabel
-
-ptparent :: SimpleGetter (Point ctx) (Maybe (Point ctx))
-ptparent = to pointPar
-{-# INLINE ptparent #-}
-
-ptlabel :: SimpleGetter (Point ctx) Fingerprint
-ptlabel = to getPoint . worldFingerprint
-{-# INLINE ptlabel #-}
-
-ptpos :: Lens' (Point ctx) Pos
-ptpos = lens pointPos \pt p ->
-  pt {pointPos = p}
-{-# INLINE ptpos #-}
-
-ptspan :: Lens' (Point ctx) Int
-ptspan = lens pointLen \pt i ->
-  pt {pointLen = i}
-{-# INLINE ptspan #-}
-
 -- ---------------------------------------------------------------------------------------------------------------------
 
--- | Pattern synonym for constructing a root 'Point' (omits a parent 'Point').
---
--- @since 0.1.0.0
-pattern RootPoint :: World ctx -> Int -> Pos -> Point ctx
-pattern RootPoint w i p = Point w Nothing i p
+label :: SimpleGetter Point Fingerprint
+label = to pointLabel
+{-# INLINE label #-}
+
+fields :: SimpleGetter Point [Doc AnsiStyle]
+fields = to pointFields
+{-# INLINE fields #-}
+
+parent :: Lens' Point (Maybe Fingerprint)
+parent = lens pointPar \pt par -> pt {pointPar = par}
+{-# INLINE parent #-}
+
+position :: Lens' Point Pos
+position = lens pointPos \pt p -> pt {pointPos = p}
+{-# INLINE position #-}
+
+column :: Lens' Point Int
+column = position . pcol
+{-# INLINE column #-}
+
+row :: Lens' Point Int
+row = position . prow
+{-# INLINE row #-}
+
+extent :: Lens' Point Int
+extent = lens pointLen \pt i -> pt {pointLen = i}
+{-# INLINE extent #-}

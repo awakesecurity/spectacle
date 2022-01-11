@@ -4,101 +4,89 @@
 --
 -- @since 0.1.0.0
 module Language.Spectacle.Interaction.Paths
-  ( -- * Paths
-    Paths,
-
-    -- ** Construction
+  ( -- * Construction
     flatten,
-
-    -- ** Destruction
-    sliceRow,
-    splitRow,
-    unfoldRow,
-    shortestSeq,
-
-    -- ** Query
-    columnsOn,
-    memberLabel,
+    takeMinRow,
   )
 where
 
+import Control.Monad (filterM)
 import Control.Monad.Trans.State.Strict (execState, gets, modify)
-import Data.Bifunctor
 import Data.Foldable (traverse_)
-import Data.Kind (Type)
 import qualified Data.Set as Set
 import Data.Set.Internal (Set (Bin, Tip))
-import Lens.Micro ((^.))
-import Lens.Micro.Mtl (view)
+import Lens.Micro ((&), (.~), (?~), (^.))
+import Lens.Micro.Extras (view)
 
-import Data.Context (Context)
-import Data.Functor.Tree (Tree, pattern (:-))
-import Data.World (World)
-import Language.Spectacle.Checker.Fingerprint (Fingerprint)
-import Language.Spectacle.Interaction.Point (Point (Point), ptlabel, ptpos)
-import Language.Spectacle.Interaction.Pos (prow, pattern Pos)
+import Data.Functor.Tree (Tree, rootOf, pattern (:-))
+import Data.Type.Rec (HasDict)
+import Data.World (World, worldFingerprint)
+import Language.Spectacle.Interaction.Point (Point, column, extent, fromWorld, label, parent, row)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
-type Paths :: Context -> Type
-type Paths ctx = Set (Point ctx)
-
-flatten :: Tree (World ctx) -> Paths ctx
-flatten (x :- xs) = execState (start x xs) mempty
+flatten :: HasDict Show ctx => Tree (World ctx) -> Set Point
+flatten ts = execState (start ts) Set.empty
   where
-    start w ws = do
-      let par = Point w Nothing (length ws) (Pos 0 0)
-      modify (Set.insert par)
-      traverse_ (go par) ws
+    start (w :- ws) = do
+      c <- gets (columnsOn 0)
+      let point =
+            fromWorld w
+              & column .~ c
+              & extent .~ length ws
 
-    go par (w :- ws) = do
-      let row = 1 + par ^. ptpos . prow
-      col <- gets (columnsOn row)
-
-      let point = Point w (Just par) (length ws) (Pos row col)
       modify (Set.insert point)
+      traverse_ (go 1 (w ^. worldFingerprint)) ws
 
-      traverse_ (go point) ws
+    go row0 par (w :- ws) = do
+      col <- gets (columnsOn row0)
+      unique <- filterM (\x -> gets (Set.notMember (rootOf x ^. worldFingerprint) . Set.map (view label))) ws
+      let point =
+            fromWorld w
+              & parent ?~ par
+              & extent .~ length unique
+              & column .~ col
+              & row .~ row0
 
-sliceRow :: Int -> Paths ctx -> Set (Point ctx)
-sliceRow row = Set.filter \point ->
-  view (ptpos . prow) point == row
+      modify (Set.insert point)
+      traverse_ (go (1 + row0) (w ^. worldFingerprint)) unique
 
-splitRow :: Paths ctx -> (Set (Point ctx), Paths ctx)
-splitRow path =
-  case Set.minView path of
-    Nothing -> (Set.empty, path)
-    Just (pt, points') ->
-      let (row, path') = unfoldRow (view (ptpos . prow) pt) points'
-       in (Set.insert pt row, path')
-
-unfoldRow :: Int -> Paths ctx -> (Paths ctx, Paths ctx)
-unfoldRow row = go Set.empty
-  where
-    go acc paths =
-      case Set.minView paths of
-        Nothing -> (acc, paths)
-        Just (pt, paths')
-          | pt ^. (ptpos . prow) == row -> go (Set.insert pt acc) paths'
-          | otherwise -> (acc, Set.insert pt paths')
-
--- | @'shortestSeq' p xs@ takes smallest subset of @xs@ containing all elements satisfying @p@.
+-- | Like 'splitRow', but always splits on the least row in the set.
 --
 -- @since 0.1.0.0
-shortestSeq :: Ord a => (a -> Bool) -> Set a -> Set a
-shortestSeq match xs0 =
-  let xs = Set.toList xs0
-      dropsMin = dropWhile (not . match) xs
-      dropsMax = dropWhile (not . match) (reverse dropsMin)
-   in Set.fromList (reverse dropsMax)
+takeMinRow :: Set Point -> (Set Point, Set Point)
+takeMinRow ps =
+  case Set.minView ps of
+    Nothing -> (Set.empty, Set.empty)
+    Just (p, _) -> splitRow (p ^. row) ps
 
-columnsOn :: Int -> Paths ctx -> Int
-columnsOn row = Set.size . sliceRow row
-
-memberLabel :: Fingerprint -> Paths ctx -> Bool
-memberLabel hash = go
+-- | @'splitRow' i ps@ returns a subset of @ps@ containing all elements located on row @i@ and a new set stripped of
+-- this row.
+--
+-- @since 0.1.0.0
+splitRow :: Int -> Set Point -> (Set Point, Set Point)
+splitRow i = seek Set.empty
   where
-    go Tip = False
-    go (Bin _ x ls rs)
-      | x ^. ptlabel == hash = True
-      | otherwise = go ls || go rs
+    seek acc Tip = (acc, Tip)
+    seek acc (Bin _ !p ls rs) =
+      case compare (p ^. row) i of
+        LT ->
+          let (acc', rs') = seek acc rs
+           in (acc', Set.union (Set.insert p rs') ls)
+        GT ->
+          let (acc', ls') = seek acc ls
+           in (acc', Set.union (Set.insert p ls') rs)
+        EQ ->
+          let (acc0, ls') = seek acc ls
+              (acc1, rs') = seek acc0 rs
+           in (Set.insert p acc1, Set.union ls' rs')
+
+columnsOn :: Int -> Set Point -> Int
+columnsOn i = go 0
+  where
+    go c Tip = c
+    go c (Bin _ !p ls rs) =
+      case compare (p ^. row) i of
+        LT -> go c rs
+        GT -> go c ls
+        EQ -> 1 + go c ls + go c rs
