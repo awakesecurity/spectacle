@@ -1,13 +1,19 @@
 module Main (main) where
 
-import Test.Tasty (defaultMain, testGroup)
+import Test.Tasty (TestTree, defaultMain, testGroup)
 
-import qualified Fingerprint
+import qualified Test.Control.Comonad.Tape
+import qualified Test.Language.Spectacle.Interaction
+
+-- ---------------------------------------------------------------------------------------------------------------------
 
 main :: IO ()
-main =
-  defaultMain $
-    testGroup
-      "unit tests"
-      [ Fingerprint.tests
-      ]
+main = defaultMain unitTestTree
+
+unitTestTree :: TestTree
+unitTestTree =
+  testGroup
+    "Unit Tests"
+    [ Test.Control.Comonad.Tape.tests
+    , Test.Language.Spectacle.Interaction.tests
+    ]
