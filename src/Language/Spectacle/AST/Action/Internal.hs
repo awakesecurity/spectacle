@@ -13,7 +13,7 @@ import Control.Applicative (Alternative)
 import Data.Kind (Type)
 
 import Data.Context (Context, Contextual(Ctxt))
-import Data.Type.Rec (type (#), type (.|))
+import Data.Type.Rec (Has)
 import Language.Spectacle.Exception.RuntimeException (RuntimeException)
 import Language.Spectacle.Lang (EffectK, Lang, scope)
 import Language.Spectacle.Syntax.Closure.Internal
@@ -47,12 +47,12 @@ instance Contextual (Action ctxt a) where
   type Ctxt (Action ctxt a) = ctxt
 
 -- | @since 0.1.0.0
-instance (s # a .| ctxt) => PlainIntro (Action ctxt) s a where
+instance (Has s a ctxt) => PlainIntro (Action ctxt) s a where
   plainIntro name = Action (scope (PlainVar name))
   {-# INLINE plainIntro #-}
 
 -- | @since 0.1.0.0
-instance (s # a .| ctxt) => ClosureIntro (Action ctxt) s a where
+instance (Has s a ctxt) => ClosureIntro (Action ctxt) s a where
   closureIntro name expr = Action (scope (Close name expr))
 
 -- | @since 0.1.0.0

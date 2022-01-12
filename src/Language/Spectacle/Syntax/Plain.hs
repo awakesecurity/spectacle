@@ -13,12 +13,9 @@ import Data.Coerce (coerce)
 import Data.Void (absurd)
 
 import Data.Functor.Loom (hoist, runLoom, (~>~))
-import Data.Type.Rec (Name, Rec, getRec)
-import Language.Spectacle.Lang
-  ( Lang (Op, Pure, Scoped),
-    decomposeOp,
-    decomposeS,
-  )
+import Data.Type.Rec (Rec, Name)
+import qualified Data.Type.Rec as Rec
+import Language.Spectacle.Lang (Lang (Op, Pure, Scoped), decomposeOp, decomposeS)
 import Language.Spectacle.Syntax.Plain.Internal
   ( Effect (PlainVar),
     Plain (Plain),
@@ -47,7 +44,6 @@ runPlain vars = \case
   Scoped scoped loom -> case decomposeS scoped of
     Left other -> Scoped other loom'
     Right (PlainVar name) -> do
-      let x = getRec name vars
-      runLoom loom' (pure x)
+      runLoom loom' (pure $ Rec.get name vars)
     where
       loom' = loom ~>~ hoist (runPlain vars)

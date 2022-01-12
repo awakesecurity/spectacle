@@ -1,3 +1,4 @@
+{-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -5,52 +6,72 @@
 --
 -- @since 0.1.0.0
 module Language.Spectacle.Specification.Variable
-  ( -- *
+  ( -- * Syntax
     Var ((:=)),
-    HasVars,
     type (:.) ((:.)),
+
+    -- * Variable Constraints
+    HasVars,
     HasVariables,
-    type VariableCtxt,
-    takeInitialActions,
+    type VarCtxt,
+    runInitActions,
+    runInitStates,
   )
 where
 
+import Control.Applicative (Applicative (liftA2))
+import Data.Hashable (Hashable)
 import Data.Kind (Constraint, Type)
 import GHC.TypeLits (Symbol)
 
 import Data.Context (CNil, Context, CtxtCat, type (:<))
-import Data.Type.Rec (Name, RecT (RConT, RNilT), type (#))
+import Data.Type.Rec (HasDict, Name, Rec, RecF (ConF, NilF), pattern Con, pattern Nil, type (#))
 import qualified Data.Type.Rec as Rec
-import Language.Spectacle.Lang (Lang)
-import Language.Spectacle.Syntax.NonDet (NonDet)
+import Data.World (World, makeWorld)
+import Language.Spectacle.Lang (Lang, runLang)
+import Language.Spectacle.Syntax.NonDet (NonDet, runNonDetA)
+
+infixr 5 :.
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
 data Var :: Symbol -> Type -> Type where
   (:=) :: Name s -> Lang CNil '[NonDet] a -> Var s a
 
-infixr 5 :.
-data (:.) :: forall k1 k2. k1 -> k2 -> Type where
+data (:.) :: Type -> Type -> Type where
   (:.) :: a -> b -> a :. b
 
 type HasVars :: Type -> Context -> Constraint
-type HasVars vars ctxt = (HasVariables vars, VariableCtxt vars ~ ctxt)
+type HasVars vars ctxt = (HasVariables vars, VarCtxt vars ~ ctxt)
 
 class HasVariables a where
-  type VariableCtxt a :: Context
+  type VarCtxt a :: Context
 
-  takeInitialActions :: VariableCtxt a ~ ctxt => a -> RecT (Lang CNil '[NonDet]) ctxt
+  runInitActions :: VarCtxt a ~ ctxt => a -> RecF (Lang CNil '[NonDet]) ctxt
 
 -- | @since 0.1.0.0
 instance (HasVariables a, HasVariables b) => HasVariables (a :. b) where
-  type VariableCtxt (a :. b) = CtxtCat (VariableCtxt a) (VariableCtxt b)
+  type VarCtxt (a :. b) = CtxtCat (VarCtxt a) (VarCtxt b)
 
-  takeInitialActions (acts1 :. acts2) = Rec.concat (takeInitialActions acts1) (takeInitialActions acts2)
-  {-# INLINE takeInitialActions #-}
+  runInitActions (xs :. ys) = Rec.concatF (runInitActions xs) (runInitActions ys)
+  {-# INLINE runInitActions #-}
 
 -- | @since 0.1.0.0
 instance HasVariables (Var var ty) where
-  type VariableCtxt (Var var ty) = (var # ty) :< CNil
+  type VarCtxt (Var var ty) = (var # ty) :< CNil
 
-  takeInitialActions (name := act) = RConT name act RNilT
-  {-# INLINE takeInitialActions #-}
+  runInitActions (name := act) = ConF name act NilF
+  {-# INLINE runInitActions #-}
+
+runInitStates :: forall vars ctx. (HasVars vars ctx, HasDict Hashable ctx) => vars -> [World ctx]
+runInitStates vs = map makeWorld (go acts)
+  where
+    go :: RecF [] ctx' -> [Rec ctx']
+    go NilF = [Nil]
+    go (ConF nm xs rs) = liftA2 (Con nm) xs (go rs)
+
+    runner :: Name s -> Lang ctx' '[NonDet] a -> [a]
+    runner _ = runLang . runNonDetA @[]
+
+    acts :: RecF [] ctx
+    acts = Rec.mapF runner (runInitActions vs)

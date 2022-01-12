@@ -18,6 +18,9 @@ module Language.Spectacle.Specification.Action
     -- *
     ActionInfo (ActionInfo),
     actionInfoFairness,
+    fromActionDecl,
+    actionDeclName,
+    actionDeclFair,
 
     -- *
     ActionSet (ActionSet),
@@ -107,8 +110,8 @@ actionDeclName = \case
   WeakFairAction name _ -> show name
   StrongFairAction name _ -> show name
 
-actionDeclFairness :: forall name fairness ctxt. ReflectFair fairness => (name !> fairness) ctxt -> Fairness
-actionDeclFairness _ = reflectFair @fairness
+actionDeclFair :: forall name fairness ctxt. ReflectFair fairness => (name !> fairness) ctxt -> Fairness
+actionDeclFair _ = reflectFair @fairness
 
 fromActionDecl :: (name !> fairness) ctxt -> Action ctxt Bool
 fromActionDecl = \case
@@ -156,7 +159,7 @@ spineToActionInfo = go Map.empty
       ActionSpineNil -> info
       ActionSpineCon actionDecl sp ->
         let declName = actionDeclName actionDecl
-            declFair = actionDeclFairness actionDecl
+            declFair = actionDeclFair actionDecl
          in go (Map.insert declName (ActionInfo declFair) info) sp
 
 spineToActionSets ::
