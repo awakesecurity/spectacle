@@ -4,56 +4,41 @@
 --
 -- @since 0.1.0.0
 module Control.Applicative.Queue
-  ( -- * Queue
-    Queue,
+  ( Queue,
     runQueue,
-    runQueueReverse,
-
-    -- ** Lifting
-    distribQueue,
+    liftQueue,
     wrapQueue,
-
-    -- ** Scheduling
+    joinQueue,
     now,
     later,
-    delay,
   )
 where
 
-import Control.Applicative (Alternative, Applicative, liftA2)
-import Control.Monad.Zip (MonadZip)
-import Data.Bifunctor
-import Data.Kind (Type)
+import Control.Applicative (Applicative (liftA2))
 
 import Control.Applicative.Day (Day (Day), getDay)
-import Control.Applicative.Phases (Phases (Here, There), hoist, lower)
-import qualified Control.Applicative.Phases as Phases
-import Control.Comonad.Cofree
-import Control.Monad.Free.Ap
+import Control.Applicative.Phases (Phases (Here, There), liftPhases, lowerPhases, wrapPhases)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
--- | Effect queues.
---
--- @since 0.1.0.0
-type Queue :: (Type -> Type) -> Type -> Type
 type Queue f = Day (Phases f)
 
 runQueue :: Applicative f => Queue f a -> f a
-runQueue = fmap fst . Phases.lower . flip getDay (Here ())
+runQueue = fmap fst . lowerPhases . flip getDay (Here ())
 
-runQueueReverse :: Applicative f => Queue f a -> f a
-runQueueReverse = fmap fst . Phases.lowerR . flip getDay (Here ())
-
-distribQueue :: Applicative f => f (Queue f a) -> Queue f (f a)
-distribQueue ma = Day \mx ->
-  let mb = fmap (lower . fmap fst . (`getDay` mx)) ma
-   in case mx of
-        Here x -> There (,) mb mx
-        There f x xs -> There (\(e, a) b -> (e, f a b)) (liftA2 (,) mb x) xs
+liftQueue :: Monad f => Queue f (f a) -> Queue f a
+liftQueue (Day f) = Day \x ->
+  let fx = fmap fst (f x)
+      fy = fmap snd (f (fmap snd (f x)))
+   in liftA2 (,) (liftPhases fx) fy
 
 wrapQueue :: Monad f => f (Queue f a) -> Queue f a
-wrapQueue f = Day \x -> Phases.lift (fmap (($ x) . getDay ) f)
+wrapQueue f = Day \x -> wrapPhases (fmap (($ x) . getDay) f)
+
+joinQueue :: Monad f => Queue f (Queue f a) -> Queue f a
+joinQueue (Day f) = Day \x ->
+  let x' = lowerPhases (fmap fst (f x))
+   in getDay (wrapQueue x') x
 
 now :: Applicative f => f a -> Queue f a
 now xs = Day \case

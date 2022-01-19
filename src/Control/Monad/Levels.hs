@@ -23,17 +23,7 @@ where
 import Control.Applicative (Alternative ((<|>)))
 import Data.Foldable (Foldable, fold)
 
-import Control.Monad.Levels.Internal
-  ( Levels,
-    LevelsT (LevelsT),
-    foldAlt,
-    liftLevelsT,
-    runLevels,
-    runLevelsT,
-    wrapLevelsT,
-    zipLevelsWith,
-    zipLevelsWithT,
-  )
+import Control.Monad.Levels.Internal (LevelsT (LevelsT), liftLevelsT, runLevelsT, wrapLevelsT, zipLevelsWithT)
 import Data.Bag (Bag (None))
 import qualified Data.Bag as Bag
 

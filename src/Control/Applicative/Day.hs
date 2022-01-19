@@ -1,5 +1,4 @@
 {-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeFamilies #-}
 
 -- | Cayley applicative transformer.
 --
@@ -13,8 +12,6 @@
 module Control.Applicative.Day
   ( Day (Day),
     getDay,
-    sec,
-    rep,
     wrapDay,
   )
 where
@@ -27,12 +24,6 @@ import Data.Kind (Type)
 
 newtype Day :: (Type -> Type) -> Type -> Type where
   Day :: {getDay :: forall x. f x -> f (a, x)} -> Day f a
-
-sec :: Applicative f => f a -> Day f a
-sec x = Day (liftA2 (,) x)
-
-rep :: Applicative f => Day f a -> f a
-rep (Day f) = fmap fst (f (pure ()))
 
 wrapDay :: Monad m => m (Day m a) -> Day m a
 wrapDay ma = Day \mx -> ma >>= \case

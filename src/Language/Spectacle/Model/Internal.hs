@@ -26,8 +26,7 @@ module Language.Spectacle.Model.Internal
 
     -- ** Lenses
     mcStateCoverage,
-    mcEnvPropInfo,
-  )
+    mcEnvPropInfo,  )
 where
 
 import Control.Applicative (Alternative)
@@ -87,33 +86,6 @@ actionInfoView actIdent = do
     Nothing -> throwError [MCInternalPropInfoError actIdent]
     Just info -> return info
 {-# INLINE actionInfoView #-}
-
--- ---------------------------------------------------------------------------------------------------------------------
-
-newtype ModelT :: Context -> (Type -> Type) -> Type -> Type where
-  ModelT :: LogicT (BaseT ctxt m) a -> ModelT ctxt m a
-  deriving (Functor, Applicative, Monad)
-  deriving (MonadReader MCEnv, MonadState MCState, MonadIO)
-
-runModelT :: (Monad m, Ord a) => ModelT ctxt m a -> BaseT ctxt m (Set a)
-runModelT (ModelT m) = runLogicT m (fmap . Set.insert) (pure Set.empty)
-
--- | @since 0.1.0.0
-deriving instance
-  Monad m => MonadError [MCError ctxt] (ModelT ctxt m)
-
--- | @since 0.1.0.0
-deriving via
-  LogicT (BaseT ctxt m)
-  instance
-    Alternative (ModelT ctxt m)
-
--- | @since 0.1.0.0
-instance MonadTrans (ModelT ctxt) where
-  lift = ModelT . lift . lift
-  {-# INLINE lift #-}
-
--- ---------------------------------------------------------------------------------------------------------------------
 
 newtype BaseT :: Context -> (Type -> Type) -> Type -> Type where
   BaseT :: {runBaseT :: ReaderT MCEnv (StateT MCState (ExceptT [MCError ctxt] m)) a} -> BaseT ctxt m a
