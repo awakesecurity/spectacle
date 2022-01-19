@@ -18,6 +18,9 @@ module Language.Spectacle.Specification.Action
     -- *
     ActionInfo (ActionInfo),
     actionInfoFairness,
+    fromActionDecl,
+    actionDeclName,
+    actionDeclFair,
 
     -- *
     ActionSet (ActionSet),
@@ -45,7 +48,7 @@ import Data.Context (Context)
 import Data.Name (Name)
 import Data.Type.Rec (Rec)
 import Data.World (World (World))
-import Language.Spectacle.AST.Action (Action, runAction)
+import Language.Spectacle.AST.Action (Action, runAction, runExceptionalAction)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -107,8 +110,8 @@ actionDeclName = \case
   WeakFairAction name _ -> show name
   StrongFairAction name _ -> show name
 
-actionDeclFairness :: forall name fairness ctxt. ReflectFair fairness => (name !> fairness) ctxt -> Fairness
-actionDeclFairness _ = reflectFair @fairness
+actionDeclFair :: forall name fairness ctxt. ReflectFair fairness => (name !> fairness) ctxt -> Fairness
+actionDeclFair _ = reflectFair @fairness
 
 fromActionDecl :: (name !> fairness) ctxt -> Action ctxt Bool
 fromActionDecl = \case
@@ -127,6 +130,7 @@ data ActionSet ctxt = ActionSet
   { actionSetName :: String
   , actionSetWorlds :: Set (World ctxt)
   }
+  deriving (Eq, Ord)
 
 -- | @since 0.1.0.0
 deriving instance Show (Rec ctxt) => Show (ActionSet ctxt)
@@ -155,7 +159,7 @@ spineToActionInfo = go Map.empty
       ActionSpineNil -> info
       ActionSpineCon actionDecl sp ->
         let declName = actionDeclName actionDecl
-            declFair = actionDeclFairness actionDecl
+            declFair = actionDeclFair actionDecl
          in go (Map.insert declName (ActionInfo declFair) info) sp
 
 spineToActionSets ::
@@ -170,7 +174,7 @@ spineToActionSets (World _ state) = go
     go = \case
       ActionSpineNil -> Right []
       ActionSpineCon actionDecl sp -> do
-        worlds <- runAction state (fromActionDecl actionDecl)
+        worlds <- runExceptionalAction state (fromActionDecl actionDecl)
         actionSets <- go sp
         return (ActionSet (actionDeclName actionDecl) worlds : actionSets)
 

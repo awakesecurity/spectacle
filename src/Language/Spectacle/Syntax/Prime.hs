@@ -22,7 +22,8 @@ import Data.Function ((&))
 import Data.Void (absurd)
 
 import Data.Functor.Loom (hoist, runLoom, (~>~))
-import Data.Type.Rec (Name, Rec, getRec, type (#), type (.|))
+import Data.Type.Rec (Name, Rec, Has)
+import qualified Data.Type.Rec as Rec
 import Language.Spectacle.Exception.RuntimeException
   ( RuntimeException (VariableException),
     VariableException (CyclicReference),
@@ -100,7 +101,7 @@ runPrime = \case
                 runLoom loomPrime (pure x)
           Evaluated x -> runLoom loomPrime (pure x)
           Unchanged -> do
-            rst' <- gets (getRec name . plains)
+            rst' <- gets (Rec.get name . plains)
             runLoom loomPrime (pure rst')
     where
       loomPrime = loom ~>~ hoist runPrime
@@ -118,8 +119,7 @@ substPrime vars = \case
   Scoped scoped loom -> case decomposeS scoped of
     Left other -> Scoped other loomSubstPrime
     Right (PrimeVar name) -> do
-      let x = getRec name vars
-      runLoom loomSubstPrime (pure x)
+      runLoom loomSubstPrime (pure $ Rec.get name vars)
     where
       loomSubstPrime = loom ~>~ hoist (substPrime vars)
 
@@ -127,7 +127,7 @@ substPrime vars = \case
 --
 -- @since 0.1.0.0
 substitute ::
-  (Members '[Env, NonDet, Error RuntimeException] effs, s # a .| ctx) =>
+  (Members '[Env, NonDet, Error RuntimeException] effs, Has s a ctx) =>
   Name s ->
   StateFun ctx a ->
   Lang ctx effs a
