@@ -14,7 +14,8 @@ import Data.Void (absurd)
 
 import Data.Context (Contextual (Ctxt))
 import Data.Functor.Loom (hoist, runLoom, (~>~))
-import Data.Type.Rec (Name, setRec)
+import Data.Type.Rec (Name)
+import qualified Data.Type.Rec as Rec
 import Language.Spectacle.Exception.RuntimeException (RuntimeException)
 import Language.Spectacle.Lang
   ( Effect,
@@ -90,10 +91,10 @@ evaluateThunks = \case
       gets (getRegister name . primes) >>= \case
         Thunk expr -> do
           x <- substitute name expr
-          modify \rtst -> rtst {newValues = setRec name x (newValues rtst)}
+          modify \rtst -> rtst {newValues = Rec.set name x (newValues rtst)}
           runLoom loom' (pure ())
         Evaluated x -> do
-          modify \rtst -> rtst {newValues = setRec name x (newValues rtst)}
+          modify \rtst -> rtst {newValues = Rec.set name x (newValues rtst)}
           runLoom loom' (pure ())
         Unchanged -> runLoom loom' (pure ())
     where

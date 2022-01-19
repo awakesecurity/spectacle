@@ -1,4 +1,4 @@
-{-# LANGUAGE UnliftedNewtypes #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Data.Name
   ( Name (Name),
@@ -10,6 +10,7 @@ import Data.Kind (Type)
 import Data.Proxy (Proxy (Proxy))
 import GHC.OverloadedLabels (IsLabel (fromLabel))
 import GHC.TypeLits (KnownSymbol, Symbol, symbolVal)
+import Prettyprinter (Pretty, pretty)
 
 -- -------------------------------------------------------------------------------------------------
 
@@ -35,6 +36,10 @@ instance (KnownSymbol s, l ~ s) => IsLabel l (Name s) where
 -- | @since 0.1.0.0
 instance Show (Name s) where
   show (Name p) = symbolVal p
+
+-- | @since 0.1.0.0
+instance Pretty (Name s) where
+  pretty name = "#" <> pretty (show name)
 
 -- | @since 0.1.0.0
 instance Eq (Name s) where

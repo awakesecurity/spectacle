@@ -98,6 +98,11 @@ instance (KnownSymbol p) => HasProp (Always (Eventually p)) where
   {-# INLINE collectPropInfo #-}
 
 -- | @since 0.1.0.0
+instance (KnownSymbol p) => HasProp (Eventually (Always p)) where
+  collectPropInfo = Map.singleton (symbolVal (Proxy @p)) makePropInfoStaysAs
+  {-# INLINE collectPropInfo #-}
+
+-- | @since 0.1.0.0
 instance (HasProp p, HasProp q) => HasProp (p /\ q) where
   collectPropInfo = Map.unionWith (<>) (collectPropInfo @p) (collectPropInfo @q)
   {-# INLINE CONLIKE collectPropInfo #-}
@@ -111,6 +116,7 @@ data PropInfo = PropInfo
   , propInfoIsInfinitelyOften :: Bool
   , propInfoIsStaysAs :: Bool
   }
+  deriving (Show)
 
 -- | @since 0.1.0.0
 instance Semigroup PropInfo where

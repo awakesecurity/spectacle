@@ -15,7 +15,7 @@ module Control.Applicative.Phases
   )
 where
 
-import Control.Applicative ( Applicative(liftA2) )
+import Control.Applicative (Applicative (liftA2))
 import Data.Kind (Type)
 
 -- ---------------------------------------------------------------------------------------------------------------------

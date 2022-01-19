@@ -26,7 +26,8 @@ newtype Day :: (Type -> Type) -> Type -> Type where
   Day :: {getDay :: forall x. f x -> f (a, x)} -> Day f a
 
 wrapDay :: Monad m => m (Day m a) -> Day m a
-wrapDay f = Day \x -> (($ x) . getDay) =<< f
+wrapDay ma = Day \mx -> ma >>= \case
+  Day k -> k mx
 
 -- | @since 0.1.0.0
 instance Functor f => Functor (Day f) where
@@ -38,5 +39,5 @@ instance Functor f => Applicative (Day f) where
   pure x = Day (fmap (x,))
   {-# INLINE pure #-}
 
-  liftA2 c (Day fs) (Day gs) = Day (fmap (\(x, (y, z)) -> (c x y, z)) . fs . gs)
+  liftA2 c xs ys = Day (fmap (\(x,(y,z)) -> (c x y, z)) . getDay xs . getDay ys)
   {-# INLINE liftA2 #-}

@@ -19,10 +19,12 @@ module Language.Spectacle.RTS.Registers
 where
 
 import Data.Kind (Type)
+import Data.Functor.Identity (Identity (Identity))
 
 import Data.Ascript (type (#))
 import Data.Context (Context, type (:<))
-import Data.Type.Rec (HasSel (getRecT, setRecT), Name, Rec, RecT, fieldMap, type (.|))
+import Data.Type.Rec (Rec, RecF, Name, Has)
+import qualified Data.Type.Rec as Rec
 import Language.Spectacle.Exception.RuntimeException (RuntimeException)
 import Language.Spectacle.Lang (EffectK, Lang, scope)
 import Language.Spectacle.Syntax.Error.Internal (Error)
@@ -36,13 +38,11 @@ newtype StateFun :: Context -> Type -> Type where
   StateFun :: {getStateFun :: Lang ctxt StateFunSyntax a} -> StateFun ctxt a
   deriving (Functor, Applicative, Monad)
 
-instance s # a .| ctxt => PlainIntro (StateFun ctxt) s a where
+instance Has s a ctxt => PlainIntro (StateFun ctxt) s a where
   plainIntro name = StateFun (scope (PlainVar name))
-  {-# INLINE plainIntro #-}
 
-instance s # a .| ctxt => PrimeIntro (StateFun ctxt) s a where
+instance Has s a ctxt => PrimeIntro (StateFun ctxt) s a where
   primeIntro name = StateFun (scope (PrimeVar name))
-  {-# INLINE primeIntro #-}
 
 type StateFunSyntax :: [EffectK]
 type StateFunSyntax = '[Prime, Plain, NonDet, Error RuntimeException]
@@ -78,33 +78,33 @@ emptyRuntimeState r =
 --
 -- @since 0.1.0.0
 newtype Registers ctxt = Registers
-  {unRegisters :: RecT (Thunk ctxt) ctxt}
+  {unRegisters :: RecF (Thunk ctxt) ctxt}
 
-deriving instance Show (RecT (Thunk ctxt) ctxt) => Show (Registers ctxt)
+deriving instance Show (RecF (Thunk ctxt) ctxt) => Show (Registers ctxt)
 
 -- | Construct a 'Registers' of unrelated primed variables.
 --
 -- @since 0.1.0.0
-emptyRegisters :: Rec ctxt -> Registers ctxt
-emptyRegisters = Registers . fieldMap (const Unchanged)
+emptyRegisters :: Rec ctx -> Registers ctx
+emptyRegisters = Registers . Rec.mapF \_ (Identity x) -> Thunk (pure x)
 
 -- | Retrieves the value of the variable named @s@ in 'Registers' as a 'Thunk'.
 --
 -- @since 0.1.0.0
-getRegister :: s # a .| ctxt => Name s -> Registers ctxt -> Thunk ctxt a
-getRegister n (Registers rs) = getRecT n rs
+getRegister :: Has s a ctx => Name s -> Registers ctx -> Thunk ctx a
+getRegister n (Registers rs) = Rec.getF n rs
 
 -- | Sets the value of the variable named @s@ to the result given by evaluating a 'Thunk'.
 --
 -- @since 0.1.0.0
-setRegister :: s # a .| ctxt => Name s -> a -> Registers ctxt -> Registers ctxt
-setRegister n x (Registers rs) = Registers (setRecT n (Evaluated x) rs)
+setRegister :: Has s a ctx => Name s -> a -> Registers ctx -> Registers ctx
+setRegister n x (Registers rs) = Registers (Rec.setF n (Evaluated x) rs)
 
 -- | Sets the value of the variable named @s@ in 'Registers' to an unevaluated expression.
 --
 -- @since 0.1.0.0
-setThunk :: s # a .| ctxt => Name s -> StateFun ctxt a -> Registers ctxt -> Registers ctxt
-setThunk n m (Registers rs) = Registers (setRecT n (Thunk m) rs)
+setThunk :: Has s a ctx => Name s -> StateFun ctx a -> Registers ctx -> Registers ctx
+setThunk n m (Registers rs) = Registers (Rec.setF n (Thunk m) rs)
 
 -- | A 'Thunk' is the state of a primed variable in @ctx@.
 --

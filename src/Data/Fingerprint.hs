@@ -1,7 +1,7 @@
 -- | The 'Fingerprint' data type.
 --
 -- @since 0.1.0.0
-module Language.Spectacle.Checker.Fingerprint
+module Data.Fingerprint
   ( -- * Fingerprints
     Fingerprint (Fingerprint),
     getFingerprint,
@@ -17,6 +17,7 @@ where
 import Data.Bits (Bits (rotateR, (.&.)))
 import Data.Hashable (Hashable, hash)
 import Data.Word ( Word32 )
+import Prettyprinter (Pretty, pretty)
 
 import Data.Type.Rec (Rec)
 
@@ -33,6 +34,11 @@ newtype Fingerprint = Fingerprint {getFingerprint :: Word32}
 instance Show Fingerprint where
   show (Fingerprint fp) = "0x" ++ showAsHex fp
   {-# INLINE show #-}
+
+-- | @since 0.1.0.0
+instance Pretty Fingerprint where
+  pretty = pretty . show
+  {-# INLINE pretty #-}
 
 -- | Constructs a probabilistically unique 'Fingerprint' from the given world.
 --
