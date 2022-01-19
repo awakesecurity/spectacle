@@ -10,7 +10,7 @@ where
 
 import Data.Kind (Type)
 
-import Data.Node (Node (Leaf))
+import Data.Node (Node (Leaf, (:*:)))
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

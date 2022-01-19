@@ -20,7 +20,8 @@ import Data.Map (Map)
 import Lens.Micro (Lens', lens)
 
 import Data.Context (Context)
-import Language.Spectacle.Specification (ActionInfo, ActionSpine, PropInfo)
+import Language.Spectacle.Specification
+import Language.Spectacle.Specification.Prop
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
