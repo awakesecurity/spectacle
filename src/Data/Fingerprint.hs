@@ -1,7 +1,7 @@
 -- | The 'Fingerprint' data type.
 --
 -- @since 0.1.0.0
-module Language.Spectacle.Checker.Fingerprint
+module Data.Fingerprint
   ( -- * Fingerprints
     Fingerprint (Fingerprint),
     getFingerprint,

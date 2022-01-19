@@ -5,28 +5,27 @@
 -- @since 0.1.0.0
 module Language.Spectacle.Interaction.Paths
   ( -- * Construction
-    flatten,
+    toPointSet,
     takeMinRow,
   )
 where
 
-import Control.Monad (filterM)
-import Control.Monad.Trans.State.Strict (execState, gets, modify)
-import Data.Foldable (traverse_)
 import qualified Data.Set as Set
 import Data.Set.Internal (Set (Bin, Tip))
-import Lens.Micro ((&), (.~), (?~), (^.))
-import Lens.Micro.Extras (view)
+import Lens.Micro ((.~), (?~), (^.))
 
-import Data.Functor.Tree (Tree, rootOf, pattern (:-))
+import Data.Functor.Tree (Tree, levels, pattern (:-))
 import Data.Type.Rec (HasDict)
-import Data.World (World, worldFingerprint)
-import Language.Spectacle.Interaction.Point (Point, column, extent, fromWorld, label, parent, row)
+import Data.World (World, fingerprint)
+import Language.Spectacle.Interaction.Point (Point, column, row, extent, fromWorld, parent)
+import Data.Function
+import Data.Foldable (fold, traverse_)
+import Control.Monad.State
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
-flatten :: HasDict Show ctx => Tree (World ctx) -> Set Point
-flatten ts = execState (start ts) Set.empty
+toPointSet :: HasDict Show ctx => Tree (World ctx) -> Set Point
+toPointSet = flip execState Set.empty . start
   where
     start (w :- ws) = do
       c <- gets (columnsOn 0)
@@ -36,20 +35,18 @@ flatten ts = execState (start ts) Set.empty
               & extent .~ length ws
 
       modify (Set.insert point)
-      traverse_ (go 1 (w ^. worldFingerprint)) ws
+      traverse_ (go 1 (w ^. fingerprint)) ws
 
     go row0 par (w :- ws) = do
       col <- gets (columnsOn row0)
-      unique <- filterM (\x -> gets (Set.notMember (rootOf x ^. worldFingerprint) . Set.map (view label))) ws
       let point =
             fromWorld w
               & parent ?~ par
-              & extent .~ length unique
+              & extent .~ length ws
               & column .~ col
               & row .~ row0
-
       modify (Set.insert point)
-      traverse_ (go (1 + row0) (w ^. worldFingerprint)) unique
+      traverse_ (go (1 + row0) (w ^. fingerprint)) ws
 
 -- | Like 'splitRow', but always splits on the least row in the set.
 --

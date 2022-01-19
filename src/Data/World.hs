@@ -9,7 +9,7 @@ module Data.World
     makeWorld,
 
     -- ** Lenses
-    worldFingerprint,
+    fingerprint,
     worldValues,
   )
 where
@@ -18,7 +18,7 @@ import Data.Hashable (Hashable (hashWithSalt))
 import Lens.Micro (Lens', SimpleGetter, lens, to)
 
 import Data.Type.Rec (Rec)
-import Language.Spectacle.Checker.Fingerprint (Fingerprint (Fingerprint), fingerprintRec)
+import Data.Fingerprint (Fingerprint (Fingerprint), fingerprintRec)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -26,48 +26,48 @@ import Language.Spectacle.Checker.Fingerprint (Fingerprint (Fingerprint), finger
 -- it's 'Fingerprint' which has much faster preformance charateristics for comparison.
 --
 -- @since 0.1.0.0
-data World ctxt = World
+data World ctx = World
   { _worldFingerprint :: {-# UNPACK #-} !Fingerprint
-  , _worldValues :: Rec ctxt
+  , _worldValues :: Rec ctx
   }
 
 -- | @since 0.1.0.0
-instance Eq (World ctxt) where
+instance Eq (World ctx) where
   World fp1 _ == World fp2 _ = fp1 == fp2
   {-# INLINE (==) #-}
 
 -- | @since 0.1.0.0
-instance Ord (World ctxt) where
+instance Ord (World ctx) where
   World fp1 _ `compare` World fp2 _ = fp1 `compare` fp2
   {-# INLINE compare #-}
 
 -- | @since 0.1.0.0
-instance Show (Rec ctxt) => Show (World ctxt) where
+instance Show (Rec ctx) => Show (World ctx) where
   show (World fp w) = "<<" ++ show fp ++ ":" ++ show w ++ ">>"
   {-# INLINE show #-}
 
 -- | @since 0.1.0.0
-instance Hashable (World ctxt) where
+instance Hashable (World ctx) where
   hashWithSalt salt (World (Fingerprint fp) _) = hashWithSalt salt fp
   {-# INLINE hashWithSalt #-}
 
 -- | Constructs a 'World' type from the given 'Rec'.
 --
 -- @since 0.1.0.0
-makeWorld :: Hashable (Rec ctxt) => Rec ctxt -> World ctxt
+makeWorld :: Hashable (Rec ctx) => Rec ctx -> World ctx
 makeWorld w = World (fingerprintRec w) w
 {-# INLINE makeWorld #-}
 
 -- | Lens focusing on a 'World's fingerprint.
 --
 -- @since 0.1.0.0
-worldFingerprint :: Lens' (World ctxt) Fingerprint
-worldFingerprint = lens _worldFingerprint \World {..} x -> World {_worldFingerprint = x, ..}
-{-# INLINE worldFingerprint #-}
+fingerprint :: Lens' (World ctx) Fingerprint
+fingerprint = lens _worldFingerprint \World {..} x -> World {_worldFingerprint = x, ..}
+{-# INLINE fingerprint #-}
 
 -- | Lens focusing on the 'Rec' holding the concrete values of a 'World'.
 --
 -- @since 0.1.0.0
-worldValues :: SimpleGetter (World ctxt) (Rec ctxt)
+worldValues :: SimpleGetter (World ctx) (Rec ctx)
 worldValues = to _worldValues
 {-# INLINE worldValues #-}

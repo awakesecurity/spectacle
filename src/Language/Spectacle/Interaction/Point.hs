@@ -34,7 +34,7 @@ import Prettyprinter.Render.Terminal (AnsiStyle)
 
 import Data.Type.Rec (HasDict, Rec, evident, pattern ConE, pattern NilE)
 import Data.World (World (World))
-import Language.Spectacle.Checker.Fingerprint (Fingerprint)
+import Data.Fingerprint (Fingerprint)
 import Language.Spectacle.Interaction.Pos (Pos, pcol, prow, pattern Pos)
 
 -- ---------------------------------------------------------------------------------------------------------------------
