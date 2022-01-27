@@ -23,7 +23,7 @@ data Ascribe s a = Ascribe s a
 -- @since 0.1.0.0
 infix 6 #
 
-type (#) :: Symbol -> Type -> Ascribe Symbol Type
+type (#) :: Symbol -> k -> Ascribe Symbol k
 type s # a = 'Ascribe s a
 
 -- | Project the type of a 'Data.Type.Rec' ascription.
