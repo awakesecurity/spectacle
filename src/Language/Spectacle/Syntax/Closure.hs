@@ -12,9 +12,8 @@ where
 import Data.Coerce (coerce)
 import Data.Void (absurd)
 
-import Data.Context (Contextual (Ctxt))
 import Data.Functor.Loom (hoist, runLoom, (~>~))
-import Data.Type.Rec (Name)
+import Data.Type.Rec (Has, Name)
 import qualified Data.Type.Rec as Rec
 import Language.Spectacle.Exception.RuntimeException (RuntimeException)
 import Language.Spectacle.Lang
@@ -33,7 +32,7 @@ import Language.Spectacle.RTS.Registers
     getRegister,
     setThunk,
   )
-import Language.Spectacle.Syntax.Closure.Internal (Closure (Closure), ClosureIntro (closureIntro), Effect (Close))
+import Language.Spectacle.Syntax.Closure.Internal (Closure (Closure), Effect (Close))
 import Language.Spectacle.Syntax.Env (Env, gets, modify)
 import Language.Spectacle.Syntax.Error (Error)
 import Language.Spectacle.Syntax.NonDet (NonDet)
@@ -57,8 +56,8 @@ import Language.Spectacle.Syntax.Prime (RuntimeState (primes), substitute)
 -- @since 0.1.0.0
 infix 4 .=
 
-(.=) :: (Ctxt (m ()) ~ ctxt, ClosureIntro m s a) => Name s -> StateFun ctxt a -> m ()
-name .= expr = closureIntro name expr
+(.=) :: (Member Closure effs, Has s a ctx) => Name s -> StateFun ctx a -> Lang ctx effs ()
+name .= expr = scope (Close name expr)
 {-# INLINE (.=) #-}
 
 -- | Discharges a 'Closure' effect, returning a 'Rec' new values for each variable in @ctx@.
@@ -119,9 +118,8 @@ makeThunks = \case
   Scoped scoped loom -> case projectS scoped of
     Nothing -> Scoped scoped loom'
     Just (Close name expr) -> do
-      x <- runLoom loom' (pure ())
       modify \rtst -> rtst {primes = setThunk name expr (primes rtst)}
       scope (Close name expr)
-      return x
+      runLoom loom' (pure ())
     where
       loom' = loom ~>~ hoist makeThunks

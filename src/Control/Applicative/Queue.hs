@@ -51,11 +51,3 @@ later q = Day (go q)
     go :: Applicative f => Queue f a -> Phases f b -> Phases f (a, b)
     go (Day f) (Here y) = There (const id) (pure ()) (f (Here y))
     go (Day f) (There g y ys) = There (fmap . g) y (f ys)
-
-delay :: Applicative f => Queue f a -> Queue f a
-delay q = Day (go q)
-  where
-    go (Day f) p@Here {} = There (const id) (pure ()) (f p)
-    go (Day f) p@(There g y ys) =
-      let mX = liftA2 (,) (f p) ys
-       in There (\a ((x, _), b) -> (x, g a b)) y mX

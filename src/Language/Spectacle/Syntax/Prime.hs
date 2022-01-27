@@ -22,7 +22,7 @@ import Data.Function ((&))
 import Data.Void (absurd)
 
 import Data.Functor.Loom (hoist, runLoom, (~>~))
-import Data.Type.Rec (Name, Rec, Has)
+import Data.Type.Rec (Has, Name, Rec)
 import qualified Data.Type.Rec as Rec
 import Language.Spectacle.Exception.RuntimeException
   ( RuntimeException (VariableException),
@@ -30,6 +30,7 @@ import Language.Spectacle.Exception.RuntimeException
   )
 import Language.Spectacle.Lang
   ( Effect,
+    Member,
     Lang (Op, Pure, Scoped),
     Members,
     Op (OHere, OThere),
@@ -37,10 +38,11 @@ import Language.Spectacle.Lang
     decomposeOp,
     decomposeS,
     runLang,
+    scope,
   )
 import Language.Spectacle.RTS.Registers
   ( RuntimeState (RuntimeState, callStack, plains, primes),
-    StateFun (getStateFun),
+    StateFun,
     Thunk (Evaluated, Thunk, Unchanged),
     getRegister,
     setRegister,
@@ -59,7 +61,6 @@ import Language.Spectacle.Syntax.Plain (runPlain)
 import Language.Spectacle.Syntax.Prime.Internal
   ( Effect (PrimeVar),
     Prime (Prime),
-    PrimeIntro (primeIntro),
   )
 
 -- -------------------------------------------------------------------------------------------------
@@ -67,8 +68,8 @@ import Language.Spectacle.Syntax.Prime.Internal
 -- | 'prime' for a variable named @s@ is the value of @s@ in the next time frame.
 --
 -- @since 0.1.0.0
-prime :: PrimeIntro m s a => Name s -> m a
-prime = primeIntro
+prime :: (Member Prime effs, Has s a ctx) => Name s -> Lang ctx effs a
+prime nm = scope (PrimeVar nm)
 {-# INLINE prime #-}
 
 -- | Discharges a 'Prime' effect. This interpreter carries out the substitution of primed variables
@@ -135,7 +136,6 @@ substitute name expr = do
   rst <- get
   let result =
         expr
-          & getStateFun
           & introduceState
           & runPrime
           & runEnv rst

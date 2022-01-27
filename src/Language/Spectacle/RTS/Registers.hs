@@ -12,37 +12,30 @@ module Language.Spectacle.RTS.Registers
     getRegister,
     setRegister,
     setThunk,
-    StateFun (StateFun, getStateFun),
+    StateFun,
     type StateFunSyntax,
     Thunk (Thunk, Evaluated, Unchanged),
   )
 where
 
-import Data.Kind (Type)
 import Data.Functor.Identity (Identity (Identity))
+import Data.Kind (Type)
+import GHC.TypeLits
 
 import Data.Ascript (type (#))
-import Data.Context (Context, type (:<))
-import Data.Type.Rec (Rec, RecF, Name, Has)
+import Data.Type.Rec (Ascribe, Has, Name, Rec, RecF)
 import qualified Data.Type.Rec as Rec
 import Language.Spectacle.Exception.RuntimeException (RuntimeException)
 import Language.Spectacle.Lang (EffectK, Lang, scope)
 import Language.Spectacle.Syntax.Error.Internal (Error)
 import Language.Spectacle.Syntax.NonDet.Internal (NonDet)
-import Language.Spectacle.Syntax.Plain.Internal (Effect (PlainVar), Plain, PlainIntro (plainIntro))
-import Language.Spectacle.Syntax.Prime.Internal (Effect (PrimeVar), Prime, PrimeIntro (primeIntro))
+import Language.Spectacle.Syntax.Plain.Internal (Effect (PlainVar), Plain)
+import Language.Spectacle.Syntax.Prime.Internal (Effect (PrimeVar), Prime)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
-newtype StateFun :: Context -> Type -> Type where
-  StateFun :: {getStateFun :: Lang ctxt StateFunSyntax a} -> StateFun ctxt a
-  deriving (Functor, Applicative, Monad)
-
-instance Has s a ctxt => PlainIntro (StateFun ctxt) s a where
-  plainIntro name = StateFun (scope (PlainVar name))
-
-instance Has s a ctxt => PrimeIntro (StateFun ctxt) s a where
-  primeIntro name = StateFun (scope (PrimeVar name))
+type StateFun :: [Ascribe Symbol Type] -> Type -> Type
+type StateFun ctx = Lang ctx StateFunSyntax
 
 type StateFunSyntax :: [EffectK]
 type StateFunSyntax = '[Prime, Plain, NonDet, Error RuntimeException]
@@ -86,7 +79,7 @@ deriving instance Show (RecF (Thunk ctxt) ctxt) => Show (Registers ctxt)
 --
 -- @since 0.1.0.0
 emptyRegisters :: Rec ctx -> Registers ctx
-emptyRegisters = Registers . Rec.mapF \_ (Identity x) -> Thunk (pure x)
+emptyRegisters = Registers . Rec.mapF \_ (Identity x) -> Unchanged -- Thunk (pure x)
 
 -- | Retrieves the value of the variable named @s@ in 'Registers' as a 'Thunk'.
 --
@@ -119,7 +112,7 @@ data Thunk ctxt a
   | Unchanged
 
 -- | @since 0.1.0.0
-instance Show a => Show (Thunk (s # a :< ctx) a) where
+instance Show a => Show (Thunk (s # a ': ctx) a) where
   show (Thunk _) = "<<thunk>>"
   show (Evaluated x) = show x
   show Unchanged = "<<unchanged>>"

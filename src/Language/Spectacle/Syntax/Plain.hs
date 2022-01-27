@@ -13,22 +13,18 @@ import Data.Coerce (coerce)
 import Data.Void (absurd)
 
 import Data.Functor.Loom (hoist, runLoom, (~>~))
-import Data.Type.Rec (Rec, Name)
+import Data.Type.Rec (Has, Name, Rec)
 import qualified Data.Type.Rec as Rec
-import Language.Spectacle.Lang (Lang (Op, Pure, Scoped), decomposeOp, decomposeS)
-import Language.Spectacle.Syntax.Plain.Internal
-  ( Effect (PlainVar),
-    Plain (Plain),
-    PlainIntro (plainIntro),
-  )
+import Language.Spectacle.Lang (Lang (Op, Pure, Scoped), Member, decomposeOp, decomposeS, scope)
+import Language.Spectacle.Syntax.Plain.Internal (Effect (PlainVar), Plain (Plain))
 
 -- -------------------------------------------------------------------------------------------------
 
 -- | 'plain' for a variable named @s@ is the value of @s@ from the previous frame of time.
 --
 -- @since 0.1.0.0
-plain :: PlainIntro m s a => Name s -> m a
-plain = plainIntro
+plain :: (Member Plain effs, Has s a ctx) => Name s -> Lang ctx effs a
+plain nm = scope (PlainVar nm)
 {-# INLINE plain #-}
 
 -- | Discharge a 'Plain' effect, substituting instances of 'PlainVar' for the values in the given

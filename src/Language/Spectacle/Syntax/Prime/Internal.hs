@@ -3,8 +3,6 @@
 module Language.Spectacle.Syntax.Prime.Internal
   ( Prime (Prime),
     Effect (PrimeVar),
-    PrimeIntro,
-    primeIntro,
   )
 where
 
@@ -22,7 +20,3 @@ newtype Prime :: EffectK where
 
 data instance Effect Prime m a where
   PrimeVar :: (Has s a ctx, m ~ Lang ctx eff) => Name s -> Effect Prime m a
-
-type PrimeIntro :: (Type -> Type) -> Symbol -> Type -> Constraint
-class PrimeIntro m s a where
-  primeIntro :: Name s -> m a

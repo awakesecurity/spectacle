@@ -12,7 +12,6 @@ module Language.Spectacle.Specification.Variable
 
     -- * Variable Constraints
     HasVars,
-    HasVariables,
     type VarCtxt,
     runInitActions,
     runInitStates,
@@ -24,8 +23,8 @@ import Data.Hashable (Hashable)
 import Data.Kind (Constraint, Type)
 import GHC.TypeLits (Symbol)
 
-import Data.Context (CNil, Context, CtxtCat, type (:<))
-import Data.Type.Rec (HasDict, Name, Rec, RecF (ConF, NilF), pattern Con, pattern Nil, type (#))
+import Data.Type.List (type (++))
+import Data.Type.Rec (Ascribe, HasDict, Name, Rec, RecF (ConF, NilF), pattern Con, pattern Nil, type (#))
 import qualified Data.Type.Rec as Rec
 import Data.World (World, makeWorld)
 import Language.Spectacle.Lang (Lang, runLang)
@@ -36,34 +35,31 @@ infixr 5 :.
 -- ---------------------------------------------------------------------------------------------------------------------
 
 data Var :: Symbol -> Type -> Type where
-  (:=) :: Name s -> Lang CNil '[NonDet] a -> Var s a
+  (:=) :: Name s -> Lang '[] '[NonDet] a -> Var s a
 
 data (:.) :: Type -> Type -> Type where
   (:.) :: a -> b -> a :. b
 
-type HasVars :: Type -> Context -> Constraint
-type HasVars vars ctxt = (HasVariables vars, VarCtxt vars ~ ctxt)
+class HasVars a where
+  type VarCtxt a :: [Ascribe Symbol Type]
 
-class HasVariables a where
-  type VarCtxt a :: Context
-
-  runInitActions :: VarCtxt a ~ ctxt => a -> RecF (Lang CNil '[NonDet]) ctxt
+  runInitActions :: VarCtxt a ~ ctxt => a -> RecF (Lang '[] '[NonDet]) ctxt
 
 -- | @since 0.1.0.0
-instance (HasVariables a, HasVariables b) => HasVariables (a :. b) where
-  type VarCtxt (a :. b) = CtxtCat (VarCtxt a) (VarCtxt b)
+instance (HasVars a, HasVars b) => HasVars (a :. b) where
+  type VarCtxt (a :. b) = VarCtxt a ++ VarCtxt b
 
   runInitActions (xs :. ys) = Rec.concatF (runInitActions xs) (runInitActions ys)
   {-# INLINE runInitActions #-}
 
 -- | @since 0.1.0.0
-instance HasVariables (Var var ty) where
-  type VarCtxt (Var var ty) = (var # ty) :< CNil
+instance HasVars (Var var ty) where
+  type VarCtxt (Var var ty) = (var # ty) ': '[]
 
   runInitActions (name := act) = ConF name act NilF
   {-# INLINE runInitActions #-}
 
-runInitStates :: forall vars ctx. (HasVars vars ctx, HasDict Hashable ctx) => vars -> [World ctx]
+runInitStates :: forall vars ctx. (HasVars vars, HasDict Hashable ctx, VarCtxt vars ~ ctx) => vars -> [World ctx]
 runInitStates vs = map makeWorld (go acts)
   where
     go :: RecF [] ctx' -> [Rec ctx']
