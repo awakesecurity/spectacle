@@ -12,12 +12,9 @@ module Control.Monad.Levels
     observeLevelsT,
     execLevelsT,
     runLevelsA,
-    runLevelsM,
     wrap,
-    foldAlt,
     liftLevelsT,
     wrapLevelsT,
-    zipLevelsWithT,
     foldMapAp,
     forAp,
     foldMapAlt,
@@ -25,10 +22,10 @@ module Control.Monad.Levels
   )
 where
 
-import Control.Applicative (Alternative ((<|>)))
+import Control.Applicative (Alternative, empty, liftA2, (<|>))
 import Data.Foldable (Foldable, fold)
 
-import Control.Monad.Levels.Internal (LevelsT (LevelsT), liftLevelsT, runLevelsT, wrapLevelsT, zipLevelsWithT)
+import Control.Monad.Levels.Internal (Levels, LevelsT (LevelsT), liftLevelsT, runLevels, runLevelsT, wrapLevelsT)
 import Data.Bag (Bag (None))
 import qualified Data.Bag as Bag
 

@@ -18,8 +18,6 @@ module Control.Monad.Levels.Internal
     foldAlt,
     liftLevelsT,
     wrapLevelsT,
-    zipLevelsWithT,
-    zipLevelsWith,
   )
 where
 
@@ -71,31 +69,6 @@ liftLevelsT xs = LevelsT (\cons nil -> xs >>= \xs' -> runLevelsT xs' cons nil)
 wrapLevelsT :: Monad m => m (LevelsT m a) -> LevelsT m a
 wrapLevelsT xs = LevelsT (\cons nil -> cons None (xs >>= \xs' -> runLevelsT xs' cons nil))
 
--- | Zips two 'LevelsT' in linear-time, based on https://doisinkidney.com/posts/2021-03-14-hyperfunctions.html.
---
--- @since 0.1.0.0
-zipLevelsWithT :: Monad m => (Bag a -> Bag b -> m (Bag c)) -> LevelsT m a -> LevelsT m b -> LevelsT m c
-zipLevelsWithT op (LevelsT f) (LevelsT g) = LevelsT \cons nil ->
-  let fs x xs = pure (\k -> k (HyperM xs) x)
-      gs y ys = pure (\k x -> op x y >>= (`cons` join (invokeM k <*> ys)))
-   in join (f fs (pure (const nil)) <*> g gs (pure \_ _ -> nil))
-
-zipLevelsWith :: Monad m => (a -> b -> c) -> LevelsT m a -> LevelsT m b -> LevelsT m c
-zipLevelsWith op (LevelsT f) (LevelsT g) = LevelsT \cons nil ->
-  let fs x xs = pure (\k -> k (HyperM xs) x)
-      gs y ys = pure (\k x -> cons (liftA2 op x y) (join (invokeM k <*> ys)))
-   in join (f fs (pure (const nil)) <*> g gs (pure \_ _ -> nil))
-
--- | Zips two 'LevelsT' in linear-time, based on https://doisinkidney.com/posts/2021-03-14-hyperfunctions.html.
---
--- @since 0.1.0.0
-zipLevelsWithT :: Monad m => (Bag a -> Bag b -> m (Bag c)) -> LevelsT m a -> LevelsT m b -> LevelsT m c
-zipLevelsWithT op (LevelsT f) (LevelsT g) = LevelsT \cons nil ->
-  let fs x xs = pure (\k -> k (HyperM xs) x)
-      gs y ys = pure (\k x -> op x y >>= (`cons` join (invokeM k <*> ys)))
-  in join (f fs (pure (const nil)) <*> g gs (pure \_ _ -> nil))
-{-# INLINE zipLevelsWithT #-}
-
 -- | @since 0.1.0.0
 instance Functor (LevelsT m) where
   fmap f (LevelsT g) = LevelsT \cons nil -> g (cons . fmap f) nil
@@ -131,11 +104,6 @@ instance Monad m => Alternative (LevelsT m) where
         gnil xk x = cons x (invokeM xk >>= ($ gnil))
      in f fcons fnil >>= (g gcon (pure gnil) >>=)
   {-# INLINE (<|>) #-}
-
--- | @since 0.1.0.0
-instance Monad m => MonadZip (LevelsT m) where
-  mzipWith = zipLevelsWith
-  {-# INLINE mzipWith #-}
 
 -- | @since 0.1.0.0
 instance MonadTrans LevelsT where

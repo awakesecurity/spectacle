@@ -6,7 +6,6 @@ module Data.Bag
     empty,
     cons,
     singleton,
-    zipBagWith,
   )
 where
 
@@ -23,21 +22,13 @@ data Bag :: Type -> Type where
 
 empty :: Bag a
 empty = None
-{-# INLINE CONLIKE empty #-}
 
 cons :: a -> Bag a -> Bag a
 cons x None = Some (Leaf x)
 cons x (Some xs) = Some (Leaf x :*: xs)
-{-# INLINE cons #-}
 
 singleton :: a -> Bag a
 singleton = Some . Leaf
-{-# INLINE CONLIKE singleton #-}
-
-zipBagWith :: (a -> b -> c) -> Bag a -> Bag b -> Bag c
-zipBagWith _ None _ = None
-zipBagWith _ _ None = None
-zipBagWith op (Some xs) (Some ys) = Some (zipNodeWith op xs ys)
 
 -- | @since 0.1.0.0
 instance Functor Bag where

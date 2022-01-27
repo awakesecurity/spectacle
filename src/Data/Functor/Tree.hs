@@ -22,7 +22,6 @@ module Data.Functor.Tree
 
     -- ** Folds
     breadth,
-    breadthR,
     mergeWith,
     mergeS,
     levels,
@@ -31,7 +30,7 @@ where
 
 import Control.Applicative (Applicative (liftA2))
 
-import Control.Applicative.Queue (later, now, runQueue, runQueueReverse)
+import Control.Applicative.Queue (later, now, runQueue)
 import Data.Tree (Tree (Node), flatten)
 
 infixr 5 :-
@@ -63,11 +62,6 @@ mapWithRoot f g (t0 :- ts0) = f t0 :- map (go t0) ts0
 
 breadth :: Applicative f => (a -> f b) -> Tree a -> f (Tree b)
 breadth f = runQueue . go
-  where
-    go (t :- ts) = liftA2 (:-) (now (f t)) (later (traverse go ts))
-
-breadthR :: Applicative f => (a -> f b) -> Tree a -> f (Tree b)
-breadthR f = runQueueReverse . go
   where
     go (t :- ts) = liftA2 (:-) (now (f t)) (later (traverse go ts))
 
