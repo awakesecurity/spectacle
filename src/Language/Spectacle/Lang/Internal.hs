@@ -14,8 +14,9 @@ import Control.Applicative (Alternative (empty, (<|>)))
 import Control.Monad (MonadPlus (mplus, mzero), (>=>))
 import Data.Bool (bool)
 import Data.Kind (Type)
+import GHC.TypeLits (Symbol)
 
-import Data.Context (Context)
+import Data.Ascript (Ascribe)
 import Data.Functor.Loom (Loom (Loom), bind, (~>~))
 import qualified Data.Functor.Loom as Loom
 import Language.Spectacle.Lang.Member (Member (inject, injectS))
@@ -35,7 +36,7 @@ import Language.Spectacle.Syntax.NonDet.Internal (NonDet (Choose, Empty))
 -- * The type parameter @effs@ is the set of effects a 'Lang' is capable of performing.
 --
 -- @since 0.1.0.0
-type Lang :: Context -> [EffectK] -> Type -> Type
+type Lang :: [Ascribe Symbol Type] -> [EffectK] -> Type -> Type
 data Lang ctxt effs a where
   Pure ::
     a ->

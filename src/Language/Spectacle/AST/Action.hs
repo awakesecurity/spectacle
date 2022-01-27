@@ -12,51 +12,44 @@ module Language.Spectacle.AST.Action
   )
 where
 
+import Data.Either (fromRight)
 import Data.Function ((&))
 import Data.Hashable (Hashable)
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Data.Kind (Type)
+import GHC.TypeLits(Symbol)
 
-import Data.Functor.Loom (hoist, runLoom, (~>~))
-import Data.Type.Rec (Rec)
-import Data.World (World, makeWorld)
-import Language.Spectacle.AST.Action.Internal (Action (Action), ActionSyntax)
-import Language.Spectacle.Exception.RuntimeException (RuntimeException)
+import Data.Functor.Loom
+import Data.Type.Rec
+import Data.World
+import Language.Spectacle.Exception.RuntimeException
 import Language.Spectacle.Lang
-  ( Lang (Op, Pure, Scoped),
-    Member (projectS),
-    Members,
-    Op (OHere, OThere),
-    Scoped (SHere, SThere),
-    runLang,
-  )
 import Language.Spectacle.RTS.Registers (RuntimeState, emptyRuntimeState, newValues)
 import Language.Spectacle.Syntax.Closure
-  ( Closure,
-    runActionClosure,
-  )
-import Language.Spectacle.Syntax.Env (Env, runEnv)
-import Language.Spectacle.Syntax.Error (runError)
+import Language.Spectacle.Syntax.Env
+import Language.Spectacle.Syntax.Error
 import Language.Spectacle.Syntax.Logic
-  ( Effect (Complement, Conjunct, Disjunct),
-    Logic,
-    complement,
-    conjunct,
-    disjunct,
-    runLogic,
-  )
-import Language.Spectacle.Syntax.NonDet (NonDet, runNonDetA)
-import Language.Spectacle.Syntax.Plain (runPlain)
+import Language.Spectacle.Syntax.NonDet
+import Language.Spectacle.Syntax.Plain
 import Language.Spectacle.Syntax.Quantifier
-  ( Effect (Exists, Forall),
-    Quantifier,
-    exists,
-    forall,
-    runQuantifier, runExceptionalQuantifier
-  )
-import Data.Either
 
 -- ---------------------------------------------------------------------------------------------------------------------
+
+type Action :: [Ascribe Symbol Type] -> Type -> Type
+type Action ctx = Lang ctx ActionSyntax
+
+type ActionSyntax :: [EffectK]
+type ActionSyntax =
+  -- NOTE: 'Closure' must be handled before 'Quantifier'. If 'Quantifier' discharged before 'Closure', erroneous values
+  -- are produced from any 'Closure' nested within a forall/exists.
+  '[ Logic
+   , Closure
+   , Quantifier
+   , Plain
+   , NonDet
+   , Error RuntimeException
+   ]
 
 -- | Completely evaluate a temporal action yielding either a 'RuntimeException' or a collection of new worlds accessible
 -- by the action given.
@@ -68,7 +61,7 @@ runExceptionalAction ::
   Rec ctxt ->
   Action ctxt Bool ->
   Either RuntimeException (Set (World ctxt))
-runExceptionalAction knowns (Action action) = do
+runExceptionalAction knowns action = do
   states <-
     action
       & introduceEnv
@@ -97,7 +90,7 @@ runAction ::
   Rec ctxt ->
   Action ctxt Bool ->
   Set (World ctxt)
-runAction knowns (Action action) =
+runAction knowns action =
   let states =
         action
           & introduceEnv
@@ -111,8 +104,7 @@ runAction knowns (Action action) =
           & runError
           & runLang
           & fromRight []
-
-  in takeRelatedSet states
+   in takeRelatedSet states
   where
     takeRelatedSet :: [(RuntimeState ctxt, Bool)] -> Set (World ctxt)
     takeRelatedSet = foldMap \(rst, rel) ->
