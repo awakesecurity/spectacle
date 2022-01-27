@@ -13,6 +13,7 @@ module Data.Type.Rec
 
     -- ** Maps
     mapF,
+    sequenceF,
 
     -- ** Destruction
     foldMapF,
@@ -44,22 +45,27 @@ where
 
 import Data.Functor.Identity (Identity (Identity, runIdentity))
 import Data.Hashable (Hashable (hashWithSalt), hashWithSalt)
+import Control.Applicative (liftA2)
 import Data.Kind (Constraint, Type)
 import Data.List (intercalate)
-import GHC.TypeLits (KnownSymbol)
+import GHC.TypeLits (KnownSymbol, Symbol)
 
-import Data.Ascript (type (#))
-import Data.Context (CNil, Context, CtxtCat, type (:<))
+import Data.Ascript (Ascribe, type (#))
 import Data.Name (Name, inferName)
+import Data.Type.List
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
 -- | Extensible record transformer.
 --
 -- @since 0.1.0.0
-data RecF :: (Type -> Type) -> Context -> Type where
-  NilF :: RecF f CNil
-  ConF :: Name s -> f a -> RecF f ctx -> RecF f (s # a :< ctx)
+data RecF :: (k -> Type) -> [Ascribe Symbol k] -> Type where
+  NilF :: RecF f '[]
+  ConF :: Name s -> f a -> RecF f ctx -> RecF f (s # a ': ctx)
+
+sequenceF :: Applicative f => RecF f ctx -> f (Rec ctx)
+sequenceF NilF = pure Nil
+sequenceF (ConF name field xs) = liftA2 (Con name) field (sequenceF xs)
 
 mapF :: (forall s a. Name s -> f a -> g a) -> RecF f ctx -> RecF g ctx
 mapF _ NilF = NilF
@@ -69,7 +75,7 @@ foldMapF :: Monoid m => (forall s a. Name s -> f a -> m) -> RecF f ctx -> m
 foldMapF _ NilF = mempty
 foldMapF k (ConF name field xs) = k name field <> foldMapF k xs
 
-concatF :: RecF f ctx -> RecF f ctx' -> RecF f (CtxtCat ctx ctx')
+concatF :: RecF f ctx -> RecF f ctx' -> RecF f (ctx ++ ctx')
 concatF NilF ys = ys
 concatF (ConF name x xs) ys = ConF name x (concatF xs ys)
 
@@ -83,13 +89,13 @@ type Rec ctx = RecF Identity ctx
 -- | A synonym of 'NilT' specialize to 'Rec'.
 --
 -- @since 0.1.0.0
-pattern Nil :: () => CNil ~ ctx => Rec ctx
+pattern Nil :: () => '[] ~ ctx => Rec ctx
 pattern Nil = NilF
 
 -- | A synonym of 'ConT' specialize to 'Rec'.
 --
 -- @since 0.1.0.0
-pattern Con :: () => (s # a :< xs) ~ ctx => Name s -> a -> Rec xs -> Rec ctx
+pattern Con :: () => (s # a ': xs) ~ ctx => Name s -> a -> Rec xs -> Rec ctx
 pattern Con name field xs = ConF name (Identity field) xs
 
 {-# COMPLETE Nil, Con #-}
@@ -128,20 +134,20 @@ get n r = runIdentity (getF n r)
 -- | @'Evident' c ctx@ captures dictionary evidence of @Rec ctx@ for the typeclass @c@.
 --
 -- @since 0.1.0.0
-data Evident :: (Type -> Constraint) -> Context -> Type where
-  Trivial :: Evident c CNil
-  Evident :: (c a, HasDict c ctx) => Rec (s # a :< ctx) -> Evident c (s # a :< ctx)
+data Evident :: (Type -> Constraint) -> [Ascribe Symbol Type] -> Type where
+  Trivial :: Evident c '[]
+  Evident :: (c a, HasDict c ctx) => Rec (s # a ': ctx) -> Evident c (s # a ': ctx)
 
 -- | A synonym of 'Nil' specialize to 'Evident'.
 --
 -- @since 0.1.0.0
-pattern NilE :: () => CNil ~ ctx => Evident c ctx
+pattern NilE :: () => '[] ~ ctx => Evident c ctx
 pattern NilE = Trivial
 
 -- | A synonym of 'Con' specialize to 'Evident'.
 --
 -- @since 0.1.0.0
-pattern ConE :: () => (c a, HasDict c xs, (s # a :< xs) ~ ctx) => Name s -> a -> Rec xs -> Evident c ctx
+pattern ConE :: () => (c a, HasDict c xs, (s # a ': xs) ~ ctx) => Name s -> a -> Rec xs -> Evident c ctx
 pattern ConE name field xs = Evident (Con name field xs)
 
 {-# COMPLETE NilE, ConE #-}
@@ -159,12 +165,12 @@ class HasDict c ctx where
   evident :: Rec ctx -> Evident c ctx
 
 -- | @since 0.1.0.0
-instance HasDict c CNil where
+instance HasDict c '[] where
   evident = const Trivial
   {-# INLINE CONLIKE evident #-}
 
 -- | @since 0.1.0.0
-instance (c a, HasDict c ctx) => HasDict c (s # a :< ctx) where
+instance (c a, HasDict c ctx) => HasDict c (s # a ': ctx) where
   evident = Evident
   {-# INLINE CONLIKE evident #-}
 
@@ -179,13 +185,13 @@ class Has s a ctx | ctx s -> a where
   setF :: Name s -> f a -> RecF f ctx -> RecF f ctx
 
 -- | @since 0.1.0.0
-instance {-# OVERLAPS #-} Has s a (s # a :< ctx) where
+instance {-# OVERLAPS #-} Has s a (s # a ': ctx) where
   getF _ (ConF _ x _) = x
 
   setF _ x (ConF name _ r) = ConF name x r
 
 -- | @since 0.1.0.0
-instance Has s a ctx => Has s a (s' # a' :< ctx) where
+instance Has s a ctx => Has s a (s' # a' ': ctx) where
   getF name (ConF _ _ r) = getF name r
 
   setF name x (ConF name' y r) = ConF name' y (setF name x r)
@@ -197,9 +203,9 @@ class ReflectRow ctx where
   repeatRow :: (forall a. f a) -> RecF f ctx
 
 -- | @since 0.1.0.0
-instance ReflectRow CNil where
+instance ReflectRow '[] where
   repeatRow _ = NilF
 
 -- | @since 0.1.0.0
-instance (KnownSymbol s, ReflectRow xs) => ReflectRow (s # x :< xs) where
+instance (KnownSymbol s, ReflectRow xs) => ReflectRow (s # x ': xs) where
   repeatRow x = ConF inferName x (repeatRow x)
