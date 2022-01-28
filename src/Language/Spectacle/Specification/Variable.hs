@@ -20,7 +20,7 @@ where
 
 import Control.Applicative (Applicative (liftA2))
 import Data.Hashable (Hashable)
-import Data.Kind (Constraint, Type)
+import Data.Kind (Type)
 import GHC.TypeLits (Symbol)
 
 import Data.Type.List (type (++))

@@ -20,19 +20,46 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import GHC.TypeLits (Symbol)
 
-import Data.Functor.Loom
-import Data.Type.Rec
-import Data.World
+import Data.Functor.Loom (hoist, runLoom, (~>~))
+import Data.Type.Rec (Ascribe, Rec)
+import Data.World (World, makeWorld)
 import Language.Spectacle.Exception.RuntimeException
+  ( RuntimeException,
+  )
 import Language.Spectacle.Lang
+  ( EffectK,
+    Lang (..),
+    Member (projectS),
+    Members,
+    Op (OHere, OThere),
+    Scoped (SHere, SThere),
+    runLang,
+  )
 import Language.Spectacle.RTS.Registers (RuntimeState, emptyRuntimeState, newValues)
 import Language.Spectacle.Syntax.Closure
-import Language.Spectacle.Syntax.Env
-import Language.Spectacle.Syntax.Error
+  ( Closure,
+    runActionClosure,
+  )
+import Language.Spectacle.Syntax.Env (Env, runEnv)
+import Language.Spectacle.Syntax.Error (Error, runError)
 import Language.Spectacle.Syntax.Logic
-import Language.Spectacle.Syntax.NonDet
-import Language.Spectacle.Syntax.Plain
+  ( Effect (Complement, Conjunct, Disjunct),
+    Logic,
+    complement,
+    conjunct,
+    disjunct,
+    runLogic,
+  )
+import Language.Spectacle.Syntax.NonDet (NonDet, runNonDetA)
+import Language.Spectacle.Syntax.Plain (Plain, runPlain)
 import Language.Spectacle.Syntax.Quantifier
+  ( Effect (Exists, Forall),
+    Quantifier,
+    exists,
+    forall,
+    runExceptionalQuantifier,
+    runQuantifier,
+  )
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

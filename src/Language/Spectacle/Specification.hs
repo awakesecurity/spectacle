@@ -22,24 +22,45 @@ module Language.Spectacle.Specification
   )
 where
 
-import Data.Function
+import Data.Function ((&))
 import Data.Hashable (Hashable)
-import Data.Kind (Constraint, Type)
+import Data.Kind (Type)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
-import GHC.TypeLits
+import GHC.TypeLits (Symbol)
 
 import Data.Type.Rec as Rec
-import Data.World
-import Language.Spectacle.AST.Action
-import Language.Spectacle.AST.Temporal
-import Language.Spectacle.Fairness
+  ( Ascribe,
+    HasDict,
+    RecF,
+    foldMapF,
+    mapF,
+    sequenceF,
+  )
+import Data.World (World, makeWorld)
+import Language.Spectacle.AST.Action (Action)
+import Language.Spectacle.AST.Temporal (Temporal)
+import Language.Spectacle.Fairness (Fairness)
 import Language.Spectacle.Lang (Lang, runLang)
 import Language.Spectacle.Specification.Action
+  ( ActionType,
+    toAction,
+    toFairness,
+  )
 import Language.Spectacle.Specification.Prop
+  ( Modality (Eventually, Always, Infinitely, Stays),
+    TemporalType ,
+    toFormula,
+    toModality,
+  )
 import Language.Spectacle.Specification.Variable
+  ( HasVars (..),
+    Var (..),
+    runInitStates,
+    type (:.) (..),
+  )
 import Language.Spectacle.Syntax.NonDet (NonDet, runNonDetA)
 
 -- ---------------------------------------------------------------------------------------------------------------------

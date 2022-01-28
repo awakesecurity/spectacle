@@ -15,21 +15,12 @@ module Language.Spectacle.Specification.Action
   )
 where
 
-import Data.Hashable (Hashable)
-import Data.Kind (Constraint, Type)
-import Data.Map (Map)
-import qualified Data.Map as Map
-import Data.Set (Set)
+import Data.Kind (Type)
 import GHC.TypeLits (Symbol)
-import Language.Spectacle.Exception.RuntimeException (RuntimeException)
-import Type.Reflection (Typeable)
 
-import Data.Name (Name)
-import Data.Type.List (type (++))
-import Data.Type.Rec (Ascribe, Rec)
-import Data.World (World (World))
-import Language.Spectacle.AST.Action (Action, runExceptionalAction)
-import Language.Spectacle.Fairness
+import Data.Type.Rec (Ascribe)
+import Language.Spectacle.AST.Action (Action)
+import Language.Spectacle.Fairness (Fairness (Unfair, StrongFair, WeakFair), reifyFairness)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
