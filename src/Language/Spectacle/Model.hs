@@ -1,60 +1,78 @@
-{-# LANGUAGE Arrows #-}
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiWayIf #-}
-{-# LANGUAGE OverloadedLabels #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
-
 -- |
 --
 -- @since 0.1.0.0
 module Language.Spectacle.Model where
 
-import Control.Applicative
-import Control.Comonad.Cofree ()
-import Control.Monad (filterM, foldM, unless, when)
+import Control.Monad (unless)
 import Control.Monad.Except (MonadError (throwError))
-import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.Reader (MonadReader, ReaderT (runReaderT), asks, local)
-import Control.Monad.State (MonadState, execStateT, gets)
-import Control.Monad.Trans.Except (ExceptT, runExceptT, throwE)
+import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.Reader (local)
+import Control.Monad.State (gets)
 import Data.Foldable (for_, traverse_)
-import Data.Function (on, (&))
+import Data.Function (on)
 import Data.Hashable (Hashable)
 import Data.List (nubBy)
-import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Data.Traversable
-import Lens.Micro (over, (^.))
-import Lens.Micro.Mtl
+import Data.Traversable (for)
+import Lens.Micro (over, (&), (^.))
+import Lens.Micro.Mtl (use, view, (%=), (.=))
 
-import Data.Fingerprint
-import Data.Functor.Tree (Tree, breadth, rootOf, pattern (:-))
+import Data.Fingerprint (Fingerprint)
+import Data.Functor.Tree (Tree, rootOf, pattern (:-))
 import Data.Type.Rec (HasDict)
 import Data.World (World (World), fingerprint, worldValues)
-import qualified Debug.Trace as Debug
-import Language.Spectacle.AST.Action
-import Language.Spectacle.AST.Temporal
-import Language.Spectacle.Fairness
-import Language.Spectacle.Interaction.Diagram
-import qualified Language.Spectacle.Interaction.Paths as Paths
 import Language.Spectacle.Model.ModelAction
+  ( ModelAction (modelActionName),
+    fromActionSpec,
+    runModelAction,
+  )
+import Language.Spectacle.Model.ModelError
+  ( ModelError
+      ( FailAlways,
+        FailEventually,
+        FailInfinitely,
+        FailStays, NoInitState
+      ),
+  )
 import Language.Spectacle.Model.ModelNode as ModelNode
+  ( ModelNode (ModelNode),
+    nextEntries,
+    valuation,
+  )
 import Language.Spectacle.Model.ModelState as ModelState
+  ( enabledActionsAt,
+    indexNode,
+    member,
+    queuedActionsAt,
+  )
 import Language.Spectacle.Model.ModelTemporal
-import Language.Spectacle.Model.Monad as Model
+  ( ModelTemporal (getModelTemporal, modelTemporalName),
+    fromTemporalSpec,
+  )
+import Language.Spectacle.Model.Monad
+  ( ModelM,
+    modalityOf,
+    newModelEnv,
+    runModelM,
+    strongFairActions,
+    weakFairActions,
+  )
 import Language.Spectacle.Specification
-import Prettyprinter.Render.Terminal (putDoc)
+  ( Modality (Always, Eventually, Infinitely, Stays),
+    Specification,
+    getActionFormulae,
+    getFairnessSpec,
+    getModalitySpec,
+    getTemporalFormulae,
+    runInitialSpec,
+  )
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
 modelcheck ::
-  (HasDict Hashable ctx, HasDict Show ctx) =>
+  HasDict Hashable ctx =>
   Specification ctx acts form ->
   IO (Either ModelError [Tree (World ctx)])
 modelcheck spec = do
@@ -63,20 +81,15 @@ modelcheck spec = do
   let actions = fromActionSpec (getActionFormulae spec)
 
   let env = newModelEnv (getFairnessSpec spec) (getModalitySpec spec)
-  (st, result) <- runModelM (checkModelSpec initials actions formulae) env
+  (st, result) <- runModelM (checkModelSpec initials actions formulae) env mempty
 
   case result of
     Left err -> pure (Left err)
-    Right model -> do
-      models <- snd <$> runModelM (checkModelSpec initials actions formulae) env
+    Right {} -> do
+      models <- snd <$> runModelM (checkModelSpec initials actions formulae) env st
       case models of
         Left err -> pure (Left err)
-        Right modelTrees -> do
-          let points = foldMap Paths.toPointSet modelTrees
-          let diagram = diagramFull points
-          putDoc =<< runDiagram diagram
-
-          pure (Right modelTrees)
+        Right modelTrees -> pure (Right modelTrees)
 
 checkModelSpec ::
   MonadIO m =>
@@ -84,21 +97,23 @@ checkModelSpec ::
   [ModelAction ctx] ->
   [ModelTemporal ctx] ->
   ModelM ctx m [Tree (World ctx)]
-checkModelSpec initials actions formulae = do
-  model <- unfoldModelState actions initials
+checkModelSpec initials actions formulae
+  | Set.null initials = throwError NoInitState
+  | otherwise = do
+    _ <- unfoldModelState actions initials
 
-  for (Set.toList initials) \initial -> do
-    let hash = initial ^. fingerprint
-    modelTree <- expandAction actions hash
-    for_ formulae \formula -> do
-      let name = modelTemporalName formula
-      modality <- view (modalityOf name)
-      case modality of
-        Always -> checkAlways formula modelTree
-        Eventually -> checkFuture formula modelTree
-        Infinitely -> checkInfinitely formula modelTree
-        Stays -> checkStays formula modelTree
-    pure modelTree
+    for (Set.toList initials) \initial -> do
+      let hash = initial ^. fingerprint
+      modelTree <- expandAction hash
+      for_ formulae \formula -> do
+        let name = modelTemporalName formula
+        modality <- view (modalityOf name)
+        case modality of
+          Always -> checkAlways formula modelTree
+          Eventually -> checkFuture formula modelTree
+          Infinitely -> checkInfinitely formula modelTree
+          Stays -> checkStays formula modelTree
+      pure modelTree
 
 checkAlways :: MonadIO m => ModelTemporal ctx -> Tree (World ctx) -> ModelM ctx m ()
 checkAlways formula (initial :- subtrees) = traverse_ (go initial) subtrees
@@ -108,6 +123,7 @@ checkAlways formula (initial :- subtrees) = traverse_ (go initial) subtrees
       unless satisfied do
         let name = modelTemporalName formula
         throwError (FailAlways name)
+      traverse_ (go there) nexts
 
 checkFuture :: MonadError ModelError m => ModelTemporal ctx -> Tree (World ctx) -> m ()
 checkFuture formula (root :- subtrees) = traverse_ (go root) subtrees
@@ -160,8 +176,8 @@ checkStays formula (root :- subtrees) = do
         results <- traverse (go there) nexts
         pure (and results)
 
-expandAction :: MonadIO m => [ModelAction ctx] -> Fingerprint -> ModelM ctx m (Tree (World ctx))
-expandAction actions = run
+expandAction :: MonadIO m => Fingerprint -> ModelM ctx m (Tree (World ctx))
+expandAction = run
   where
     run hash = do
       world <- World hash <$> use (indexNode hash . valuation)

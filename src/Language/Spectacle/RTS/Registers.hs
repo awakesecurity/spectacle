@@ -20,17 +20,17 @@ where
 
 import Data.Functor.Identity (Identity (Identity))
 import Data.Kind (Type)
-import GHC.TypeLits
+import GHC.TypeLits (Symbol)
 
 import Data.Ascript (type (#))
 import Data.Type.Rec (Ascribe, Has, Name, Rec, RecF)
 import qualified Data.Type.Rec as Rec
 import Language.Spectacle.Exception.RuntimeException (RuntimeException)
-import Language.Spectacle.Lang (EffectK, Lang, scope)
+import Language.Spectacle.Lang (EffectK, Lang)
 import Language.Spectacle.Syntax.Error.Internal (Error)
 import Language.Spectacle.Syntax.NonDet.Internal (NonDet)
-import Language.Spectacle.Syntax.Plain.Internal (Effect (PlainVar), Plain)
-import Language.Spectacle.Syntax.Prime.Internal (Effect (PrimeVar), Prime)
+import Language.Spectacle.Syntax.Plain.Internal (Plain)
+import Language.Spectacle.Syntax.Prime.Internal (Prime)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -79,7 +79,7 @@ deriving instance Show (RecF (Thunk ctxt) ctxt) => Show (Registers ctxt)
 --
 -- @since 0.1.0.0
 emptyRegisters :: Rec ctx -> Registers ctx
-emptyRegisters = Registers . Rec.mapF \_ (Identity x) -> Unchanged -- Thunk (pure x)
+emptyRegisters = Registers . Rec.mapF \_ (Identity _) -> Unchanged
 
 -- | Retrieves the value of the variable named @s@ in 'Registers' as a 'Thunk'.
 --

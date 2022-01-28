@@ -31,9 +31,8 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Lens.Micro (Lens', SimpleGetter, lens, to)
 
-import Language.Spectacle.Fairness
-import Language.Spectacle.Specification
-import Language.Spectacle.Specification.Prop
+import Language.Spectacle.Fairness (Fairness (StrongFair, Unfair, WeakFair))
+import Language.Spectacle.Specification (Modality)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

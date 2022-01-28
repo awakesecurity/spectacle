@@ -12,13 +12,12 @@ module Language.Spectacle.Model.ModelTemporal
   )
 where
 
-import Data.Function (on)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Lens.Micro ((^.))
 
-import Data.World
-import Language.Spectacle.AST.Temporal
+import Data.World (World, worldValues)
+import Language.Spectacle.AST.Temporal (Temporal, runTemporal)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

@@ -43,16 +43,16 @@ module Data.Type.Rec
   )
 where
 
+import Control.Applicative (liftA2)
 import Data.Functor.Identity (Identity (Identity, runIdentity))
 import Data.Hashable (Hashable (hashWithSalt), hashWithSalt)
-import Control.Applicative (liftA2)
 import Data.Kind (Constraint, Type)
 import Data.List (intercalate)
 import GHC.TypeLits (KnownSymbol, Symbol)
 
 import Data.Ascript (Ascribe, type (#))
 import Data.Name (Name, inferName)
-import Data.Type.List
+import Data.Type.List (type (++))
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

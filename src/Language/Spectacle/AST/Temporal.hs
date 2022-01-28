@@ -11,14 +11,14 @@ module Language.Spectacle.AST.Temporal
   )
 where
 
-import Data.Function
-import Data.Kind
-import GHC.TypeLits
+import Data.Function ((&))
+import Data.Kind (Type)
+import GHC.TypeLits (Symbol)
 
-import Data.Type.Rec
-import Language.Spectacle.Lang
-import Language.Spectacle.Syntax.Plain
-import Language.Spectacle.Syntax.Prime
+import Data.Type.Rec (Ascribe, Rec)
+import Language.Spectacle.Lang (EffectK, Lang, runLang)
+import Language.Spectacle.Syntax.Plain (Plain, runPlain)
+import Language.Spectacle.Syntax.Prime (Prime, substPrime)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

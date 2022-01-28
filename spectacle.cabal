@@ -58,11 +58,8 @@ library
   hs-source-dirs:      src
 
   build-depends:
-      adjunctions
-    , comonad
+      comonad
     , containers >= 0.6
-    , distributive
-    , free
     , hashable >= 1.3.0.0
     , microlens
     , microlens-mtl
@@ -73,8 +70,6 @@ library
     , profunctors
     , text
     , transformers >= 0.5
-    , unordered-containers
-    , vector
 
   exposed-modules:
       Control.Applicative.Day

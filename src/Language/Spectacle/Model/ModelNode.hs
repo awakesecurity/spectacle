@@ -20,14 +20,13 @@ module Language.Spectacle.Model.ModelNode
   )
 where
 
-import Data.Set (Set)
-import qualified Data.Set as Set
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Lens.Micro
+import Data.Set (Set)
+import Lens.Micro (Lens', SimpleGetter, lens, to)
 
 import Data.Fingerprint (Fingerprint)
-import Data.Type.Rec
+import Data.Type.Rec (HasDict, Rec)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

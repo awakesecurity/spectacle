@@ -16,24 +16,20 @@ module Language.Spectacle.Model.ModelAction
 where
 
 import Control.Monad.Except (MonadError, throwError)
-import Control.Monad.IO.Class
 import Data.Hashable (Hashable)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
-import qualified Data.Set as Set
 import Lens.Micro ((^.))
-import Lens.Micro.Extras (view)
 
-import Data.Type.Rec
-import Data.World
-import Language.Spectacle.AST
+import Data.Type.Rec (HasDict)
+import Data.World (World, worldValues)
+import Language.Spectacle.AST (Action)
 import Language.Spectacle.AST.Action (runExceptionalAction)
-import Language.Spectacle.Exception.RuntimeException
-import Language.Spectacle.Model.ModelError (ModelError)
-import qualified Language.Spectacle.Model.ModelError as ModelError
-import Language.Spectacle.Model.Monad
-import Language.Spectacle.Specification
+import Language.Spectacle.Exception.RuntimeException (RuntimeException)
+import Language.Spectacle.Model.ModelError
+  ( ModelError (RuntimeError),
+  )
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

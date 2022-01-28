@@ -10,9 +10,7 @@ module Language.Spectacle.Syntax.Plain.Internal
   )
 where
 
-import Data.Kind (Constraint, Type)
 import Data.Void (Void)
-import GHC.TypeLits (Symbol)
 
 import Data.Type.Rec (Has, Name)
 import Language.Spectacle.Lang (Effect, EffectK, Lang)

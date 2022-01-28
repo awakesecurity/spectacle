@@ -27,8 +27,23 @@ import Control.Monad.State (MonadState)
 import Data.Function ((&))
 
 import Language.Spectacle.Model.ModelEnv
-import Language.Spectacle.Model.ModelError
+  ( ModelEnv,
+    actionInfo,
+    fairnessOf,
+    modalityOf,
+    newModelEnv,
+    strongFairActions,
+    unfairActions,
+    weakFairActions,
+  )
+import Language.Spectacle.Model.ModelError (ModelError)
 import Language.Spectacle.Model.ModelState
+  ( ModelState,
+    enabledActionsAt,
+    indexNode,
+    member,
+    queuedActionsAt,
+  )
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -38,12 +53,17 @@ newtype ModelM ctx m a = ModelM
   {unModelM :: ExceptT ModelError (ReaderT ModelEnv (RefM (ModelState ctx) m)) a}
   deriving (Functor, Applicative, Monad)
 
-runModelM :: MonadIO m => ModelM ctx m a -> ModelEnv -> m (ModelState ctx, Either ModelError a)
-runModelM model env =
+runModelM ::
+  MonadIO m =>
+  ModelM ctx m a ->
+  ModelEnv ->
+  ModelState ctx ->
+  m (ModelState ctx, Either ModelError a)
+runModelM model env st =
   unModelM model
     & runExceptT
     & flip runReaderT env
-    & flip runRefM mempty
+    & flip runRefM st
 
 -- | @since 0.1.0.0
 deriving instance MonadIO m => MonadState (ModelState ctx) (ModelM ctx m)

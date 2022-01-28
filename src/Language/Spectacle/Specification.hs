@@ -45,21 +45,19 @@ import Language.Spectacle.AST.Temporal (Temporal)
 import Language.Spectacle.Fairness (Fairness)
 import Language.Spectacle.Lang (Lang, runLang)
 import Language.Spectacle.Specification.Action
-  ( ActionType,
+  ( ActionType (ActionSF, ActionUF, ActionWF),
     toAction,
     toFairness,
   )
 import Language.Spectacle.Specification.Prop
-  ( Modality (Eventually, Always, Infinitely, Stays),
-    TemporalType ,
+  ( Modality (Always, Eventually, Infinitely, Stays),
+    TemporalType (PropF, PropFG, PropG, PropGF),
     toFormula,
     toModality,
   )
 import Language.Spectacle.Specification.Variable
-  ( HasVars (..),
-    Var (..),
+  ( HasVars (runInitActions),
     runInitStates,
-    type (:.) (..),
   )
 import Language.Spectacle.Syntax.NonDet (NonDet, runNonDetA)
 
