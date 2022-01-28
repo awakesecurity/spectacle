@@ -32,13 +32,13 @@ import Language.Spectacle.Model.ModelState
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
-type ModelIO = ModelM IO
+type ModelIO ctx = ModelM ctx IO
 
-newtype ModelM m a = ModelM
-  {unModelM :: ExceptT ModelError (ReaderT ModelEnv (RefM ModelState m)) a}
+newtype ModelM ctx m a = ModelM
+  {unModelM :: ExceptT ModelError (ReaderT ModelEnv (RefM (ModelState ctx) m)) a}
   deriving (Functor, Applicative, Monad)
 
-runModelM :: MonadIO m => ModelM m a -> ModelEnv -> m (ModelState, Either ModelError a)
+runModelM :: MonadIO m => ModelM ctx m a -> ModelEnv -> m (ModelState ctx, Either ModelError a)
 runModelM model env =
   unModelM model
     & runExceptT
@@ -46,10 +46,10 @@ runModelM model env =
     & flip runRefM mempty
 
 -- | @since 0.1.0.0
-deriving instance MonadIO m => MonadState ModelState (ModelM m)
+deriving instance MonadIO m => MonadState (ModelState ctx) (ModelM ctx m)
 
 -- | @since 0.1.0.0
-deriving instance Monad m => MonadReader ModelEnv (ModelM m)
+deriving instance Monad m => MonadReader ModelEnv (ModelM ctx m)
 
 -- | @since 0.1.0.0
-deriving instance Monad m => MonadError ModelError (ModelM m)
+deriving instance Monad m => MonadError ModelError (ModelM ctx m)

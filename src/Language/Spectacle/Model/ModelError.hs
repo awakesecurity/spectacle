@@ -7,14 +7,16 @@ module Language.Spectacle.Model.ModelError
       ( NoInitState,
         RuntimeError,
         FailAlways,
-        FailEventually
+        FailEventually,
+        FailInfinitely,
+        FailStays
       ),
   )
 where
 
-import Data.Kind
+import Data.Kind (Type)
 
-import Language.Spectacle.Exception.RuntimeException
+import Language.Spectacle.Exception.RuntimeException (RuntimeException)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -23,4 +25,6 @@ data ModelError :: Type where
   RuntimeError :: RuntimeException -> ModelError
   FailAlways :: String -> ModelError
   FailEventually :: String -> ModelError
+  FailInfinitely :: String -> ModelError
+  FailStays :: String -> ModelError
   deriving (Show)

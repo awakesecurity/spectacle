@@ -2,112 +2,107 @@
 
 module Specifications.Diehard where
 
-import Language.Spectacle (Action, plain, prime, (.=))
-import Language.Spectacle.Checker (modelCheck)
-import Language.Spectacle.Checker.MCError (MCError)
-import Language.Spectacle.Checker.MCMetrics (MCMetrics)
-import Language.Spectacle.Interaction (defaultInteraction)
+import Debug.Trace as Debug
+import Data.Type.Rec
+import Language.Spectacle.AST.Action
+import Language.Spectacle.AST.Temporal
+import Language.Spectacle.Fairness
+import Language.Spectacle.Model
 import Language.Spectacle.Specification
-  ( Always,
-    Eventually,
-    Fairness (WeakFair),
-    Spec (Spec),
-    Var ((:=)),
-    VariableCtxt,
-    type (!>) (WeakFairAction),
-    type (/\),
-    type (:.) ((:.)),
-    type (\/) ((:\/:)),
-  )
+import Language.Spectacle.Syntax
 
 -- -------------------------------------------------------------------------------------------------
 
 type DiehardSpec =
-  Spec
-    ( Var "smallJug" Int
-        :. Var "bigJug" Int
-    )
-    ( ("emptySmall" !> 'WeakFair)
-        \/ ("emptyBig" !> 'WeakFair)
-        \/ ("fillSmall" !> 'WeakFair)
-        \/ ("fillBig" !> 'WeakFair)
-        \/ ("smallToBig" !> 'WeakFair)
-        \/ ("bigToSmall" !> 'WeakFair)
-        \/ ("isSolution" !> 'WeakFair)
-    )
-    ( Always '["emptySmall", "emptyBig", "fillSmall", "fillBig", "smallToBig", "bigToSmall"]
-        /\ Eventually "isSolution"
-    )
+  Specification
+    DiehardVars
+    '[ "emptySmall" # 'Unfair
+     , "emptyBig" # 'Unfair
+     , "fillSmall" # 'Unfair
+     , "fillBig" # 'Unfair
+     , "smallToBig" # 'Unfair
+     , "bigToSmall" # 'Unfair
+     ]
+    '[ "isSolved" # 'Always
+     ]
 
-emptySmall :: Action (VariableCtxt DiehardSpec) Bool
+type DiehardVars =
+  '[ "smallJug" # Int
+   , "bigJug" # Int
+   ]
+
+emptySmall :: Action DiehardVars Bool
 emptySmall = do
-  #smallJug .= return 0
-  #bigJug .= plain #bigJug
+  #smallJug .= pure 0
   return True
 
-emptyBig :: Action (VariableCtxt DiehardSpec) Bool
+emptyBig :: Action DiehardVars Bool
 emptyBig = do
-  #smallJug .= plain #smallJug
-  #bigJug .= return 0
-  return True
+  #bigJug .= pure 0
+  pure True
 
-fillSmall :: Action (VariableCtxt DiehardSpec) Bool
+fillSmall :: Action DiehardVars Bool
 fillSmall = do
-  #smallJug .= return 3
-  #bigJug .= plain #bigJug
+  #smallJug .= pure 3
   return True
 
-fillBig :: Action (VariableCtxt DiehardSpec) Bool
+fillBig :: Action DiehardVars Bool
 fillBig = do
-  #smallJug .= plain #smallJug
-  #bigJug .= return 5
-  return True
+  #bigJug .= pure 5
+  pure True
 
-smallToBig :: Action (VariableCtxt DiehardSpec) Bool
-smallToBig = do
-  smallJug <- plain #smallJug
-  bigJug <- plain #bigJug
-
-  #smallJug .= do
-    bigJug' <- prime #bigJug
-    return (smallJug - (bigJug' - bigJug))
-  #bigJug .= return (min (bigJug + smallJug) 5)
-  return True
-
-bigToSmall :: Action (VariableCtxt DiehardSpec) Bool
+bigToSmall :: Action DiehardVars Bool
 bigToSmall = do
-  smallJug <- plain #smallJug
   bigJug <- plain #bigJug
+  smallJug <- plain #smallJug
 
-  #smallJug .= return (min (bigJug + smallJug) 3)
+  #smallJug .= pure (min (bigJug + smallJug) 3)
   #bigJug .= do
     smallJug' <- prime #smallJug
-    return (bigJug - (smallJug' - smallJug))
-  return True
+    pure (bigJug - (smallJug' - smallJug))
 
-isSolution :: Action (VariableCtxt DiehardSpec) Bool
-isSolution = do
+  pure True
+
+smallToBig :: Action DiehardVars Bool
+smallToBig = do
   bigJug <- plain #bigJug
-  return (bigJug == 4)
+  smallJug <- plain #smallJug
 
-spec :: DiehardSpec
-spec = Spec specInit specNext
-  where
-    specInit =
-      (#smallJug := return 0)
-        :. (#bigJug := return 0)
+  #bigJug .= pure (min (bigJug + smallJug) 5)
+  #smallJug .= do
+    bigJug' <- prime #bigJug
+    pure (smallJug - (bigJug' - bigJug))
 
-    specNext =
-      WeakFairAction #emptySmall emptySmall
-        :\/: WeakFairAction #emptyBig emptyBig
-        :\/: WeakFairAction #fillSmall fillSmall
-        :\/: WeakFairAction #fillBig fillBig
-        :\/: WeakFairAction #smallToBig smallToBig
-        :\/: WeakFairAction #bigToSmall bigToSmall
-        :\/: WeakFairAction #isSolution isSolution
+  pure True
 
-test :: Either [MCError (VariableCtxt DiehardSpec)] MCMetrics
-test = modelCheck spec
+isSolved :: Temporal DiehardVars Bool
+isSolved = do
+  bigJug <- plain #bigJug
+  pure (bigJug /= 4)
 
-check :: IO ()
-check = defaultInteraction spec
+diehardSpec :: DiehardSpec
+diehardSpec =
+  Specification
+    { specInit =
+        ConF #smallJug (pure 0)
+          . ConF #bigJug (pure 0)
+          $ NilF
+    , specNext =
+        ConF #emptySmall (ActionUF emptySmall)
+          . ConF #emptyBig (ActionUF emptyBig)
+          . ConF #fillSmall (ActionUF fillSmall)
+          . ConF #fillBig (ActionUF fillBig)
+          . ConF #smallToBig (ActionUF smallToBig)
+          . ConF #bigToSmall (ActionUF bigToSmall)
+          $ NilF
+    , specProp =
+        ConF #isSolved (PropG isSolved) NilF
+    }
+
+
+diehardSpecCheck :: IO ()
+diehardSpecCheck = do
+  modelcheck diehardSpec >>= \case
+    Left err -> print err
+    Right xs -> print xs
+

@@ -14,13 +14,13 @@ import qualified Data.Set as Set
 import Data.Set.Internal (Set (Bin, Tip))
 import Lens.Micro ((.~), (?~), (^.))
 
-import Data.Functor.Tree (Tree, levels, pattern (:-))
+import Control.Monad.State (execState, gets, modify)
+import Data.Foldable (traverse_)
+import Data.Function ((&))
+import Data.Functor.Tree (Tree, pattern (:-))
 import Data.Type.Rec (HasDict)
 import Data.World (World, fingerprint)
-import Language.Spectacle.Interaction.Point (Point, column, row, extent, fromWorld, parent)
-import Data.Function
-import Data.Foldable (fold, traverse_)
-import Control.Monad.State
+import Language.Spectacle.Interaction.Point (Point, column, extent, fromWorld, parent, row)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

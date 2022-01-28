@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 -- |
 --
 -- @since 0.1.0.0
@@ -15,6 +17,7 @@ module Language.Spectacle.Model.ModelEnv
 
     -- ** Lenses
     actionInfo,
+    modalityOf,
     fairnessOf,
     unfairActions,
     weakFairActions,
@@ -26,11 +29,11 @@ import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Lens.Micro (SimpleGetter, to)
+import Lens.Micro (Lens', SimpleGetter, lens, to)
 
+import Language.Spectacle.Fairness
 import Language.Spectacle.Specification
 import Language.Spectacle.Specification.Prop
-import Language.Spectacle.Fairness
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -49,6 +52,10 @@ newModelEnv fairInfo modalInfo =
       strongfair = Set.fromList . Map.keys $ Map.filter (StrongFair ==) fairInfo
    in ModelEnv fairInfo modalInfo unfair weakfair strongfair
 
+modalityOf :: String -> SimpleGetter ModelEnv Modality
+modalityOf name = to \env ->
+  mcEnvFormulaModality env Map.! name
+
 fairnessOf :: String -> SimpleGetter ModelEnv Fairness
 fairnessOf name = to \env ->
   mcEnvActionFairness env Map.! name
@@ -59,8 +66,10 @@ actionInfo = to mcEnvActionFairness
 unfairActions :: SimpleGetter ModelEnv (Set String)
 unfairActions = to mcEnvUnfairActions
 
-weakFairActions :: SimpleGetter ModelEnv (Set String)
-weakFairActions = to mcEnvUnfairActions
+weakFairActions :: Lens' ModelEnv (Set String)
+weakFairActions = lens mcEnvWeakFairActions \ModelEnv {..} actions ->
+  ModelEnv {mcEnvWeakFairActions = actions, ..}
 
-strongFairActions :: SimpleGetter ModelEnv (Set String)
-strongFairActions = to mcEnvUnfairActions
+strongFairActions :: Lens' ModelEnv (Set String)
+strongFairActions = lens mcEnvStrongFairActions \ModelEnv {..} actions ->
+  ModelEnv {mcEnvStrongFairActions = actions, ..}

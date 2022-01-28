@@ -11,9 +11,9 @@ module Language.Spectacle.AST.Temporal
   )
 where
 
+import Data.Function
 import Data.Kind
 import GHC.TypeLits
-import Data.Function
 
 import Data.Type.Rec
 import Language.Spectacle.Lang

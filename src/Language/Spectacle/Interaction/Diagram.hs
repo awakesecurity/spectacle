@@ -151,7 +151,6 @@ curveSegment points lcol ucol
         then pure tab
         else withColor (verticalSegment 1) (focus ps ^. label)
 
-    let spc = Doc.tabs (focus points ^. extent - 1)
     withColor (fold ls <> curve) lx
   | ucol < 1 + col = do
     let curve = turnLeftUp <> Doc.copies (2 * (col - ucol) + 1) hline <> turnUpLeft

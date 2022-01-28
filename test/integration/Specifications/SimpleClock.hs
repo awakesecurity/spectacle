@@ -6,53 +6,55 @@ module Specifications.SimpleClock where
 
 import Control.Monad (when)
 
-import Language.Spectacle (Action, plain, (.=))
-import Language.Spectacle.Checker (modelCheck)
-import Language.Spectacle.Checker.MCError (MCError)
-import Language.Spectacle.Checker.MCMetrics (MCMetrics)
-import Language.Spectacle.Interaction (defaultInteraction)
+import Data.Type.Rec
+import qualified Debug.Trace as Debug
+import Language.Spectacle
+import Language.Spectacle.AST.Temporal
+import Language.Spectacle.Fairness
+import Language.Spectacle.Model
+import Language.Spectacle.Model.ModelError
 import Language.Spectacle.Specification
-  ( Always,
-    Eventually,
-    Fairness (WeakFair),
-    Spec (Spec),
-    Var ((:=)),
-    type VariableCtxt,
-    type (!>) (WeakFairAction),
-    type (/\),
-    type (\/) ((:\/:)),
-  )
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
 type ClockSpec =
-  Spec
-    (Var "hours" Int)
-    ("tick" !> 'WeakFair \/ "rollover" !> 'WeakFair)
-    (Always "tick" /\ Eventually "rollover")
+  Specification
+    '["hour" # Int]
+    '["next" # 'WeakFair]
+    '["ticks" # 'Infinitely, "times" # 'Always]
 
-tick :: Action (VariableCtxt ClockSpec) Bool
-tick = do
-  hours <- plain #hours
+clockNext :: Action '["hour" # Int] Bool
+clockNext = do
+  hour <- plain #hour
+  if hour == 12
+    then #hour .= pure 1
+    else #hour .= pure (1 + hour)
+  pure True
 
-  when (hours < 23) do
-    #hours .= return (1 + hours)
+clockTicks :: Temporal '["hour" # Int] Bool
+clockTicks = do
+  hour <- plain #hour
+  hour' <- prime #hour
+  pure (1 + hour == hour')
 
-  return (0 <= hours && hours <= 23)
+clockTimes :: Temporal '["hour" # Int] Bool
+clockTimes = do
+  hour <- plain #hour
+  pure (1 <= hour && hour <= 12)
 
-rollover :: Action (VariableCtxt ClockSpec) Bool
-rollover = do
-  hours <- plain #hours
-  #hours .= return 0
-  return (hours == 23)
+clockSpec :: ClockSpec
+clockSpec =
+  Specification
+    { specInit = ConF #hour (pure 1) NilF
+    , specNext = ConF #next (ActionWF clockNext) NilF
+    , specProp =
+        ConF #ticks (PropGF clockTicks)
+          . ConF #times (PropG clockTimes)
+          $ NilF
+    }
 
-spec :: ClockSpec
-spec = Spec (#hours := return 0) specNext
-  where
-    specNext = WeakFairAction #tick tick :\/: WeakFairAction #rollover rollover
-
-test :: Either [MCError (VariableCtxt ClockSpec)] MCMetrics
-test = modelCheck spec
-
-check :: IO ()
-check = defaultInteraction spec
+clockSpecCheck :: IO ()
+clockSpecCheck = do
+  modelcheck clockSpec >>= \case
+    Left err -> print err
+    Right xs -> print xs

@@ -17,9 +17,7 @@ module Control.Mealy
 where
 
 import Control.Applicative (liftA2)
-import Control.Monad ((>=>))
-import Data.Bifunctor (second)
-import Data.Functor.Identity
+import Data.Functor.Identity ( Identity(runIdentity) )
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

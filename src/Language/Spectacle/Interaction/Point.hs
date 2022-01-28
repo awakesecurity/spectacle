@@ -42,7 +42,7 @@ import Language.Spectacle.Interaction.Pos (Pos, pcol, prow, pattern Pos)
 data Point = Point
   { pointLabel :: {-# UNPACK #-} !Fingerprint
   , pointFields :: [Doc AnsiStyle]
-  , pointPar :: {-# UNPACK #-} !(Maybe Fingerprint)
+  , pointPar :: !(Maybe Fingerprint)
   , pointLen :: {-# UNPACK #-} !Int
   , pointPos :: {-# UNPACK #-} !Pos
   }

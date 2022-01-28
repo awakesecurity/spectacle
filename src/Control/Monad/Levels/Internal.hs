@@ -22,13 +22,12 @@ module Control.Monad.Levels.Internal
 where
 
 import Control.Applicative (Alternative (empty, (<|>)), Applicative (liftA2))
-import Control.Monad (ap, join)
+import Control.Monad (ap)
 import Control.Monad.Except (MonadError (catchError, throwError))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (MonadReader (local, reader))
 import Control.Monad.State (MonadState (state))
 import Control.Monad.Trans.Class (MonadTrans, lift)
-import Control.Monad.Zip (MonadZip, mzipWith)
 import Data.Functor.Identity (Identity, runIdentity)
 import Data.Kind (Type)
 

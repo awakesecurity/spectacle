@@ -58,56 +58,64 @@ library
   hs-source-dirs:      src
 
   build-depends:
-      containers >= 0.6
+      adjunctions
+    , comonad
+    , containers >= 0.6
+    , distributive
+    , free
     , hashable >= 1.3.0.0
     , microlens
     , microlens-mtl
     , mtl >= 2.2
-    , megaparsec
+    , logict
     , prettyprinter
     , prettyprinter-ansi-terminal
+    , profunctors
+    , text
     , transformers >= 0.5
+    , unordered-containers
+    , vector
 
   exposed-modules:
-      Control.Monad.Levels
-    , Control.Monad.Levels.Internal
+      Control.Applicative.Day
+    , Control.Applicative.Phases
+    , Control.Applicative.Queue
+    , Control.Comonad.Tape
     , Control.Hyper
+    , Control.Mealy
+    , Control.Monad.Levels
+    , Control.Monad.Levels.Internal
+    , Control.Monad.Ref
     , Control.Natural
     , Data.Ascript
     , Data.Bag
-    , Data.Context
+    , Data.Fingerprint
     , Data.Functor.Loom
+    , Data.Functor.Tree
     , Data.Name
     , Data.Node
+    , Data.Type.List
     , Data.Type.Rec
-    , Data.Type.Rec.Internal
-    , Data.Type.Rec.Selector
     , Data.World
     , Language.Spectacle
     , Language.Spectacle.AST
     , Language.Spectacle.AST.Action
-    , Language.Spectacle.AST.Action.Internal
-    , Language.Spectacle.Checker
-    , Language.Spectacle.Checker.Fingerprint
-    , Language.Spectacle.Checker.Liveness
-    , Language.Spectacle.Checker.LVStateCoverage
-    , Language.Spectacle.Checker.MCCoverageMap
-    , Language.Spectacle.Checker.MCEnv
-    , Language.Spectacle.Checker.MCError
-    , Language.Spectacle.Checker.MCMetrics
-    , Language.Spectacle.Checker.MCState
-    , Language.Spectacle.Checker.MCStepMap
-    , Language.Spectacle.Checker.MCTrace
-    , Language.Spectacle.Checker.MCWorldInfo
-    , Language.Spectacle.Checker.Model
-    , Language.Spectacle.Checker.Replayer
-    , Language.Spectacle.Checker.Step
+    , Language.Spectacle.AST.Temporal
     , Language.Spectacle.Exception.RuntimeException
-    , Language.Spectacle.Interaction
-    , Language.Spectacle.Interaction.AnsiDoc
-    , Language.Spectacle.Interaction.Parse
-    , Language.Spectacle.Interaction.Render
-    , Language.Spectacle.Interaction.View.WorldView
+    , Language.Spectacle.Fairness
+    , Language.Spectacle.Interaction.Diagram
+    , Language.Spectacle.Interaction.Doc
+    , Language.Spectacle.Interaction.Paths
+    , Language.Spectacle.Interaction.Point
+    , Language.Spectacle.Interaction.Pos
+    , Language.Spectacle.Model
+    , Language.Spectacle.Model.ModelAction
+    , Language.Spectacle.Model.ModelEnv
+    , Language.Spectacle.Model.ModelError
+    , Language.Spectacle.Model.ModelNode
+    , Language.Spectacle.Model.ModelState
+    , Language.Spectacle.Model.ModelTemporal
+    , Language.Spectacle.Model.Monad
     , Language.Spectacle.Lang
     , Language.Spectacle.Lang.Internal
     , Language.Spectacle.Lang.Member
@@ -145,14 +153,29 @@ test-suite unit-tests
   main-is:             Main.hs
 
   other-modules:
-    Fingerprint
+    Test.Gen
+    Test.Gen.Rec
+    Test.Language.Spectacle.Interaction
+    Test.Language.Spectacle.Interaction.Paths
+    Test.Language.Spectacle.Interaction.Pos
+    Test.Laws.Lens
+    Test.Laws.Ord
 
   build-depends:
-      spectacle
+      ansi-terminal ==0.11
+    , comonad
+    , containers
+    , spectacle
     , hedgehog
     , megaparsec
+    , microlens
+    , mtl
+    , optparse-applicative
+    , prettyprinter
+    , prettyprinter-ansi-terminal
     , tasty
     , tasty-hedgehog
+    , transformers
 
 test-suite integration-tests
   import:              common
@@ -163,10 +186,8 @@ test-suite integration-tests
   other-modules:
     Specifications.BitClock
     Specifications.Diehard
-    Specifications.DijkstraMutex
-    Specifications.DijkstraMutex.Process
     Specifications.SimpleClock
-    Specifications.RateLimit
+    Specifications.Status
 
   build-depends:
       spectacle

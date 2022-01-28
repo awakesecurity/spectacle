@@ -15,10 +15,10 @@ where
 import Data.Either (fromRight)
 import Data.Function ((&))
 import Data.Hashable (Hashable)
+import Data.Kind (Type)
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Data.Kind (Type)
-import GHC.TypeLits(Symbol)
+import GHC.TypeLits (Symbol)
 
 import Data.Functor.Loom
 import Data.Type.Rec

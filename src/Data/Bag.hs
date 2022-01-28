@@ -65,7 +65,7 @@ instance Foldable Bag where
   {-# INLINE foldMap #-}
 
   foldr _ nil None = nil
-  foldr cons nil (Some xs) = foldr cons nil xs
+  foldr c nil (Some xs) = foldr c nil xs
   {-# INLINE foldr #-}
 
 -- | @since 0.1.0.0
