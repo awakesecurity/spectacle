@@ -43,5 +43,5 @@ jobs:
         with:
           name: awakesecurity
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-      - run: ./scripts/fourmolu --mode check $(find ./src -name '*.hs')
-      - run: ./scripts/fourmolu --mode check $(find ./test -name '*.hs')
+      - run: ./scripts/fourmolu -c $(find ./src -name '*.hs')
+      - run: ./scripts/fourmolu -c $(find ./test -name '*.hs')
