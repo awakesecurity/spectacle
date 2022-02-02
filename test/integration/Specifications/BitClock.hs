@@ -44,8 +44,8 @@ bitClockSpec =
     , specProp = ConF #times (PropG bitClockTimes) NilF
     }
 
-check :: IO ()
-check = do
-  modelcheck bitClockSpec >>= \case
-    Left err -> print "error!"
-    Right xs -> print xs
+-- check :: IO ()
+-- check = do
+--   modelcheck bitClockSpec >>= \case
+--     Left err -> print "error!"
+--     Right xs -> print xs

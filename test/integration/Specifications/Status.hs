@@ -11,9 +11,10 @@ import GHC.Generics
 import Data.Type.Rec
 import Language.Spectacle.AST.Action
 import Language.Spectacle.AST.Temporal
+import Language.Spectacle.Fairness
+import Language.Spectacle.Interaction
 import Language.Spectacle.Model
 import Language.Spectacle.Specification
-import Language.Spectacle.Fairness
 import Language.Spectacle.Syntax
 
 -- ---------------------------------------------------------------------------------------------------------------------
@@ -30,7 +31,7 @@ type StatusSpec =
      ]
 
 data Status = Start | Done | Fail
-  deriving (Eq, Enum, Generic, Show)
+  deriving stock (Eq, Enum, Generic, Show)
 
 instance Hashable Status
 
@@ -66,8 +67,12 @@ statusSpec =
         NilF
     }
 
-statusSpecCheck :: IO ()
-statusSpecCheck = do
-  modelcheck statusSpec >>= \case
-    Left err -> print err
-    Right xs -> print xs
+-- statusSpecCheck :: IO ()
+-- statusSpecCheck = do
+--   modelcheck statusSpec >>= \case
+--     Left err -> print err
+--     Right xs -> print xs
+
+statusSpecInteract :: IO ()
+statusSpecInteract = do
+  interaction statusSpec

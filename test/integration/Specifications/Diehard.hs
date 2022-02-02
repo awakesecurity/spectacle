@@ -2,13 +2,14 @@
 
 module Specifications.Diehard where
 
-import Debug.Trace as Debug
 import Data.Type.Rec
+import Debug.Trace as Debug
 import Language.Spectacle.AST.Action
 import Language.Spectacle.AST.Temporal
 import Language.Spectacle.Fairness
 import Language.Spectacle.Model
 import Language.Spectacle.Specification
+import Language.Spectacle.Interaction
 import Language.Spectacle.Syntax
 
 -- -------------------------------------------------------------------------------------------------
@@ -99,10 +100,11 @@ diehardSpec =
         ConF #isSolved (PropG isSolved) NilF
     }
 
-
-diehardSpecCheck :: IO ()
-diehardSpecCheck = do
+checkDiehardSpec :: IO ()
+checkDiehardSpec = do
   modelcheck diehardSpec >>= \case
     Left err -> print err
     Right xs -> print xs
 
+interactDiehardSpec :: IO ()
+interactDiehardSpec = interaction diehardSpec

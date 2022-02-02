@@ -14,6 +14,7 @@ import Language.Spectacle.Fairness
 import Language.Spectacle.Model
 import Language.Spectacle.Model.ModelError
 import Language.Spectacle.Specification
+import Language.Spectacle.Interaction
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -58,3 +59,6 @@ clockSpecCheck = do
   modelcheck clockSpec >>= \case
     Left err -> print err
     Right xs -> print xs
+
+interactClockSpec :: IO ()
+interactClockSpec = interaction clockSpec
