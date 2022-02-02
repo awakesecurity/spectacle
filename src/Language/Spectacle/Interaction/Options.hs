@@ -27,29 +27,50 @@ module Language.Spectacle.Interaction.Options
   )
 where
 
-import Control.Applicative (Alternative ((<|>)))
-import Options.Applicative (Parser, execParser, help, idm, info, long, metavar, short, strOption, switch)
+import Control.Applicative (Alternative ((<|>)), (<**>))
+import Options.Applicative
+  ( Parser,
+    customExecParser,
+    execParser,
+    help,
+    helper,
+    idm,
+    info,
+    long,
+    metavar,
+    prefs,
+    short,
+    showHelpOnEmpty,
+    strOption,
+    switch,
+  )
 import System.IO (BufferMode (LineBuffering), Handle, IOMode (ReadWriteMode), hSetBuffering, openFile, stdout)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
--- |
+-- | 'OptsCLI' is a record command-line options for configuring the model checker.
 --
 -- @since 0.1.0.0
 data OptsCLI = OptsCLI
-  { optsLogGraph :: Bool
-  , optsOnlyTrace :: Bool
-  , optsLogOutput :: OutputOpt
+  { -- | Should the state diagram be drawn?
+    optsLogGraph :: Bool
+  , -- | Should the model checker only trace the states of a specification, without checking temporal properties?
+    optsOnlyTrace :: Bool
+  , -- | The output path for logs produced by CLI.
+    optsLogOutput :: OutputOpt
   }
   deriving (Eq, Show)
 
--- |
+-- | 'execOptsCLI' runs the command-line options parser.
 --
 -- @since 0.1.0.0
 execOptsCLI :: IO OptsCLI
-execOptsCLI = execParser (info parseOptsCLI idm)
+execOptsCLI =
+  let option = info (parseOptsCLI <**> helper) idm
+      config = prefs showHelpOnEmpty
+   in customExecParser config option
 
--- |
+-- | 'parseOptsCLI' is the parses command-line options into an 'OptsCLI'.
 --
 -- @since 0.1.0.0
 parseOptsCLI :: Parser OptsCLI
@@ -136,5 +157,3 @@ pOutputPath = OptPath <$> parser
             <> metavar "OUTPUT"
             <> help "The log output path"
         )
-
--- ---------------------------------------------------------------------------------------------------------------------
