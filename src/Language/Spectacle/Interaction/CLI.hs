@@ -31,7 +31,7 @@ where
 import Control.Monad (unless)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (MonadReader, ReaderT, asks, runReaderT)
-import Prettyprinter (Doc, annotate, unAnnotate, (<+>), line)
+import Prettyprinter (Doc, annotate, line, unAnnotate, (<+>))
 import Prettyprinter.Render.Terminal (AnsiStyle, Color (Green, Red), bold, color, hPutDoc)
 import System.IO (Handle, hClose)
 

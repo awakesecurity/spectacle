@@ -28,7 +28,7 @@ where
 
 import Data.Kind (Type)
 import GHC.TypeLits (Symbol)
-import Prettyprinter (Doc, indent, line, squotes, viaShow, vsep, (<+>), align)
+import Prettyprinter (Doc, align, indent, line, squotes, viaShow, vsep, (<+>))
 import Prettyprinter.Render.Terminal (AnsiStyle)
 
 import Data.Type.Rec (Ascribe, HasDict)

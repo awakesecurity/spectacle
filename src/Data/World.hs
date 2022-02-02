@@ -20,8 +20,8 @@ where
 
 import Data.Hashable (Hashable (hashWithSalt))
 import Lens.Micro (Lens', SimpleGetter, lens, to)
-import Prettyprinter (Doc, pretty, viaShow, (<+>), annotate, indent)
-import Prettyprinter.Render.Terminal (AnsiStyle, color, colorDull, Color (White, Yellow))
+import Prettyprinter (Doc, annotate, indent, pretty, viaShow, (<+>))
+import Prettyprinter.Render.Terminal (AnsiStyle, Color (White, Yellow), color, colorDull)
 
 import Data.Fingerprint (Fingerprint (Fingerprint), fingerprintRec)
 import Data.Type.Rec (HasDict, Rec, evident, ppRecListed, pattern ConE, pattern NilE)

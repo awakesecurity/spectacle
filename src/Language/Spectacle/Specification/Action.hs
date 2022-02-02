@@ -20,7 +20,7 @@ import GHC.TypeLits (Symbol)
 
 import Data.Type.Rec (Ascribe)
 import Language.Spectacle.AST.Action (Action)
-import Language.Spectacle.Fairness (Fairness (Unfair, StrongFair, WeakFair), reifyFairness)
+import Language.Spectacle.Fairness (Fairness (StrongFair, Unfair, WeakFair), reifyFairness)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

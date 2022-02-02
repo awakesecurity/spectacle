@@ -4,7 +4,7 @@
 --
 -- @since 0.1.0.0
 module Data.Type.List
-  ( type (++)
+  ( type (++),
   )
 where
 
