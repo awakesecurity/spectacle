@@ -44,7 +44,11 @@ import qualified Prettyprinter.Internal as Doc.Internal
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
-data Cardinal = CUp | CDown | CLeft | CRight
+data Cardinal
+  = CUp
+  | CDown
+  | CLeft
+  | CRight
   deriving (Enum, Eq, Ord, Show)
 
 -- | Concat a foldable collection with a seperator interspersed.

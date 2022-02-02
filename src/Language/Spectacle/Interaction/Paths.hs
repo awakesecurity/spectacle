@@ -79,11 +79,4 @@ splitRow i = seek Set.empty
            in (Set.insert p acc1, Set.union ls' rs')
 
 columnsOn :: Int -> Set Point -> Int
-columnsOn i = go 0
-  where
-    go c Tip = c
-    go c (Bin _ !p ls rs) =
-      case compare (p ^. row) i of
-        LT -> go c rs
-        GT -> go c ls
-        EQ -> 1 + go c ls + go c rs
+columnsOn i = Set.size . Set.filter (\pt -> pt ^. row == i)
