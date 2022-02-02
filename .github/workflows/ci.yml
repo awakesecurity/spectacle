@@ -19,6 +19,8 @@ jobs:
         name: Install Nix
         with:
           nix_path: nixpkgs=./nix/pkgs.nix
+          # "experimental-features" must include "nix-command" for nix 2.4+
+          # issue: https://github.com/NixOS/nix/issues/3753
           extra_nix_config: experimental-features = nix-command
       - uses: cachix/cachix-action@v8
         name: Set up Cachix
