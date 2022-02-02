@@ -1,6 +1,10 @@
 module Language.Spectacle
-  ( -- * Model Checking
-    defaultInteraction,
+  ( -- * CLI Interaction
+    interaction,
+
+    -- * Model Checking
+    modelcheck,
+    modeltrace,
 
     -- * Syntax
     type Action,
@@ -36,7 +40,8 @@ import Data.Type.Rec (type (#))
 import Language.Spectacle.AST
   ( Action,
   )
-import Language.Spectacle.Interaction (defaultInteraction)
+import Language.Spectacle.Interaction (interaction)
+import Language.Spectacle.Model (modelcheck, modeltrace)
 import Language.Spectacle.Syntax
   ( catchE,
     complement,
