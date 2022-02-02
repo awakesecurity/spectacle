@@ -64,10 +64,10 @@ library
     , microlens
     , microlens-mtl
     , mtl >= 2.2
+    , optparse-applicative
     , logict
     , prettyprinter
     , prettyprinter-ansi-terminal
-    , profunctors
     , text
     , transformers >= 0.5
 
@@ -98,8 +98,11 @@ library
     , Language.Spectacle.AST.Temporal
     , Language.Spectacle.Exception.RuntimeException
     , Language.Spectacle.Fairness
+    , Language.Spectacle.Interaction
+    , Language.Spectacle.Interaction.CLI
     , Language.Spectacle.Interaction.Diagram
     , Language.Spectacle.Interaction.Doc
+    , Language.Spectacle.Interaction.Options
     , Language.Spectacle.Interaction.Paths
     , Language.Spectacle.Interaction.Point
     , Language.Spectacle.Interaction.Pos
