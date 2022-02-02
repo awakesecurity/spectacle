@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -11,14 +12,19 @@ module Data.World
     -- ** Lenses
     fingerprint,
     worldValues,
+
+    -- ** Pretty Printing
+    ppWorldListed,
   )
 where
 
 import Data.Hashable (Hashable (hashWithSalt))
 import Lens.Micro (Lens', SimpleGetter, lens, to)
+import Prettyprinter (Doc, pretty, viaShow, (<+>), annotate, indent)
+import Prettyprinter.Render.Terminal (AnsiStyle, color, colorDull, Color (White, Yellow))
 
-import Data.Type.Rec (Rec)
 import Data.Fingerprint (Fingerprint (Fingerprint), fingerprintRec)
+import Data.Type.Rec (HasDict, Rec, evident, ppRecListed, pattern ConE, pattern NilE)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -56,18 +62,25 @@ instance Hashable (World ctx) where
 -- @since 0.1.0.0
 makeWorld :: Hashable (Rec ctx) => Rec ctx -> World ctx
 makeWorld w = World (fingerprintRec w) w
-{-# INLINE makeWorld #-}
 
 -- | Lens focusing on a 'World's fingerprint.
 --
 -- @since 0.1.0.0
 fingerprint :: Lens' (World ctx) Fingerprint
 fingerprint = lens _worldFingerprint \World {..} x -> World {_worldFingerprint = x, ..}
-{-# INLINE fingerprint #-}
 
 -- | Lens focusing on the 'Rec' holding the concrete values of a 'World'.
 --
 -- @since 0.1.0.0
 worldValues :: SimpleGetter (World ctx) (Rec ctx)
 worldValues = to _worldValues
-{-# INLINE worldValues #-}
+
+-- | @'ppWorldListed' world@ lays out a list of documents for each state variable in @world@ using the world fingerprint
+-- as a header.
+--
+-- @since 0.1.0.0
+ppWorldListed :: HasDict Show ctx => World ctx -> [Doc AnsiStyle]
+ppWorldListed (World hash values) =
+  let hashDoc = annotate (colorDull Yellow) (pretty hash)
+      fieldDocs = annotate (color White) <$> ppRecListed values
+   in hashDoc : map (indent 2) fieldDocs
