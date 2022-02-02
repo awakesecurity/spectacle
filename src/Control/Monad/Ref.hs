@@ -8,7 +8,7 @@ module Control.Monad.Ref
 
     -- ** Lowering
     runRefM,
-    execRefM
+    execRefM,
   )
 where
 

@@ -28,7 +28,7 @@ import Language.Spectacle.Exception.RuntimeException
   )
 import Language.Spectacle.Lang
   ( EffectK,
-    Lang (Pure, Op, Scoped),
+    Lang (Op, Pure, Scoped),
     Member (projectS),
     Members,
     Op (OHere, OThere),

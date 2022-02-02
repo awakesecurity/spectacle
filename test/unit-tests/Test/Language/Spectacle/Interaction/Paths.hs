@@ -11,7 +11,7 @@ import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.Hedgehog (testProperty)
 
 import Data.World (World (World))
-import Language.Spectacle.Interaction.Paths as Paths (flatten)
+import Language.Spectacle.Interaction.Paths as Paths (toPointSet)
 import Language.Spectacle.Interaction.Point (label)
 
 import qualified Test.Gen as Gen
@@ -22,7 +22,7 @@ tests :: TestTree
 tests =
   testGroup
     "Paths"
-    [ testProperty "Paths.flatten is nondestructive" flattenNondestruct
+    [ testProperty "Paths.toPointSet is nondestructive" flattenNondestruct
     ]
 
 -- | Paths.flatten does not destroy or add information.
@@ -30,7 +30,7 @@ flattenNondestruct :: Property
 flattenNondestruct = property do
   -- tree size is adjusted by hedgehog's size parameter.
   tree <- forAll (Gen.tree Gen.emptyWorld)
-  let set = Paths.flatten tree
+  let set = Paths.toPointSet tree
 
   for_ tree \(World hash _) ->
     evalMaybe $ find (look hash) set

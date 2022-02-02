@@ -4,16 +4,29 @@ module Specifications.BitClock where
 
 import Data.Word (Word8)
 
-import Data.Functor.Tree
-import Data.Type.Rec
-import Data.World
-import Language.Spectacle.AST.Action
-import Language.Spectacle.AST.Temporal
-import Language.Spectacle.Fairness
-import Language.Spectacle.Model
-import Language.Spectacle.Model.ModelError
-import Language.Spectacle.Specification
-import Language.Spectacle.Syntax
+import Language.Spectacle
+  ( Action,
+    ActionType (ActionWF),
+    Fairness (WeakFair),
+    Modality (Always),
+    Specification (Specification),
+    Temporal,
+    TemporalType (PropG),
+    interaction,
+    plain,
+    specInit,
+    specNext,
+    specProp,
+    (.=),
+    pattern ConF,
+    pattern NilF,
+    type (#),
+  )
+
+-- ---------------------------------------------------------------------------------------------------------------------
+
+check :: IO ()
+check = interaction bitClockSpec
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -43,9 +56,3 @@ bitClockSpec =
     , specNext = ConF #tick (ActionWF bitClockNext) NilF
     , specProp = ConF #times (PropG bitClockTimes) NilF
     }
-
-check :: IO ()
-check = do
-  modelcheck bitClockSpec >>= \case
-    Left err -> print "error!"
-    Right xs -> print xs

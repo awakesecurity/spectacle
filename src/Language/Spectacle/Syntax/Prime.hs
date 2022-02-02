@@ -30,8 +30,8 @@ import Language.Spectacle.Exception.RuntimeException
   )
 import Language.Spectacle.Lang
   ( Effect,
-    Member,
     Lang (Op, Pure, Scoped),
+    Member,
     Members,
     Op (OHere, OThere),
     Scoped (SHere, SThere),

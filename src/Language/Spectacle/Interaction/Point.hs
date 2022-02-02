@@ -28,13 +28,13 @@ module Language.Spectacle.Interaction.Point
 where
 
 import Data.Function (on)
-import Lens.Micro (Lens', SimpleGetter, lens, to)
+import Lens.Micro (Lens', SimpleGetter, lens, to, (^.))
 import Prettyprinter (Doc, pretty, viaShow, (<+>))
 import Prettyprinter.Render.Terminal (AnsiStyle)
 
+import Data.Fingerprint (Fingerprint)
 import Data.Type.Rec (HasDict, Rec, evident, pattern ConE, pattern NilE)
 import Data.World (World (World))
-import Data.Fingerprint (Fingerprint)
 import Language.Spectacle.Interaction.Pos (Pos, pcol, prow, pattern Pos)
 
 -- ---------------------------------------------------------------------------------------------------------------------
@@ -46,7 +46,7 @@ data Point = Point
   , pointLen :: {-# UNPACK #-} !Int
   , pointPos :: {-# UNPACK #-} !Pos
   }
-  deriving Show
+  deriving (Show)
 
 fromWorld :: HasDict Show ctx => World ctx -> Point
 fromWorld (World hash fs0) = Point hash (docFields fs0) Nothing 0 (Pos 0 0)
@@ -59,7 +59,10 @@ fromWorld (World hash fs0) = Point hash (docFields fs0) Nothing 0 (Pos 0 0)
 
 -- | @since 0.1.0.0
 instance Eq Point where
-  (==) = (==) `on` pointPos
+  pt0 == pt1 =
+    let lblEq = pt0 ^. label == pt1 ^. label
+        posEq = pt0 ^. position == pt1 ^. position
+     in lblEq && posEq
   {-# INLINE (==) #-}
 
 -- | @since 0.1.0.0

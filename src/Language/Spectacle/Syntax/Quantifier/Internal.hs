@@ -1,23 +1,24 @@
 {-# LANGUAGE TypeFamilies #-}
 
-module Language.Spectacle.Syntax.Quantifier.Internal (
-    Quantifier (Quantifier),
+module Language.Spectacle.Syntax.Quantifier.Internal
+  ( Quantifier (Quantifier),
     Effect (Forall, Exists),
     QuantifierIntro (existsIntro, forallIntro),
-) where
+  )
+where
 
 import Data.Void (Void)
 
-import Language.Spectacle.Lang (Effect, EffectK, ScopeK, Member, Lang, scope)
+import Language.Spectacle.Lang (Effect, EffectK, Lang, Member, ScopeK, scope)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
 newtype Quantifier :: EffectK where
-    Quantifier :: Void -> Quantifier a
+  Quantifier :: Void -> Quantifier a
 
 data instance Effect Quantifier :: ScopeK where
-    Forall :: [a] -> (a -> m Bool) -> Effect Quantifier m Bool
-    Exists :: [a] -> (a -> m Bool) -> Effect Quantifier m Bool
+  Forall :: [a] -> (a -> m Bool) -> Effect Quantifier m Bool
+  Exists :: [a] -> (a -> m Bool) -> Effect Quantifier m Bool
 
 class QuantifierIntro m where
   existsIntro :: [a] -> (a -> m Bool) -> m Bool

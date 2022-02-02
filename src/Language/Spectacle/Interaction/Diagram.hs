@@ -26,8 +26,8 @@ import Prettyprinter.Render.Terminal (AnsiStyle, Color (Blue, Cyan, Green, Magen
 import qualified Prettyprinter.Render.Terminal as Doc
 
 import Control.Comonad.Tape (Tape (Tape), after, before, focus, tabulatel, tabulater, viewl)
-import Data.Traversable (for)
 import Data.Fingerprint (Fingerprint)
+import Data.Traversable (for)
 import Language.Spectacle.Interaction.Doc
   ( Cardinal (CLeft, CRight),
     cline,

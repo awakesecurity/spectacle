@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 -- |
 --
@@ -13,11 +14,16 @@ module Language.Spectacle.Specification.Prop
 
     -- * Temporal Operators
     Modality (Always, Infinitely, Eventually, Stays),
+
+    -- ** Pretty Printing
+    ppModality,
   )
 where
 
 import Data.Kind (Type)
 import GHC.TypeLits (Symbol)
+import Prettyprinter (Doc)
+import Prettyprinter.Render.Terminal (AnsiStyle)
 
 import Data.Ascript (Ascribe)
 import Language.Spectacle.AST.Temporal (Temporal)
@@ -49,3 +55,11 @@ data Modality
   | Eventually
   | Infinitely
   | Stays
+  deriving stock (Eq, Enum, Ord, Show)
+
+ppModality :: Modality -> Doc AnsiStyle
+ppModality = \case
+  Always -> "always"
+  Eventually -> "eventually"
+  Infinitely -> "infinitely"
+  Stays -> "stays-as"

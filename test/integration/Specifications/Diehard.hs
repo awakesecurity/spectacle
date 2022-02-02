@@ -2,14 +2,30 @@
 
 module Specifications.Diehard where
 
-import Debug.Trace as Debug
-import Data.Type.Rec
-import Language.Spectacle.AST.Action
-import Language.Spectacle.AST.Temporal
-import Language.Spectacle.Fairness
-import Language.Spectacle.Model
-import Language.Spectacle.Specification
-import Language.Spectacle.Syntax
+import Language.Spectacle
+  ( Action,
+    ActionType (ActionUF),
+    Fairness (Unfair),
+    Modality (Always),
+    Specification (Specification),
+    Temporal,
+    TemporalType (PropG),
+    interaction,
+    plain,
+    prime,
+    specInit,
+    specNext,
+    specProp,
+    (.=),
+    pattern ConF,
+    pattern NilF,
+    type (#),
+  )
+
+-- -------------------------------------------------------------------------------------------------
+
+interactDiehardSpec :: IO ()
+interactDiehardSpec = interaction diehardSpec
 
 -- -------------------------------------------------------------------------------------------------
 
@@ -98,11 +114,3 @@ diehardSpec =
     , specProp =
         ConF #isSolved (PropG isSolved) NilF
     }
-
-
-diehardSpecCheck :: IO ()
-diehardSpecCheck = do
-  modelcheck diehardSpec >>= \case
-    Left err -> print err
-    Right xs -> print xs
-

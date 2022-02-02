@@ -6,8 +6,8 @@ module Language.Spectacle.Syntax.NonDet.Internal
   )
 where
 
-import Language.Spectacle.Lang.Scoped (Effect)
 import Language.Spectacle.Lang.Member (Member)
+import Language.Spectacle.Lang.Scoped (Effect)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

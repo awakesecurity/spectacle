@@ -17,7 +17,7 @@ module Control.Mealy
 where
 
 import Control.Applicative (liftA2)
-import Data.Functor.Identity ( Identity(runIdentity) )
+import Data.Functor.Identity (Identity (runIdentity))
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

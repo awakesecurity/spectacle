@@ -29,12 +29,8 @@ import Language.Spectacle.Model.ModelAction
     runModelAction,
   )
 import Language.Spectacle.Model.ModelError
-  ( ModelError
-      ( FailAlways,
-        FailEventually,
-        FailInfinitely,
-        FailStays, NoInitState
-      ),
+  ( ModelError (InitialError, RefutedError),
+    TemporalError (TemporalError),
   )
 import Language.Spectacle.Model.ModelNode as ModelNode
   ( ModelNode (ModelNode),
@@ -74,22 +70,43 @@ import Language.Spectacle.Specification
 modelcheck ::
   HasDict Hashable ctx =>
   Specification ctx acts form ->
-  IO (Either ModelError [Tree (World ctx)])
+  IO (Either (ModelError ctx) [Tree (World ctx)])
 modelcheck spec = do
   let initials = runInitialSpec spec
   let formulae = fromTemporalSpec (getTemporalFormulae spec)
   let actions = fromActionSpec (getActionFormulae spec)
 
   let env = newModelEnv (getFairnessSpec spec) (getModalitySpec spec)
-  (st, result) <- runModelM (checkModelSpec initials actions formulae) env mempty
+  result <- snd <$> runModelM (checkModelSpec initials actions formulae) env mempty
 
   case result of
     Left err -> pure (Left err)
-    Right {} -> do
-      models <- snd <$> runModelM (checkModelSpec initials actions formulae) env st
-      case models of
-        Left err -> pure (Left err)
-        Right modelTrees -> pure (Right modelTrees)
+    Right modelTrees -> pure (Right modelTrees)
+
+modeltrace ::
+  HasDict Hashable ctx =>
+  Specification ctx acts form ->
+  IO (Either (ModelError ctx) [Tree (World ctx)])
+modeltrace spec = do
+  let initials = runInitialSpec spec
+  let actions = fromActionSpec (getActionFormulae spec)
+
+  let env = newModelEnv (getFairnessSpec spec) (getModalitySpec spec)
+  snd <$> runModelM (traceModelSpec initials actions) env mempty
+
+traceModelSpec ::
+  MonadIO m =>
+  Set (World ctx) ->
+  [ModelAction ctx] ->
+  ModelM ctx m [Tree (World ctx)]
+traceModelSpec initials actions
+  | Set.null initials = do
+    throwError InitialError
+  | otherwise = do
+    _ <- unfoldModelState actions initials
+
+    for (Set.toList initials) \initial ->
+      expandAction (initial ^. fingerprint)
 
 checkModelSpec ::
   MonadIO m =>
@@ -98,13 +115,15 @@ checkModelSpec ::
   [ModelTemporal ctx] ->
   ModelM ctx m [Tree (World ctx)]
 checkModelSpec initials actions formulae
-  | Set.null initials = throwError NoInitState
+  | Set.null initials = do
+    throwError InitialError
   | otherwise = do
     _ <- unfoldModelState actions initials
 
     for (Set.toList initials) \initial -> do
       let hash = initial ^. fingerprint
       modelTree <- expandAction hash
+
       for_ formulae \formula -> do
         let name = modelTemporalName formula
         modality <- view (modalityOf name)
@@ -113,37 +132,40 @@ checkModelSpec initials actions formulae
           Eventually -> checkFuture formula modelTree
           Infinitely -> checkInfinitely formula modelTree
           Stays -> checkStays formula modelTree
+
       pure modelTree
 
-checkAlways :: MonadIO m => ModelTemporal ctx -> Tree (World ctx) -> ModelM ctx m ()
+checkAlways :: Monad m => ModelTemporal ctx -> Tree (World ctx) -> ModelM ctx m ()
 checkAlways formula (initial :- subtrees) = traverse_ (go initial) subtrees
   where
     go here (there :- nexts) = do
       let satisfied = getModelTemporal formula here there
       unless satisfied do
         let name = modelTemporalName formula
-        throwError (FailAlways name)
+        throwRefuteAlways name (Just here) (Just there)
       traverse_ (go there) nexts
 
-checkFuture :: MonadError ModelError m => ModelTemporal ctx -> Tree (World ctx) -> m ()
+checkFuture :: MonadIO m => ModelTemporal ctx -> Tree (World ctx) -> ModelM ctx m ()
 checkFuture formula (root :- subtrees) = traverse_ (go root) subtrees
   where
     go here (there :- nexts)
       | null nexts = do
         let name = modelTemporalName formula
-        throwError (FailEventually name)
+        let satisfied = getModelTemporal formula here there
+        unless satisfied do
+          throwRefuteEventually name (Just here) (Just there)
       | otherwise = do
         let satisfied = getModelTemporal formula here there
         unless satisfied do
           traverse_ (go there) nexts
 
-checkInfinitely :: MonadError ModelError m => ModelTemporal ctx -> Tree (World ctx) -> m ()
+checkInfinitely :: Monad m => ModelTemporal ctx -> Tree (World ctx) -> ModelM ctx m ()
 checkInfinitely formula (root :- subtrees) = traverse_ (go root) subtrees
   where
     go here (there :- nexts)
       | null nexts = do
         let name = modelTemporalName formula
-        throwError (FailInfinitely name)
+        throwRefuteInfinitely name (Just here) (Just there)
       | otherwise = do
         let satisfied = getModelTemporal formula here there
         if satisfied
@@ -151,7 +173,7 @@ checkInfinitely formula (root :- subtrees) = traverse_ (go root) subtrees
             isCyclicallySatisfied <- and <$> traverse (cyclically here) nexts
             unless isCyclicallySatisfied do
               let name = modelTemporalName formula
-              throwError (FailInfinitely name)
+              throwRefuteInfinitely name (Just here) (Just there)
           else do
             traverse_ (go there) nexts
 
@@ -161,13 +183,13 @@ checkInfinitely formula (root :- subtrees) = traverse_ (go root) subtrees
       | otherwise = do
         and <$> traverse (cyclically match) there
 
-checkStays :: MonadError ModelError m => ModelTemporal ctx -> Tree (World ctx) -> m ()
+checkStays :: Monad m => ModelTemporal ctx -> Tree (World ctx) -> ModelM ctx m ()
 checkStays formula (root :- subtrees) = do
   results <- traverse (go root) subtrees
   let satisfied = and results
   unless satisfied do
     let name = modelTemporalName formula
-    throwError (FailStays name)
+    throwRefuteStays name (Just root) Nothing
   where
     go here (there :- nexts)
       | null nexts = do
@@ -220,7 +242,7 @@ expandAction = run
             -- Take only changing steps
             traverse run (filter (/= hash) entries)
 
-          pure (world :- nubBy ((==) `on` rootOf) (concat subtrees))
+          pure (world :- concat subtrees)
 
 unfoldModelState ::
   MonadIO m =>
@@ -256,3 +278,37 @@ unfoldModelState actions = traverse go . Set.toList
       let name = modelActionName action
       worlds <- runModelAction world action
       pure (name, Set.toList worlds)
+
+-- ---------------------------------------------------------------------------------------------------------------------
+
+-- | 'throwRefute' is a helper combination for constructing an error refuting a temporal property and throwing it.
+--
+-- @since 0.1.0.0
+throwRefute :: Monad m => Modality -> String -> Maybe (World ctx) -> Maybe (World ctx) -> ModelM ctx m a
+throwRefute modality name here there = do
+  let err = TemporalError modality name here there
+  throwError (RefutedError err)
+
+-- | Convinence function for constructing an "always" error and throwing it.
+--
+-- @since 0.1.0.0
+throwRefuteAlways :: Monad m => String -> Maybe (World ctx) -> Maybe (World ctx) -> ModelM ctx m a
+throwRefuteAlways = throwRefute Always
+
+-- | Convinence function for constructing an "eventually" error and throwing it.
+--
+-- @since 0.1.0.0
+throwRefuteEventually :: Monad m => String -> Maybe (World ctx) -> Maybe (World ctx) -> ModelM ctx m a
+throwRefuteEventually = throwRefute Eventually
+
+-- | Convinence function for constructing an "infinitely often" error and throwing it.
+--
+-- @since 0.1.0.0
+throwRefuteInfinitely :: Monad m => String -> Maybe (World ctx) -> Maybe (World ctx) -> ModelM ctx m a
+throwRefuteInfinitely = throwRefute Infinitely
+
+-- | Convinence function for constructing an "stays as" error and throwing it.
+--
+-- @since 0.1.0.0
+throwRefuteStays :: Monad m => String -> Maybe (World ctx) -> Maybe (World ctx) -> ModelM ctx m a
+throwRefuteStays = throwRefute Stays

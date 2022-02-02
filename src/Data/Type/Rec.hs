@@ -1,5 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Data.Type.Rec
@@ -17,6 +18,9 @@ module Data.Type.Rec
 
     -- ** Destruction
     foldMapF,
+
+    -- ** Pretty Printing
+    ppRecListed,
 
     -- * Extensible Records
     Rec,
@@ -49,6 +53,8 @@ import Data.Hashable (Hashable (hashWithSalt), hashWithSalt)
 import Data.Kind (Constraint, Type)
 import Data.List (intercalate)
 import GHC.TypeLits (KnownSymbol, Symbol)
+import Prettyprinter (Doc, pretty, viaShow, (<+>))
+import Prettyprinter.Render.Terminal (AnsiStyle)
 
 import Data.Ascript (Ascribe, type (#))
 import Data.Name (Name, inferName)
@@ -78,6 +84,12 @@ foldMapF k (ConF name field xs) = k name field <> foldMapF k xs
 concatF :: RecF f ctx -> RecF f ctx' -> RecF f (ctx ++ ctx')
 concatF NilF ys = ys
 concatF (ConF name x xs) ys = ConF name x (concatF xs ys)
+
+ppRecListed :: HasDict Show ctx => Rec ctx -> [Doc AnsiStyle]
+ppRecListed rs =
+  case evident @Show rs of
+    ConE n x xs -> pretty n <+> "=" <+> viaShow x : ppRecListed xs
+    NilE -> []
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

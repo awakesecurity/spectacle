@@ -1,31 +1,50 @@
-import Hedgehog (Property, property, annotateShow, success, failure)
+import Control.Monad.IO.Class (liftIO)
+import Data.Hashable (Hashable)
+
+import Hedgehog (Property, annotateShow, failure, property, success, withTests)
 import Test.Tasty (defaultMain, testGroup)
 import Test.Tasty.Hedgehog (testProperty)
 
-import Data.Type.Rec (Rec)
-import Language.Spectacle.Checker.MCError (MCError)
-import Language.Spectacle.Checker.MCMetrics (MCMetrics)
+import Data.Type.Rec (HasDict)
+import Language.Spectacle.Model (modelcheck)
+import Language.Spectacle.Specification (Specification)
 
 import qualified Specifications.BitClock as BitClock
 import qualified Specifications.Diehard as Diehard
 import qualified Specifications.SimpleClock as SimpleClock
-import qualified Specifications.DijkstraMutex as DijkstraMutex
+import qualified Specifications.Status as Status
 
-verify :: Show (Rec ctxt) => Either [MCError ctxt] MCMetrics -> Property
-verify result = property do
-  case result of
-    Left errs -> do
-      annotateShow errs
-      failure
-    Right _ -> success
+-- ---------------------------------------------------------------------------------------------------------------------
 
 main :: IO ()
 main =
   defaultMain $
     testGroup
       "integration tests"
-      [ testProperty "BitClock" (verify BitClock.test)
-      , testProperty "Diehard" (verify Diehard.test)
-      , testProperty "SimpleClock" (verify SimpleClock.test)
-      , testProperty "DijkstraMutex" (verify DijkstraMutex.test)
+      [ testProperty "Specifications.BitClock" (testCheckVerify BitClock.bitClockSpec)
+      , testProperty "Specifications.Diehard" (testCheckRefute Diehard.diehardSpec)
+      , testProperty "Specifications.SimpleClock" (testCheckVerify SimpleClock.clockSpec)
+      , testProperty "Specifications.Status" (testCheckVerify Status.statusSpec)
       ]
+
+testCheckVerify ::
+  (HasDict Hashable ctx, HasDict Show ctx) =>
+  Specification ctx acts form ->
+  Property
+testCheckVerify spec =
+  withTests 1 $ property do
+    checkResult <- liftIO (modelcheck spec)
+    case checkResult of
+      Left err -> annotateShow err >> failure
+      Right {} -> success
+
+testCheckRefute ::
+  HasDict Hashable ctx =>
+  Specification ctx acts form ->
+  Property
+testCheckRefute spec =
+  withTests 1 $ property do
+    checkResult <- liftIO (modelcheck spec)
+    case checkResult of
+      Left {} -> success
+      Right {} -> failure

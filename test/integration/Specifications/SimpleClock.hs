@@ -1,19 +1,38 @@
-{-# LANGUAGE MultiWayIf #-}
-{-# LANGUAGE NegativeLiterals #-}
 {-# LANGUAGE OverloadedLabels #-}
 
 module Specifications.SimpleClock where
 
-import Control.Monad (when)
-
-import Data.Type.Rec
-import qualified Debug.Trace as Debug
 import Language.Spectacle
-import Language.Spectacle.AST.Temporal
-import Language.Spectacle.Fairness
-import Language.Spectacle.Model
-import Language.Spectacle.Model.ModelError
-import Language.Spectacle.Specification
+  ( Action,
+    ActionType (ActionWF),
+    Fairness (WeakFair),
+    Modality (Always, Infinitely),
+    Specification (Specification),
+    Temporal,
+    TemporalType (PropG, PropGF),
+    interaction,
+    modelcheck,
+    plain,
+    prime,
+    specInit,
+    specNext,
+    specProp,
+    (.=),
+    pattern ConF,
+    pattern NilF,
+    type (#),
+  )
+
+-- ---------------------------------------------------------------------------------------------------------------------
+
+interactClockSpec :: IO ()
+interactClockSpec = interaction clockSpec
+
+clockSpecCheck :: IO ()
+clockSpecCheck = do
+  modelcheck clockSpec >>= \case
+    Left err -> print err
+    Right xs -> print xs
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -52,9 +71,3 @@ clockSpec =
           . ConF #times (PropG clockTimes)
           $ NilF
     }
-
-clockSpecCheck :: IO ()
-clockSpecCheck = do
-  modelcheck clockSpec >>= \case
-    Left err -> print err
-    Right xs -> print xs
