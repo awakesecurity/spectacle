@@ -151,6 +151,7 @@ test-suite unit-tests
   main-is:             Main.hs
 
   other-modules:
+    Test.Control.Comonad.Tape
     Test.Gen
     Test.Gen.Rec
     Test.Language.Spectacle.Interaction
@@ -160,20 +161,13 @@ test-suite unit-tests
     Test.Laws.Ord
 
   build-depends:
-      ansi-terminal ==0.11
-    , comonad
+      comonad
     , containers
     , spectacle
     , hedgehog
-    , megaparsec
     , microlens
-    , mtl
-    , optparse-applicative
-    , prettyprinter
-    , prettyprinter-ansi-terminal
     , tasty
     , tasty-hedgehog
-    , transformers
 
 test-suite integration-tests
   import:              common
@@ -193,19 +187,3 @@ test-suite integration-tests
     , hedgehog
     , tasty
     , tasty-hedgehog
-    , unordered-containers
-
-benchmark benchmark
-  import:         common
-  type:           exitcode-stdio-1.0
-  hs-source-dirs: benchmark
-  main-is:        Bench.hs
-  build-depends:
-    , spectacle
-    , hashable
-    , containers >= 0.6
-    , criterion
-    , unordered-containers
-  ghc-options:
-    -threaded
-    -rtsopts "-with-rtsopts=-N -A4m -n2m"
