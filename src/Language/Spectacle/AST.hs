@@ -1,13 +1,15 @@
 module Language.Spectacle.AST
-  ( -- * Temporal Actions
+  ( -- * Actions
     type Action,
-    type ActionSyntax,
-
-    -- ** Interpreters
     runAction,
+
+    -- * Relations
+    type Temporal,
+    runTemporal,
   )
 where
 
-import Language.Spectacle.AST.Action (Action, ActionSyntax, runAction)
+import Language.Spectacle.AST.Action (Action, runAction)
+import Language.Spectacle.AST.Temporal (Temporal, runTemporal)
 
 -- ---------------------------------------------------------------------------------------------------------------------

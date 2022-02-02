@@ -29,14 +29,16 @@ import Language.Spectacle.Model.ModelAction
     runModelAction,
   )
 import Language.Spectacle.Model.ModelError
+  ( ModelError (InitialError, RefutedError),
+    TemporalError (TemporalError),
+  )
 import Language.Spectacle.Model.ModelNode as ModelNode
   ( ModelNode (ModelNode),
     nextEntries,
     valuation,
   )
 import Language.Spectacle.Model.ModelState as ModelState
-  ( ModelState,
-    enabledActionsAt,
+  ( enabledActionsAt,
     indexNode,
     member,
     queuedActionsAt,
@@ -143,13 +145,15 @@ checkAlways formula (initial :- subtrees) = traverse_ (go initial) subtrees
         throwRefuteAlways name (Just here) (Just there)
       traverse_ (go there) nexts
 
-checkFuture :: Monad m => ModelTemporal ctx -> Tree (World ctx) -> ModelM ctx m ()
+checkFuture :: MonadIO m => ModelTemporal ctx -> Tree (World ctx) -> ModelM ctx m ()
 checkFuture formula (root :- subtrees) = traverse_ (go root) subtrees
   where
     go here (there :- nexts)
       | null nexts = do
         let name = modelTemporalName formula
-        throwRefuteEventually name (Just here) (Just there)
+        let satisfied = getModelTemporal formula here there
+        unless satisfied do
+          throwRefuteEventually name (Just here) (Just there)
       | otherwise = do
         let satisfied = getModelTemporal formula here there
         unless satisfied do

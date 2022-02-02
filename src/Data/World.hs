@@ -20,11 +20,11 @@ where
 
 import Data.Hashable (Hashable (hashWithSalt))
 import Lens.Micro (Lens', SimpleGetter, lens, to)
-import Prettyprinter (Doc, annotate, indent, pretty, viaShow, (<+>))
+import Prettyprinter (Doc, annotate, indent, pretty)
 import Prettyprinter.Render.Terminal (AnsiStyle, Color (White, Yellow), color, colorDull)
 
 import Data.Fingerprint (Fingerprint (Fingerprint), fingerprintRec)
-import Data.Type.Rec (HasDict, Rec, evident, ppRecListed, pattern ConE, pattern NilE)
+import Data.Type.Rec (HasDict, Rec, ppRecListed)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 

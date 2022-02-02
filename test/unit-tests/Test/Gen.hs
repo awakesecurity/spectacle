@@ -28,7 +28,7 @@ import Control.Monad (replicateM)
 
 import Hedgehog (MonadGen)
 import Hedgehog.Gen (choice, int, resize, sized)
-import Hedgehog.Internal.Gen (golden, word32)
+import Hedgehog.Internal.Gen (golden)
 import Hedgehog.Range (Size, constantBounded, linear, linearBounded)
 
 import Data.Fingerprint (Fingerprint (Fingerprint))

@@ -5,17 +5,40 @@
 -- @since 0.1.0.0
 module Specifications.Status where
 
-import Data.Hashable
-import GHC.Generics
+import Data.Hashable (Hashable)
+import GHC.Generics (Generic)
 
-import Data.Type.Rec
-import Language.Spectacle.AST.Action
-import Language.Spectacle.AST.Temporal
-import Language.Spectacle.Fairness
-import Language.Spectacle.Interaction
-import Language.Spectacle.Model
-import Language.Spectacle.Specification
-import Language.Spectacle.Syntax
+import Language.Spectacle
+  ( Action,
+    ActionType (ActionSF, ActionUF, ActionWF),
+    Fairness (StrongFair, Unfair, WeakFair),
+    Modality (Eventually),
+    Specification (Specification),
+    Temporal,
+    TemporalType (PropF),
+    interaction,
+    modelcheck,
+    plain,
+    specInit,
+    specNext,
+    specProp,
+    (.=),
+    pattern ConF,
+    pattern NilF,
+    type (#),
+  )
+
+-- ---------------------------------------------------------------------------------------------------------------------
+
+statusSpecInteract :: IO ()
+statusSpecInteract = do
+  interaction statusSpec
+
+statusSpecCheck :: IO ()
+statusSpecCheck = do
+  modelcheck statusSpec >>= \case
+    Left err -> print err
+    Right xs -> print xs
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -27,7 +50,7 @@ type StatusSpec =
      , "statusDone" # 'WeakFair
      , "statusFail" # 'Unfair
      ]
-    '[
+    '[ "isStatusDone" # 'Eventually
      ]
 
 data Status = Start | Done | Fail
@@ -53,6 +76,11 @@ statusFail = do
   #status .= pure Fail
   pure (status == Start)
 
+isStatusDone :: Temporal '["status" # Status] Bool
+isStatusDone = do
+  status <- plain #status
+  pure (status == Done)
+
 statusSpec :: StatusSpec
 statusSpec =
   Specification
@@ -64,15 +92,5 @@ statusSpec =
           . ConF #statusFail (ActionUF statusFail)
           $ NilF
     , specProp =
-        NilF
+        ConF #isStatusDone (PropF isStatusDone) NilF
     }
-
--- statusSpecCheck :: IO ()
--- statusSpecCheck = do
---   modelcheck statusSpec >>= \case
---     Left err -> print err
---     Right xs -> print xs
-
-statusSpecInteract :: IO ()
-statusSpecInteract = do
-  interaction statusSpec

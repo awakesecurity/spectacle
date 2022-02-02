@@ -31,7 +31,6 @@ import Control.Applicative (Alternative ((<|>)), (<**>))
 import Options.Applicative
   ( Parser,
     customExecParser,
-    execParser,
     help,
     helper,
     idm,

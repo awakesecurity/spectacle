@@ -6,8 +6,19 @@ module Language.Spectacle
     modelcheck,
     modeltrace,
 
+    -- * Specification
+    Specification (Specification),
+    specInit,
+    specNext,
+    specProp,
+    ActionType (ActionSF, ActionWF, ActionUF),
+    TemporalType (PropF, PropG, PropGF, PropFG),
+    Fairness (StrongFair, WeakFair, Unfair),
+    Modality (Always, Eventually, Infinitely, Stays),
+
     -- * Syntax
     type Action,
+    type Temporal,
 
     -- ** Variables
     plain,
@@ -33,15 +44,27 @@ module Language.Spectacle
     implies,
     (<=>),
     iff,
+
+    -- * Records
+    pattern ConF,
+    pattern NilF,
   )
 where
 
-import Data.Type.Rec (type (#))
-import Language.Spectacle.AST
-  ( Action,
-  )
+import Data.Type.Rec (RecF (ConF, NilF), type (#))
+import Language.Spectacle.AST (Action, Temporal)
+import Language.Spectacle.Fairness (Fairness (StrongFair, Unfair, WeakFair))
 import Language.Spectacle.Interaction (interaction)
 import Language.Spectacle.Model (modelcheck, modeltrace)
+import Language.Spectacle.Specification
+  ( ActionType (ActionSF, ActionUF, ActionWF),
+    Modality (Always, Eventually, Infinitely, Stays),
+    Specification (Specification),
+    TemporalType (PropF, PropFG, PropG, PropGF),
+    specInit,
+    specNext,
+    specProp,
+  )
 import Language.Spectacle.Syntax
   ( catchE,
     complement,
