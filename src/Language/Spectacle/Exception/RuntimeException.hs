@@ -1,17 +1,14 @@
 {-# LANGUAGE DeriveAnyClass #-}
 
 module Language.Spectacle.Exception.RuntimeException
-  ( RuntimeException (VariableException, QuantifierException, SyntaxException, UserException),
+  ( RuntimeException (VariableException, QuantifierException, UserException),
     VariableException (CyclicReference, Uninitialized),
     QuantifierException (ForallViolated, ExistsViolated),
-    SyntaxException (LevelMismatch),
   )
 where
 
 import Control.Exception (Exception)
 import Type.Reflection (Typeable)
-
-import Language.Spectacle.Syntax.Modal.Level (ExprLevel)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -21,9 +18,6 @@ data RuntimeException where
     RuntimeException
   QuantifierException ::
     QuantifierException ->
-    RuntimeException
-  SyntaxException ::
-    SyntaxException ->
     RuntimeException
   UserException ::
     String ->
@@ -64,10 +58,5 @@ data QuantifierException where
   -- @since 0.1.0.0
   ExistsViolated ::
     QuantifierException
-  deriving stock (Show, Typeable)
-  deriving anyclass (Exception)
-
-data SyntaxException where
-  LevelMismatch :: ExprLevel -> ExprLevel -> SyntaxException
   deriving stock (Show, Typeable)
   deriving anyclass (Exception)

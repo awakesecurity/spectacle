@@ -10,10 +10,10 @@ module Language.Spectacle.Syntax.Error
   )
 where
 
-import Data.Functor.Loom (hoist, (~>~), runLoom)
+import Data.Functor.Loom (hoist, runLoom, (~>~))
 import Language.Spectacle.Lang
   ( Effect,
-    Lang (Pure, Op, Scoped),
+    Lang (Op, Pure, Scoped),
     Member,
     decomposeOp,
     decomposeS,

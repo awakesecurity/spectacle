@@ -6,35 +6,25 @@
 -- |
 --
 -- @since 0.1.0.0
-module Specifications.RateLimit
-  ( check,
-  )
-where
+module Specifications.RateLimit where
 
-import Data.Functor ((<&>))
 import Data.Hashable (Hashable)
 
-import Language.Spectacle
-  ( Action,
-    Initial,
-    Invariant,
-    always,
-    defaultInteraction,
-    define,
-    modelCheck,
-    plain,
-    unfair,
-    (.=),
-    (\/),
-    type (#),
-  )
+import Language.Spectacle (Action, (.=), plain)
+import Language.Spectacle.Checker (modelCheck)
+import Language.Spectacle.Checker.MCError (MCError)
+import Language.Spectacle.Checker.MCMetrics (MCMetrics)
+import Language.Spectacle.Interaction (defaultInteraction)
 import Language.Spectacle.Specification
-  ( Specification (Specification),
-    fairnessConstraint,
-    initialAction,
-    nextAction,
-    temporalFormula,
-    terminationFormula,
+  ( Always,
+    Eventually,
+    Fairness (Unfair),
+    Spec(Spec),
+    Var((:=)),
+    type VariableCtxt,
+    type (!>)(UnfairAction),
+    type (/\),
+    type (\/)((:\/:)),
   )
 
 -- ---------------------------------------------------------------------------------------------------------------------
@@ -45,69 +35,47 @@ data RateLimitConsts = RateLimitConsts
   , msgLimit :: Int -- The maximum number of messages we can receive with the set interval.
   }
 
--- The type of messages only considering their age since the message was received.
 newtype Message = Message {msgAge :: Int}
   deriving (Hashable, Show)
+  deriving Num via Int
 
--- A declaration of variables in the specification. Read as a variable "msgLog" with type @[Message]@.
-type RateLimitSpec = '["msgLog" # [Message]]
+-- ---------------------------------------------------------------------------------------------------------------------
 
-specInit :: Initial RateLimitSpec ()
-specInit = do
-  -- The variable "msgLog" is defined as the empty list.
-  #msgLog `define` return []
+type RateLimitSpec =
+  Spec
+    (Var "msgLog" [Message])
+    ("sendMessage" !> 'Unfair \/ "passTime" !> 'Unfair)
+    (Always "passTime" /\ Eventually "sendMessage")
 
-specNext :: (?constants :: RateLimitConsts) => Action RateLimitSpec Bool
-specNext =
-  -- Either perform a "sendMessage" or "passTime" action
-  sendMessage \/ passTime
-
-sendMessage ::
-  -- -XImplicitParams for passing specification constants.
-  (?constants :: RateLimitConsts) =>
-  Action RateLimitSpec Bool
+sendMessage :: (?constants :: RateLimitConsts) => Action (VariableCtxt RateLimitSpec) Bool
 sendMessage = do
-  -- -XRecordWildcard for bringing the constants "window" and "msgLimit" into scope.
   let RateLimitConsts {..} = ?constants
   msgLog <- plain #msgLog
-  #msgLog .= return (Message 0 : msgLog)
-  return (length msgLog < msgLimit + 1)
 
-passTime ::
-  (?constants :: RateLimitConsts) =>
-  Action RateLimitSpec Bool
+  #msgLog .= return (0 : msgLog)
+
+  return (length msgLog <= msgLimit)
+
+passTime :: (?constants :: RateLimitConsts) => Action (VariableCtxt RateLimitSpec) Bool
 passTime = do
   let RateLimitConsts {..} = ?constants
-  #msgLog
-    .= ( -- Retrieve the current value of "msgLog".
-         plain #msgLog
-          -- Increment the age of each message.
-          <&> map (\msg -> Message (msgAge msg + 1))
-          -- Remove any message older than the limiting window from the message log.
-          <&> filter (\msg -> msgAge msg <= window)
-       )
+
+  #msgLog .= (filter ((<= window) . msgAge) . map (1 +) <$> plain #msgLog)
+
   return True
 
-specProp ::
-  (?constants :: RateLimitConsts) =>
-  Invariant RateLimitSpec Bool
-specProp = do
-  let RateLimitConsts {..} = ?constants
-  always do
-    msgLog <- plain #msgLog
-    return (length msgLog <= msgLimit)
+spec :: RateLimitSpec
+spec = Spec specInit specNext
+  where
+    specInit = #msgLog := return []
 
-spec :: (?constants :: RateLimitConsts) => Specification RateLimitSpec
-spec =
-  Specification
-    { initialAction = specInit
-    , nextAction = specNext
-    , temporalFormula = specProp
-    , terminationFormula = Nothing
-    , fairnessConstraint = unfair
-    }
+    specNext =
+      let ?constants = RateLimitConsts { window = 2 , msgLimit = 5 }
+      in UnfairAction #sendMessage sendMessage
+           :\/: UnfairAction #passTime passTime
+
+test :: Either [MCError (VariableCtxt RateLimitSpec)] MCMetrics
+test = modelCheck spec
 
 check :: IO ()
-check = do
-  let ?constants = RateLimitConsts {window = 10, msgLimit = 5}
-  defaultInteraction (modelCheck spec)
+check = defaultInteraction spec

@@ -2,69 +2,57 @@
 
 module Specifications.BitClock where
 
-import Data.Type.Rec (type (#))
 import Data.Word (Word8)
-import qualified Data.Set as Set
 
 import Language.Spectacle
   ( Action,
-    Initial,
-    Invariant,
-    always,
-    defaultInteraction,
-    define,
-    modelCheck,
+    ActionType (ActionWF),
+    Fairness (WeakFair),
+    Modality (Always),
+    Specification (Specification),
+    Temporal,
+    TemporalType (PropG),
+    interaction,
     plain,
-    weakFair,
+    specInit,
+    specNext,
+    specProp,
     (.=),
-  )
-import Language.Spectacle.Specification
-  ( Specification
-      ( Specification,
-        fairnessConstraint,
-        initialAction,
-        nextAction,
-        temporalFormula,
-        terminationFormula
-      ),
+    pattern ConF,
+    pattern NilF,
+    type (#),
   )
 
-type BitClock = '[ "clock" # Word8 ]
-
--- | Initial starting state of our bitclock.
-initial :: Initial BitClock ()
-initial = do
-  #clock `define` return 0
-
-next :: Action BitClock Bool
-next = do
-
-  clock <- plain #clock
-
-  #clock .= do
-    if clock == 0
-      then return 1
-      else return 0
-
-  return True
-
-formula :: Invariant BitClock Bool
-formula = do
-  clock <- plain #clock
-
-  always (return (Set.member clock (Set.fromList [0,1])))
+-- ---------------------------------------------------------------------------------------------------------------------
 
 check :: IO ()
-check = do
+check = interaction bitClockSpec
 
-  let spec :: Specification BitClock
-      spec =
-        Specification
-          { initialAction = initial
-          , nextAction = next
-          , temporalFormula = formula
-          , terminationFormula = Nothing
-          , fairnessConstraint = weakFair
-          }
+-- ---------------------------------------------------------------------------------------------------------------------
 
-  defaultInteraction (modelCheck spec)
+type BitClockSpec =
+  Specification
+    '["clock" # Word8]
+    '["tick" # 'WeakFair]
+    '["times" # 'Always]
+
+bitClockNext :: Action '["clock" # Word8] Bool
+bitClockNext = do
+  clock <- plain #clock
+  if clock == 0
+    then #clock .= pure 1
+    else #clock .= pure 0
+  return True
+
+bitClockTimes :: Temporal '["clock" # Word8] Bool
+bitClockTimes = do
+  clock <- plain #clock
+  pure (clock == 0 || clock == 1)
+
+bitClockSpec :: BitClockSpec
+bitClockSpec =
+  Specification
+    { specInit = ConF #clock (pure 0) NilF
+    , specNext = ConF #tick (ActionWF bitClockNext) NilF
+    , specProp = ConF #times (PropG bitClockTimes) NilF
+    }

@@ -2,38 +2,26 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module Language.Spectacle.Syntax.Closure.Internal
-  ( ClosureKind (ActionClosure, InitialClosure),
-    Closure (Closure),
-    Effect (CloseAction, CloseInitial),
+  ( Closure (Closure),
+    Effect (Close),
   )
 where
 
 import Data.Void (Void)
 
-import Data.Ascript (type (#))
 import Data.Name (Name)
-import Data.Type.Rec (type (.|))
+import Data.Type.Rec (Has)
 import Language.Spectacle.Lang (Effect, EffectK, Lang, ScopeK)
-import Language.Spectacle.RTS.Registers (RelationTerm)
-import Language.Spectacle.Syntax.NonDet (NonDet)
+import Language.Spectacle.RTS.Registers (StateFun)
 
--- -------------------------------------------------------------------------------------------------
+-- ---------------------------------------------------------------------------------------------------------------------
 
-data ClosureKind = ActionClosure | InitialClosure
+newtype Closure :: EffectK where
+  Closure :: Void -> Closure a
 
-newtype Closure :: ClosureKind -> EffectK where
-  Closure :: Void -> Closure k a
-
-data instance Effect (Closure 'ActionClosure) :: ScopeK where
-  CloseAction ::
-    (m ~ Lang ctx effs, s # a .| ctx) =>
+data instance Effect Closure :: ScopeK where
+  Close ::
+    (Has s a ctx, m ~ Lang ctx effs) =>
     Name s ->
-    RelationTerm ctx a ->
-    Effect (Closure 'ActionClosure) m ()
-
-data instance Effect (Closure 'InitialClosure) :: ScopeK where
-  CloseInitial ::
-    (m ~ Lang ctx effs, s # a .| ctx) =>
-    Name s ->
-    Lang ctx '[NonDet] a ->
-    Effect (Closure 'InitialClosure) m ()
+    StateFun ctx a ->
+    Effect Closure m ()

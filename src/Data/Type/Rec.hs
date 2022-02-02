@@ -1,137 +1,223 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Data.Type.Rec
-  ( type Rec,
-    constMap,
-    setRec,
-    getRec,
-    pattern RCon,
-    RecT (RConT, RNil),
-    fieldMap,
-    constMapT,
-    fields,
-    type (.|),
-    HasSel (..),
-    ReflectRow (repeatRow),
+  ( -- * Extensible Records Transformer
+    RecF (NilF, ConF),
+    getF,
+    setF,
 
-    -- * Re-exports
-    Ascribe,
-    type (#),
-    Name (Name),
+    -- ** Construction
+    concatF,
+
+    -- ** Maps
+    mapF,
+    sequenceF,
+
+    -- ** Destruction
+    foldMapF,
+
+    -- ** Pretty Printing
+    ppRecListed,
+
+    -- * Extensible Records
+    Rec,
+    pattern Nil,
+    pattern Con,
+    get,
+    set,
+
+    -- * Record Dictionaries
+    Evident (Evident, Trivial),
+    pattern NilE,
+    pattern ConE,
+
+    -- * HasDict
+    HasDict,
+    evident,
+
+    -- * Has
+    Has,
+
+    -- * Re-export
+    module Data.Ascript,
+    module Data.Name,
   )
 where
 
-import Control.Natural (type (~>))
+import Control.Applicative (liftA2)
 import Data.Functor.Identity (Identity (Identity, runIdentity))
-import Data.Hashable (Hashable (hashWithSalt))
+import Data.Hashable (Hashable (hashWithSalt), hashWithSalt)
 import Data.Kind (Constraint, Type)
+import Data.List (intercalate)
 import GHC.TypeLits (KnownSymbol, Symbol)
+import Prettyprinter (Doc, pretty, viaShow, (<+>))
+import Prettyprinter.Render.Terminal (AnsiStyle)
 
-import Data.Ascript (Ascribe, AscriptName, AscriptType, type (#))
-import Data.Name (Name (Name), inferName)
+import Data.Ascript (Ascribe, type (#))
+import Data.Name (Name, inferName)
+import Data.Type.List (type (++))
 
--- -------------------------------------------------------------------------------------------------
+-- ---------------------------------------------------------------------------------------------------------------------
 
-type Rec :: [Ascribe Symbol Type] -> Type
-type Rec ctx = RecT Identity ctx
+-- | Extensible record transformer.
+--
+-- @since 0.1.0.0
+data RecF :: (k -> Type) -> [Ascribe Symbol k] -> Type where
+  NilF :: RecF f '[]
+  ConF :: Name s -> f a -> RecF f ctx -> RecF f (s # a ': ctx)
 
-constMap :: Monoid (t a) => (forall s x. Name s -> x -> t a) -> Rec ctx -> t a
-constMap f = constMapT (\name -> f name . Identity)
-{-# INLINE constMap #-}
+sequenceF :: Applicative f => RecF f ctx -> f (Rec ctx)
+sequenceF NilF = pure Nil
+sequenceF (ConF name field xs) = liftA2 (Con name) field (sequenceF xs)
 
-setRec :: forall ctx s a. s # a .| ctx => Name s -> a -> Rec ctx -> Rec ctx
-setRec name x = setRecT name (Identity x)
-{-# INLINE setRec #-}
+mapF :: (forall s a. Name s -> f a -> g a) -> RecF f ctx -> RecF g ctx
+mapF _ NilF = NilF
+mapF f (ConF name field xs) = ConF name (f name field) (mapF f xs)
 
-getRec :: forall ctx s a. s # a .| ctx => Name s -> Rec ctx -> a
-getRec n r = runIdentity (getRecT n r)
-{-# INLINE getRec #-}
+foldMapF :: Monoid m => (forall s a. Name s -> f a -> m) -> RecF f ctx -> m
+foldMapF _ NilF = mempty
+foldMapF k (ConF name field xs) = k name field <> foldMapF k xs
 
-pattern RCon :: () => (s # a ': ctx) ~ ctx' => Name s -> a -> Rec ctx -> Rec ctx'
-pattern RCon n x r <-
-  RConT n (Identity x) r
-  where
-    RCon n x r = RConT n (Identity x) r
-{-# COMPLETE RCon #-}
+concatF :: RecF f ctx -> RecF f ctx' -> RecF f (ctx ++ ctx')
+concatF NilF ys = ys
+concatF (ConF name x xs) ys = ConF name x (concatF xs ys)
 
-data RecT f ctx where
-  RNil :: RecT f '[]
-  RConT :: Name s -> f a -> RecT f ctx -> RecT f (s # a ': ctx)
+ppRecListed :: HasDict Show ctx => Rec ctx -> [Doc AnsiStyle]
+ppRecListed rs =
+  case evident @Show rs of
+    ConE n x xs -> pretty n <+> "=" <+> viaShow x : ppRecListed xs
+    NilE -> []
 
-instance Show (RecT f '[]) where
-  show RNil = "RNil"
+-- ---------------------------------------------------------------------------------------------------------------------
 
-instance {-# OVERLAPS #-} (Show a, Show (Rec ctx)) => Show (Rec (s # a ': ctx)) where
-  show (RCon name x r) = show name ++ "=" ++ show x ++ " " ++ show r
+-- | 'Rec' is an extensible record.
+--
+-- @since 0.1.0.0
+type Rec ctx = RecF Identity ctx
 
-instance (Show (f a), Show (RecT f ctx)) => Show (RecT f (s # a ': ctx)) where
-  show (RConT name x r) = show name ++ "=" ++ show x ++ " " ++ show r
+-- | A synonym of 'NilT' specialize to 'Rec'.
+--
+-- @since 0.1.0.0
+pattern Nil :: () => '[] ~ ctx => Rec ctx
+pattern Nil = NilF
 
-instance Eq (RecT f '[]) where
-  RNil == RNil = True
+-- | A synonym of 'ConT' specialize to 'Rec'.
+--
+-- @since 0.1.0.0
+pattern Con :: () => (s # a ': xs) ~ ctx => Name s -> a -> Rec xs -> Rec ctx
+pattern Con name field xs = ConF name (Identity field) xs
 
-instance (Eq (f a), Eq (RecT f ctx)) => Eq (RecT f (s # a ': ctx)) where
-  RConT _ x r1 == RConT _ y r2 = x == y && r1 == r2
-
-instance Hashable (RecT f '[]) where
-  hashWithSalt salt RNil = salt
-
-instance (Hashable (f x), Hashable (RecT f xs)) => Hashable (RecT f (s # x ': xs)) where
-  hashWithSalt salt (RConT _ x xs) = hashWithSalt (hashWithSalt salt x) xs
-
-instance Ord (RecT f '[]) where
-  compare RNil RNil = EQ
-
-instance (Ord (f x), Ord (RecT f xs)) => Ord (RecT f (s # x ': xs)) where
-  compare (RConT _ x xs) (RConT _ y ys) = case compare x y of
-    EQ -> compare xs ys
-    order -> order
-
-fieldMap :: (f ~> g) -> RecT f ctx -> RecT g ctx
-fieldMap _ RNil = RNil
-fieldMap f (RConT name x r) = RConT name (f x) (fieldMap f r)
-{-# INLINE fieldMap #-}
-
-constMapT :: Monoid (t a) => (forall s x. Name s -> f x -> t a) -> RecT f ctx -> t a
-constMapT _ RNil = mempty
-constMapT f (RConT name x r) = f name x <> constMapT f r
-{-# INLINE constMapT #-}
-
-fields :: RecT f ctx -> [String]
-fields = constMapT \name -> const [show name]
-{-# INLINE fields #-}
-
-infixr 3 .|
-type (.|) :: Ascribe Symbol Type -> [Ascribe Symbol Type] -> Constraint
-type a .| ctx = HasSel ctx (AscriptName a) (AscriptType a)
-
-class HasSel ctx s a | ctx s -> a where
-  getRecT :: Name s -> RecT f ctx -> f a
-
-  setRecT :: Name s -> f a -> RecT f ctx -> RecT f ctx
+{-# COMPLETE Nil, Con #-}
 
 -- | @since 0.1.0.0
-instance {-# OVERLAPS #-} HasSel (s # a ': ctx) s a where
-  getRecT _ (RConT _ x _) = x
-  {-# INLINE getRecT #-}
-
-  setRecT _ x (RConT name _ r) = RConT name x r
-  {-# INLINE setRecT #-}
+instance HasDict Eq ctx => Eq (Rec ctx) where
+  -- Nominal equality
+  Nil == Nil = True
+  (evident @Eq -> ConE _ x xs) == (evident @Eq -> ConE _ y ys)
+    | x == y = xs == ys
+    | otherwise = False
 
 -- | @since 0.1.0.0
-instance HasSel ctx s a => HasSel (t # b ': ctx) s a where
-  getRecT name (RConT _ _ r) = getRecT name r
-  {-# INLINE getRecT #-}
+instance HasDict Show ctx => Show (Rec ctx) where
+  show Nil = "Rec {}"
+  show rs@Con {} = "Rec {" ++ intercalate "; " (go $ evident rs) ++ "}"
+    where
+      go :: forall x. Evident Show x -> [String]
+      go NilE = []
+      go (ConE name field xs) = (show name ++ " = " ++ show field) : go (evident @Show xs)
 
-  setRecT name x (RConT name' y r) = RConT name' y (setRecT name x r)
-  {-# INLINE setRecT #-}
+-- | @since 0.1.0.0
+instance HasDict Hashable ctx => Hashable (Rec ctx) where
+  hashWithSalt salt rs = case evident @Hashable rs of
+    NilE -> salt
+    ConE _ x xs -> hashWithSalt (hashWithSalt salt x) xs
 
+set :: Has s a ctx => Name s -> a -> Rec ctx -> Rec ctx
+set name x = setF name (Identity x)
+
+get :: Has s a ctx => Name s -> Rec ctx -> a
+get n r = runIdentity (getF n r)
+
+-- ---------------------------------------------------------------------------------------------------------------------
+
+-- | @'Evident' c ctx@ captures dictionary evidence of @Rec ctx@ for the typeclass @c@.
+--
+-- @since 0.1.0.0
+data Evident :: (Type -> Constraint) -> [Ascribe Symbol Type] -> Type where
+  Trivial :: Evident c '[]
+  Evident :: (c a, HasDict c ctx) => Rec (s # a ': ctx) -> Evident c (s # a ': ctx)
+
+-- | A synonym of 'Nil' specialize to 'Evident'.
+--
+-- @since 0.1.0.0
+pattern NilE :: () => '[] ~ ctx => Evident c ctx
+pattern NilE = Trivial
+
+-- | A synonym of 'Con' specialize to 'Evident'.
+--
+-- @since 0.1.0.0
+pattern ConE :: () => (c a, HasDict c xs, (s # a ': xs) ~ ctx) => Name s -> a -> Rec xs -> Evident c ctx
+pattern ConE name field xs = Evident (Con name field xs)
+
+{-# COMPLETE NilE, ConE #-}
+
+-- ---------------------------------------------------------------------------------------------------------------------
+
+-- | @'HasDict' c ctx@ is what it means for a @Rec ctx@ to be an instance of @c@.
+--
+-- * @Rec CNil@ trivially fulfills any constraint.
+--
+-- * @Rec (x :< ctx)@ fulfills @c@ iff. @c a@ and @HasDict c (Rec ctx)@ are fulfilled.
+--
+-- @since 0.1.0.0
+class HasDict c ctx where
+  evident :: Rec ctx -> Evident c ctx
+
+-- | @since 0.1.0.0
+instance HasDict c '[] where
+  evident = const Trivial
+  {-# INLINE CONLIKE evident #-}
+
+-- | @since 0.1.0.0
+instance (c a, HasDict c ctx) => HasDict c (s # a ': ctx) where
+  evident = Evident
+  {-# INLINE CONLIKE evident #-}
+
+-- ---------------------------------------------------------------------------------------------------------------------
+
+-- | @'Has' s a ctx@ is the constraint that a @'Rec' ctx@ have a field @s@ of type @a@.
+--
+-- @since 0.1.0.0
+class Has s a ctx | ctx s -> a where
+  getF :: Name s -> RecF f ctx -> f a
+
+  setF :: Name s -> f a -> RecF f ctx -> RecF f ctx
+
+-- | @since 0.1.0.0
+instance {-# OVERLAPS #-} Has s a (s # a ': ctx) where
+  getF _ (ConF _ x _) = x
+
+  setF _ x (ConF name _ r) = ConF name x r
+
+-- | @since 0.1.0.0
+instance Has s a ctx => Has s a (s' # a' ': ctx) where
+  getF name (ConF _ _ r) = getF name r
+
+  setF name x (ConF name' y r) = ConF name' y (setF name x r)
+
+-- |
+--
+-- @since 0.1.0.0
 class ReflectRow ctx where
-  repeatRow :: (forall a. f a) -> RecT f ctx
+  repeatRow :: (forall a. f a) -> RecF f ctx
 
+-- | @since 0.1.0.0
 instance ReflectRow '[] where
-  repeatRow _ = RNil
+  repeatRow _ = NilF
 
+-- | @since 0.1.0.0
 instance (KnownSymbol s, ReflectRow xs) => ReflectRow (s # x ': xs) where
-  repeatRow x = RConT inferName x (repeatRow x)
+  repeatRow x = ConF inferName x (repeatRow x)

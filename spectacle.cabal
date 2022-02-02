@@ -58,54 +58,62 @@ library
   hs-source-dirs:      src
 
   build-depends:
-      containers >= 0.6
+      comonad
+    , containers >= 0.6
     , hashable >= 1.3.0.0
-    , list-t
     , microlens
     , microlens-mtl
     , mtl >= 2.2
-    , mmorph
+    , optparse-applicative
+    , logict
     , prettyprinter
     , prettyprinter-ansi-terminal
+    , text
     , transformers >= 0.5
 
   exposed-modules:
-      Control.Monad.Fresh
-    , Control.Monad.Heap
-    , Control.Monad.Heap.Node
+      Control.Applicative.Day
+    , Control.Applicative.Phases
+    , Control.Applicative.Queue
+    , Control.Comonad.Tape
+    , Control.Hyper
+    , Control.Mealy
+    , Control.Monad.Levels
+    , Control.Monad.Levels.Internal
+    , Control.Monad.Ref
     , Control.Natural
     , Data.Ascript
+    , Data.Bag
+    , Data.Fingerprint
     , Data.Functor.Loom
+    , Data.Functor.Tree
     , Data.Name
+    , Data.Node
+    , Data.Type.List
     , Data.Type.Rec
+    , Data.World
     , Language.Spectacle
     , Language.Spectacle.AST
     , Language.Spectacle.AST.Action
-    , Language.Spectacle.AST.Action.Internal
-    , Language.Spectacle.AST.Initial
-    , Language.Spectacle.AST.Initial.Internal
-    , Language.Spectacle.AST.Invariant
-    , Language.Spectacle.AST.Invariant.Internal
-    , Language.Spectacle.AST.Terminate
-    , Language.Spectacle.AST.Terminate.Internal
-    , Language.Spectacle.Checker
-    , Language.Spectacle.Checker.Cover
-    , Language.Spectacle.Checker.CoverageMap
-    , Language.Spectacle.Checker.Fairness
-    , Language.Spectacle.Checker.Fingerprint
-    , Language.Spectacle.Checker.Metrics
-    , Language.Spectacle.Checker.Model
-    , Language.Spectacle.Checker.Model.Internal
-    , Language.Spectacle.Checker.Model.MCError
-    , Language.Spectacle.Checker.Model.ModelEnv
-    , Language.Spectacle.Checker.PostCheck
-    , Language.Spectacle.Checker.Step
-    , Language.Spectacle.Checker.Truth
-    , Language.Spectacle.Checker.Universe
-    , Language.Spectacle.Checker.World
+    , Language.Spectacle.AST.Temporal
     , Language.Spectacle.Exception.RuntimeException
+    , Language.Spectacle.Fairness
     , Language.Spectacle.Interaction
-    , Language.Spectacle.Interaction.Render
+    , Language.Spectacle.Interaction.CLI
+    , Language.Spectacle.Interaction.Diagram
+    , Language.Spectacle.Interaction.Doc
+    , Language.Spectacle.Interaction.Options
+    , Language.Spectacle.Interaction.Paths
+    , Language.Spectacle.Interaction.Point
+    , Language.Spectacle.Interaction.Pos
+    , Language.Spectacle.Model
+    , Language.Spectacle.Model.ModelAction
+    , Language.Spectacle.Model.ModelEnv
+    , Language.Spectacle.Model.ModelError
+    , Language.Spectacle.Model.ModelNode
+    , Language.Spectacle.Model.ModelState
+    , Language.Spectacle.Model.ModelTemporal
+    , Language.Spectacle.Model.Monad
     , Language.Spectacle.Lang
     , Language.Spectacle.Lang.Internal
     , Language.Spectacle.Lang.Member
@@ -113,6 +121,9 @@ library
     , Language.Spectacle.Lang.Scoped
     , Language.Spectacle.RTS.Registers
     , Language.Spectacle.Specification
+    , Language.Spectacle.Specification.Action
+    , Language.Spectacle.Specification.Prop
+    , Language.Spectacle.Specification.Variable
     , Language.Spectacle.Syntax
     , Language.Spectacle.Syntax.Closure
     , Language.Spectacle.Syntax.Closure.Internal
@@ -122,11 +133,6 @@ library
     , Language.Spectacle.Syntax.Env.Internal
     , Language.Spectacle.Syntax.Error
     , Language.Spectacle.Syntax.Error.Internal
-    , Language.Spectacle.Syntax.Modal
-    , Language.Spectacle.Syntax.Modal.Level
-    , Language.Spectacle.Syntax.Modal.Preterm
-    , Language.Spectacle.Syntax.Modal.Internal
-    , Language.Spectacle.Syntax.Modal.Term
     , Language.Spectacle.Syntax.NonDet
     , Language.Spectacle.Syntax.NonDet.Internal
     , Language.Spectacle.Syntax.Plain
@@ -145,15 +151,21 @@ test-suite unit-tests
   main-is:             Main.hs
 
   other-modules:
-      Spectacle.Syntax.Modal
-    , Spectacle.Syntax.Modal.Properties
-    , Spectacle.Checker
-    , Spectacle.Checker.CyclicLiveness
-    , Spectacle.Checker.VacuousFormula
+    Test.Control.Comonad.Tape
+    Test.Gen
+    Test.Gen.Rec
+    Test.Language.Spectacle.Interaction
+    Test.Language.Spectacle.Interaction.Paths
+    Test.Language.Spectacle.Interaction.Pos
+    Test.Laws.Lens
+    Test.Laws.Ord
 
   build-depends:
-      spectacle
+      comonad
+    , containers
+    , spectacle
     , hedgehog
+    , microlens
     , tasty
     , tasty-hedgehog
 
@@ -164,33 +176,14 @@ test-suite integration-tests
   main-is:             Main.hs
 
   other-modules:
-      Specifications.Diehard
-    , Specifications.DijkstraMutex
-    , Specifications.DijkstraMutex.Process
-    , Specifications.RateLimit
-    , Specifications.SimpleClock
-    , Specifications.BitClock
-    , Specifications.SpanningTree
+    Specifications.BitClock
+    Specifications.Diehard
+    Specifications.SimpleClock
+    Specifications.Status
 
   build-depends:
       spectacle
     , hashable
+    , hedgehog
     , tasty
-    , tasty-hunit
-    , unordered-containers
-    , containers
-
-benchmark benchmark
-  import:         common
-  type:           exitcode-stdio-1.0
-  hs-source-dirs: benchmark
-  main-is:        Bench.hs
-  build-depends:
-    , spectacle
-    , hashable
-    , containers >= 0.6
-    , criterion
-    , unordered-containers
-  ghc-options:
-    -threaded
-    -rtsopts "-with-rtsopts=-N -A4m -n2m"
+    , tasty-hedgehog

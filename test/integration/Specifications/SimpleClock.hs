@@ -1,94 +1,73 @@
-{-# LANGUAGE MultiWayIf #-}
-{-# LANGUAGE NegativeLiterals #-}
 {-# LANGUAGE OverloadedLabels #-}
 
 module Specifications.SimpleClock where
 
 import Language.Spectacle
   ( Action,
-    Initial,
-    Invariant,
-    always,
-    defaultInteraction,
-    define,
-    eventually,
-    modelCheck,
+    ActionType (ActionWF),
+    Fairness (WeakFair),
+    Modality (Always, Infinitely),
+    Specification (Specification),
+    Temporal,
+    TemporalType (PropG, PropGF),
+    interaction,
+    modelcheck,
     plain,
     prime,
-    weakFair,
+    specInit,
+    specNext,
+    specProp,
     (.=),
-    (/\),
-    (==>),
-    (\/),
+    pattern ConF,
+    pattern NilF,
     type (#),
-  )
-import Language.Spectacle.Specification
-  ( Specification
-      ( Specification,
-        fairnessConstraint,
-        initialAction,
-        nextAction,
-        temporalFormula,
-        terminationFormula
-      ),
   )
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
-type ClockSpec = '["hours" # Int]
+interactClockSpec :: IO ()
+interactClockSpec = interaction clockSpec
 
-initial :: Initial ClockSpec ()
-initial = do
-  #hours `define` return 0
+clockSpecCheck :: IO ()
+clockSpecCheck = do
+  modelcheck clockSpec >>= \case
+    Left err -> print err
+    Right xs -> print xs
 
-action :: Action ClockSpec Bool
-action = tick \/ rollover
+-- ---------------------------------------------------------------------------------------------------------------------
 
-tick :: Action ClockSpec Bool
-tick = do
-  hours <- plain #hours
-  #hours .= return (hours + 1)
-  return (hours < 23)
+type ClockSpec =
+  Specification
+    '["hour" # Int]
+    '["next" # 'WeakFair]
+    '["ticks" # 'Infinitely, "times" # 'Always]
 
-rollover :: Action ClockSpec Bool
-rollover = do
-  hours <- plain #hours
-  #hours .= return 0
-  return (23 <= hours)
+clockNext :: Action '["hour" # Int] Bool
+clockNext = do
+  hour <- plain #hour
+  if hour == 12
+    then #hour .= pure 1
+    else #hour .= pure (1 + hour)
+  pure True
 
-breakClock :: Action ClockSpec Bool
-breakClock = do
-  hours <- plain #hours
-  #hours .= return hours
-  return (0 <= hours)
+clockTicks :: Temporal '["hour" # Int] Bool
+clockTicks = do
+  hour <- plain #hour
+  hour' <- prime #hour
+  pure (1 + hour == hour')
 
-formula :: Invariant ClockSpec Bool
-formula = always inBounds /\ isZero ==> always (eventually willRollOver)
-  where
-    inBounds :: Invariant ClockSpec Bool
-    inBounds = do
-      hours <- plain #hours
-      return (0 <= hours && hours <= 23)
+clockTimes :: Temporal '["hour" # Int] Bool
+clockTimes = do
+  hour <- plain #hour
+  pure (1 <= hour && hour <= 12)
 
-    isZero :: Invariant ClockSpec Bool
-    isZero = do
-      hours <- plain #hours
-      return (hours == 0)
-
-    willRollOver = do
-      hours <- plain #hours
-      hours' <- prime #hours
-      return (hours == 23 && hours' == 0)
-
-check :: IO ()
-check = do
-  let spec :: Specification ClockSpec
-      spec =
-        Specification
-          { initialAction = initial
-          , nextAction = action
-          , temporalFormula = formula
-          , terminationFormula = Nothing
-          , fairnessConstraint = weakFair
-          }
-  defaultInteraction (modelCheck spec)
+clockSpec :: ClockSpec
+clockSpec =
+  Specification
+    { specInit = ConF #hour (pure 1) NilF
+    , specNext = ConF #next (ActionWF clockNext) NilF
+    , specProp =
+        ConF #ticks (PropGF clockTicks)
+          . ConF #times (PropG clockTimes)
+          $ NilF
+    }

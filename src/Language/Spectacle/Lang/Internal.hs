@@ -17,7 +17,7 @@ import Data.Kind (Type)
 import GHC.TypeLits (Symbol)
 
 import Data.Ascript (Ascribe)
-import Data.Functor.Loom (bind, (~>~), Loom (Loom))
+import Data.Functor.Loom (Loom (Loom), bind, (~>~))
 import qualified Data.Functor.Loom as Loom
 import Language.Spectacle.Lang.Member (Member (inject, injectS))
 import Language.Spectacle.Lang.Op (Op)
@@ -37,18 +37,18 @@ import Language.Spectacle.Syntax.NonDet.Internal (NonDet (Choose, Empty))
 --
 -- @since 0.1.0.0
 type Lang :: [Ascribe Symbol Type] -> [EffectK] -> Type -> Type
-data Lang ctx effs a where
+data Lang ctxt effs a where
   Pure ::
     a ->
-    Lang ctx effs a
+    Lang ctxt effs a
   Op ::
     Op effs a ->
-    (a -> Lang ctx effs b) ->
-    Lang ctx effs b
+    (a -> Lang ctxt effs b) ->
+    Lang ctxt effs b
   Scoped ::
-    Scoped effs (Lang ctx effs') a ->
-    Loom (Lang ctx effs') (Lang ctx effs) a b ->
-    Lang ctx effs b
+    Scoped effs (Lang ctxt effs') a ->
+    Loom (Lang ctxt effs') (Lang ctxt effs) a b ->
+    Lang ctxt effs b
 
 -- | Sends a constructor for the effect @eff@ for 'Lang' to handle.
 --
@@ -86,7 +86,6 @@ instance Monad (Lang ctx effs) where
   Pure x >>= f = f x
   Op u k >>= f = Op u (k >=> f)
   Scoped u loom >>= f = Scoped u (loom ~>~ bind f)
-
   {-# INLINE (>>=) #-}
 
 -- | @since 0.1.0.0

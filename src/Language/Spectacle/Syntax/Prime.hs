@@ -22,7 +22,8 @@ import Data.Function ((&))
 import Data.Void (absurd)
 
 import Data.Functor.Loom (hoist, runLoom, (~>~))
-import Data.Type.Rec (Name, Rec, getRec, type (#), type (.|))
+import Data.Type.Rec (Has, Name, Rec)
+import qualified Data.Type.Rec as Rec
 import Language.Spectacle.Exception.RuntimeException
   ( RuntimeException (VariableException),
     VariableException (CyclicReference),
@@ -40,8 +41,8 @@ import Language.Spectacle.Lang
     scope,
   )
 import Language.Spectacle.RTS.Registers
-  ( RelationTerm,
-    RuntimeState (RuntimeState, callStack, plains, primes),
+  ( RuntimeState (RuntimeState, callStack, plains, primes),
+    StateFun,
     Thunk (Evaluated, Thunk, Unchanged),
     getRegister,
     setRegister,
@@ -57,15 +58,18 @@ import Language.Spectacle.Syntax.Env
 import Language.Spectacle.Syntax.Error (Error, runError, throwE)
 import Language.Spectacle.Syntax.NonDet (NonDet, oneOf, runNonDetA)
 import Language.Spectacle.Syntax.Plain (runPlain)
-import Language.Spectacle.Syntax.Prime.Internal (Effect (PrimeVar), Prime (Prime))
+import Language.Spectacle.Syntax.Prime.Internal
+  ( Effect (PrimeVar),
+    Prime (Prime),
+  )
 
 -- -------------------------------------------------------------------------------------------------
 
 -- | 'prime' for a variable named @s@ is the value of @s@ in the next time frame.
 --
 -- @since 0.1.0.0
-prime :: (s # a .| ctx, Member Prime effs) => Name s -> Lang ctx effs a
-prime name = scope (PrimeVar name)
+prime :: (Member Prime effs, Has s a ctx) => Name s -> Lang ctx effs a
+prime nm = scope (PrimeVar nm)
 {-# INLINE prime #-}
 
 -- | Discharges a 'Prime' effect. This interpreter carries out the substitution of primed variables
@@ -98,7 +102,7 @@ runPrime = \case
                 runLoom loomPrime (pure x)
           Evaluated x -> runLoom loomPrime (pure x)
           Unchanged -> do
-            rst' <- gets (getRec name . plains)
+            rst' <- gets (Rec.get name . plains)
             runLoom loomPrime (pure rst')
     where
       loomPrime = loom ~>~ hoist runPrime
@@ -116,8 +120,7 @@ substPrime vars = \case
   Scoped scoped loom -> case decomposeS scoped of
     Left other -> Scoped other loomSubstPrime
     Right (PrimeVar name) -> do
-      let x = getRec name vars
-      runLoom loomSubstPrime (pure x)
+      runLoom loomSubstPrime (pure $ Rec.get name vars)
     where
       loomSubstPrime = loom ~>~ hoist (substPrime vars)
 
@@ -125,9 +128,9 @@ substPrime vars = \case
 --
 -- @since 0.1.0.0
 substitute ::
-  (Members '[Env, NonDet, Error RuntimeException] effs, s # a .| ctx) =>
+  (Members '[Env, NonDet, Error RuntimeException] effs, Has s a ctx) =>
   Name s ->
-  RelationTerm ctx a ->
+  StateFun ctx a ->
   Lang ctx effs a
 substitute name expr = do
   rst <- get

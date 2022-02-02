@@ -1,28 +1,59 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings #-}
+
+-- | CLI interaction.
+--
+-- @since 0.1.0.0
 module Language.Spectacle.Interaction
-  ( defaultInteraction,
+  ( -- * CLI
+    interaction,
+    handleInteraction,
   )
 where
 
-import Data.Text.Prettyprint.Doc.Render.Terminal (putDoc)
+import Control.Monad (when)
+import Control.Monad.IO.Class (liftIO)
+import Control.Monad.Reader (asks)
+import Data.Either (isRight)
+import Data.Hashable (Hashable)
+import Data.Text.Prettyprint.Doc (line)
 
-import Data.Type.Rec (Rec)
-import Language.Spectacle.Checker.Metrics (ModelMetrics)
-import Language.Spectacle.Checker.Model.MCError (MCError)
-import Language.Spectacle.Interaction.Render (renderModelErrorsDoc, renderModelMetrics)
+import Data.Functor.Tree (Tree)
+import Data.Type.Rec (HasDict)
+import Data.World (World)
+import Language.Spectacle.Interaction.CLI (CLI, ContextCLI (ctxOpts), cliPutDoc, cliResultDoc, runCLI)
+import Language.Spectacle.Interaction.Diagram (diagramFull, runDiagram)
+import Language.Spectacle.Interaction.Options (OptsCLI (optsLogGraph, optsOnlyTrace))
+import qualified Language.Spectacle.Interaction.Options as Opts
+import Language.Spectacle.Interaction.Paths (toPointSet)
+import Language.Spectacle.Model (modelcheck, modeltrace)
+import Language.Spectacle.Model.ModelError (ModelError, ppModelError)
+import Language.Spectacle.Specification (Specification)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
--- | 'defaultInteraction' is an 'IO' action which handles rendering model failures or success to terminal. Given some
--- specification @spec@
---
--- @
--- main :: IO ()
--- main = defaultIntraction (modelCheck spec)
--- @
---
--- is all that is needed to perform model checks and output the results.
---
--- @since 0.1.0.0
-defaultInteraction :: Show (Rec ctx) => Either [MCError ctx] ModelMetrics -> IO ()
-defaultInteraction (Left errs) = putDoc =<< renderModelErrorsDoc errs
-defaultInteraction (Right metrics) = putDoc (renderModelMetrics metrics)
+interaction :: (HasDict Hashable ctx, HasDict Show ctx) => Specification ctx acts form -> IO ()
+interaction spec = do
+  opts <- Opts.execOptsCLI
+  result <-
+    if optsOnlyTrace opts
+      then modeltrace spec
+      else modelcheck spec
+
+  runCLI (handleInteraction result) opts
+
+handleInteraction :: HasDict Show ctx => Either (ModelError ctx) [Tree (World ctx)] -> CLI ()
+handleInteraction result =
+  let status = isRight result
+   in case result of
+        Left err -> do
+          cliPutDoc =<< cliResultDoc status
+          cliPutDoc (ppModelError err)
+          cliPutDoc line
+        Right trees -> do
+          isLogging <- asks (optsLogGraph . ctxOpts)
+          when isLogging do
+            let pointSet = foldMap toPointSet trees
+            diagramDoc <- liftIO (runDiagram $ diagramFull pointSet)
+            cliPutDoc (diagramDoc <> line)
+          cliPutDoc =<< cliResultDoc status

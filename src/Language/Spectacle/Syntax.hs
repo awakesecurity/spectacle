@@ -1,6 +1,5 @@
 module Language.Spectacle.Syntax
   ( -- * Closures
-    define,
     (.=),
 
     -- * Errors
@@ -17,11 +16,6 @@ module Language.Spectacle.Syntax
     implies,
     (<=>),
     iff,
-
-    -- * Modal Operators
-    always,
-    eventually,
-    upUntil,
 
     -- * Nondeterminism
     oneOf,
@@ -40,11 +34,10 @@ module Language.Spectacle.Syntax
 where
 
 import Language.Spectacle.Lang (Lang, Member)
-import Language.Spectacle.Syntax.Closure (define, (.=))
+import Language.Spectacle.Syntax.Closure ((.=))
 import Language.Spectacle.Syntax.Enabled (enabled)
 import Language.Spectacle.Syntax.Error (catchE, throwE)
 import Language.Spectacle.Syntax.Logic (Logic, complement, conjunct, disjunct, iff, implies)
-import Language.Spectacle.Syntax.Modal (always, eventually, upUntil)
 import Language.Spectacle.Syntax.NonDet (oneOf)
 import Language.Spectacle.Syntax.Plain (plain)
 import Language.Spectacle.Syntax.Prime (prime)
