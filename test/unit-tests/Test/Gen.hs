@@ -31,10 +31,9 @@ import Hedgehog.Gen (choice, int, resize, sized)
 import Hedgehog.Internal.Gen (golden, word32)
 import Hedgehog.Range (Size, constantBounded, linear, linearBounded)
 
-import Data.Context (CNil)
+import Data.Fingerprint (Fingerprint (Fingerprint))
 import Data.Functor.Tree (Tree (Node), pattern Leaf)
 import Data.World (World (World))
-import Language.Spectacle.Checker.Fingerprint (Fingerprint (Fingerprint))
 import Language.Spectacle.Interaction.Pos (Pos, pattern Pos)
 
 import qualified Test.Gen.Rec as Gen.Rec
@@ -80,11 +79,11 @@ leaves len gen = replicateM len (fmap Leaf gen)
 -- ---------------------------------------------------------------------------------------------------------------------
 
 fingerprint :: MonadGen m => m Fingerprint
-fingerprint = Fingerprint <$> word32 constantBounded
+fingerprint = Fingerprint <$> int constantBounded
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
-emptyWorld :: MonadGen m => m (World CNil)
+emptyWorld :: MonadGen m => m (World '[])
 emptyWorld = liftA2 World fingerprint Gen.Rec.empty
 
 -- ---------------------------------------------------------------------------------------------------------------------
