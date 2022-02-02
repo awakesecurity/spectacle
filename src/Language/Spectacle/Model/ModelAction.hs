@@ -38,7 +38,7 @@ data ModelAction ctx = ModelAction
   , getModelAction :: World ctx -> Either RuntimeException (Set (World ctx))
   }
 
-runModelAction :: MonadError ModelError m => World ctx -> ModelAction ctx -> m (Set (World ctx))
+runModelAction :: MonadError (ModelError ctx) m => World ctx -> ModelAction ctx -> m (Set (World ctx))
 runModelAction world action =
   case getModelAction action world of
     Left err -> throwError (RuntimeError err)
