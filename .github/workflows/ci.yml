@@ -37,6 +37,7 @@ jobs:
         name: Install Nix
         with:
           nix_path: nixpkgs=./nix/pkgs.nix
+          extra_nix_config: experimental-features = nix-command
       - uses: cachix/cachix-action@v8
         name: Set up Cachix
         with:
