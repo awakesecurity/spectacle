@@ -1,6 +1,6 @@
 -- |
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 module Language.Spectacle.Model where
 
 import Control.Monad (unless)
@@ -283,7 +283,7 @@ unfoldModelState actions = traverse go . Set.toList
 
 -- | 'throwRefute' is a helper combination for constructing an error refuting a temporal property and throwing it.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 throwRefute :: Monad m => Modality -> String -> Maybe (World ctx) -> Maybe (World ctx) -> ModelM ctx m a
 throwRefute modality name here there = do
   let err = TemporalError modality name here there
@@ -291,24 +291,24 @@ throwRefute modality name here there = do
 
 -- | Convinence function for constructing an "always" error and throwing it.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 throwRefuteAlways :: Monad m => String -> Maybe (World ctx) -> Maybe (World ctx) -> ModelM ctx m a
 throwRefuteAlways = throwRefute Always
 
 -- | Convinence function for constructing an "eventually" error and throwing it.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 throwRefuteEventually :: Monad m => String -> Maybe (World ctx) -> Maybe (World ctx) -> ModelM ctx m a
 throwRefuteEventually = throwRefute Eventually
 
 -- | Convinence function for constructing an "infinitely often" error and throwing it.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 throwRefuteInfinitely :: Monad m => String -> Maybe (World ctx) -> Maybe (World ctx) -> ModelM ctx m a
 throwRefuteInfinitely = throwRefute Infinitely
 
 -- | Convinence function for constructing an "stays as" error and throwing it.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 throwRefuteStays :: Monad m => String -> Maybe (World ctx) -> Maybe (World ctx) -> ModelM ctx m a
 throwRefuteStays = throwRefute Stays

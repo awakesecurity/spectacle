@@ -25,7 +25,7 @@ class QuantifierIntro m where
 
   forallIntro :: [a] -> (a -> m Bool) -> m Bool
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance Member Quantifier effs => QuantifierIntro (Lang ctxt effs) where
   forallIntro xs p = scope (Forall xs p)
   {-# INLINE forallIntro #-}

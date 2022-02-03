@@ -2,7 +2,7 @@
 
 -- | The 'Lang' monad.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 module Language.Spectacle.Lang.Internal
   ( Lang (Pure, Op, Scoped),
     send,
@@ -35,7 +35,7 @@ import Language.Spectacle.Syntax.NonDet.Internal (NonDet (Choose, Empty))
 --
 -- * The type parameter @effs@ is the set of effects a 'Lang' is capable of performing.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 type Lang :: [Ascribe Symbol Type] -> [EffectK] -> Type -> Type
 data Lang ctxt effs a where
   Pure ::
@@ -52,26 +52,26 @@ data Lang ctxt effs a where
 
 -- | Sends a constructor for the effect @eff@ for 'Lang' to handle.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 send :: Member eff effs => eff a -> Lang ctx effs a
 send eff = Op (inject eff) pure
 {-# INLINE send #-}
 
 -- | Like 'send', but sends a constructor for the 'Effect' instance of @eff@.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 scope :: Member eff effs => Effect eff (Lang ctx effs) a -> Lang ctx effs a
 scope eff = Scoped (injectS eff) Loom.identity
 {-# INLINE scope #-}
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance Functor (Lang ctx effs) where
   fmap f (Pure x) = Pure (f x)
   fmap f (Op u k) = Op u (fmap f . k)
   fmap f (Scoped u loom) = Scoped u (fmap f loom)
   {-# INLINE fmap #-}
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance Applicative (Lang ctx effs) where
   pure = Pure
   {-# INLINE CONLIKE pure #-}
@@ -81,14 +81,14 @@ instance Applicative (Lang ctx effs) where
   Scoped u (Loom ctx eta) <*> m = Scoped u (Loom ctx ((<*> m) . eta))
   {-# INLINE (<*>) #-}
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance Monad (Lang ctx effs) where
   Pure x >>= f = f x
   Op u k >>= f = Op u (k >=> f)
   Scoped u loom >>= f = Scoped u (loom ~>~ bind f)
   {-# INLINE (>>=) #-}
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance Member NonDet effs => Alternative (Lang ctx effs) where
   empty = send Empty
   {-# INLINE empty #-}
@@ -96,7 +96,7 @@ instance Member NonDet effs => Alternative (Lang ctx effs) where
   a <|> b = send Choose >>= bool b a
   {-# INLINE (<|>) #-}
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance Member NonDet effs => MonadPlus (Lang ctx effs) where
   mzero = empty
   {-# INLINE mzero #-}

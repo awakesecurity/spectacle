@@ -66,7 +66,7 @@
 -- 1. [Effect Handlers in Haskell, Evidently](https://xnning.github.io/papers/haskell-evidently.pdf)
 -- 2. [Effect Handlers in Scope](https://www.cs.ox.ac.uk/people/nicolas.wu/papers/Scope.pdf)
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 module Language.Spectacle.Lang.Scoped
   ( -- * Effect Kinds
     EffectK,
@@ -91,24 +91,24 @@ import Data.Void (Void)
 
 -- | The kind of first-order effects.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 type EffectK = Type -> Type
 
 -- | The kind of higher-order effects.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 type ScopeK = (Type -> Type) -> Type -> Type
 
 -- | Constraint for first-order effects.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 type FirstOrder :: EffectK -> Constraint
 
 type FirstOrder eff = forall m a. Coercible (Effect eff m a) Void
 
 -- | 'Effect' is a family of higher-order operations for the effect @eff@.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 type Effect :: EffectK -> ScopeK
 data family Effect eff m a
 
@@ -117,7 +117,7 @@ data family Effect eff m a
 -- | 'Scoped' is an extensible sum inhabited by the higher-order operations of some effect in
 -- @effs@.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 data Scoped effs m a where
   SHere :: Effect eff m a -> Scoped (eff ': effs) m a
   SThere :: Scoped effs m a -> Scoped (eff ': effs) m a
@@ -126,7 +126,7 @@ data Scoped effs m a where
 -- instance for @eff@ or witness a proof that @Eff eff m a@ does not inhabit this sum and remove
 -- it from the effect signature.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 decomposeS :: Scoped (eff ': effs) m a -> Either (Scoped effs m a) (Effect eff m a)
 decomposeS (SHere eff) = Right eff
 decomposeS (SThere s) = Left s
@@ -134,7 +134,7 @@ decomposeS (SThere s) = Left s
 
 -- | A special case of 'decomposeS'. A singleton sum of @eff@ must be inhabited by @eff@.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 extractS :: Scoped '[eff] m a -> Effect eff m a
 extractS (SHere eff) = eff
 extractS (SThere s) = case s of

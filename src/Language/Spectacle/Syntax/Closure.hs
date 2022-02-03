@@ -1,6 +1,6 @@
 -- | Closures and variable relations.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 module Language.Spectacle.Syntax.Closure
   ( Closure (Closure),
     Effect (Close),
@@ -53,7 +53,7 @@ import Language.Spectacle.Syntax.Prime (RuntimeState (primes), substitute)
 --     return True -- relate the value to the next frame, @return (odd n)@ could be written to exclude even n.
 -- @
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 infix 4 .=
 
 (.=) :: (Member Closure effs, Has s a ctx) => Name s -> StateFun ctx a -> Lang ctx effs ()
@@ -62,7 +62,7 @@ name .= expr = scope (Close name expr)
 
 -- | Discharges a 'Closure' effect, returning a 'Rec' new values for each variable in @ctx@.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 runActionClosure ::
   Members '[NonDet, Env, Error RuntimeException] effs =>
   Lang ctx (Closure ': effs) a ->
@@ -72,7 +72,7 @@ runActionClosure m = evaluateThunks (makeThunks m)
 
 -- | Evaluates all unevaluated closures in a specification.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 evaluateThunks ::
   Members '[NonDet, Env, Error RuntimeException] effs =>
   Lang ctx (Closure ': effs) a ->
@@ -103,7 +103,7 @@ evaluateThunks = \case
 -- by 'evaluateThunks'. An extra pass is needed to register all closures before substitution of
 -- primed variables takes place.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 makeThunks ::
   Members '[Closure, Env, Error RuntimeException] effs =>
   Lang ctx effs a ->

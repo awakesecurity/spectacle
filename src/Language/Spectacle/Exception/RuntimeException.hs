@@ -42,7 +42,7 @@ data QuantifierException where
   --
   -- would throw 'ForallViolated' since 2 is not 'odd'.
   --
-  -- @since 0.1.0.0
+  -- @since 1.0.0
   ForallViolated ::
     QuantifierException
   -- | 'ExistsViolated' is thrown when an existentially quantified set has no values that satisfy its predicate,
@@ -55,7 +55,7 @@ data QuantifierException where
   --
   -- would throw 'ExistsViolated' since there is no number @n in {2, 4}@ such that @'odd' n ≡ 'True'@
   --
-  -- @since 0.1.0.0
+  -- @since 1.0.0
   ExistsViolated ::
     QuantifierException
   deriving stock (Show, Typeable)

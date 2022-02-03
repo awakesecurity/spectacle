@@ -28,17 +28,17 @@ import qualified Data.Sequence as Seq
 data Tape a = Tape {before :: Seq a, focus :: a, after :: Seq a}
   deriving (Eq, Functor, Show)
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance Foldable Tape where
   foldr cons nil = foldr cons nil . toSeq
   {-# INLINE foldr #-}
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance Traversable Tape where
   traverse f (Tape lower x upper) = Tape <$> traverse f lower <*> f x <*> traverse f upper
   {-# INLINE traverse #-}
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance Comonad Tape where
   extract (Tape _ x _) = x
   {-# INLINE extract #-}
@@ -49,7 +49,7 @@ instance Comonad Tape where
   extend f tp = case duplicate tp of
     Tape ls x us -> Tape (f <$> ls) (f x) (f <$> us)
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance ComonadStore Int Tape where
   pos (Tape lw _ _) = length lw
   {-# INLINE pos #-}
@@ -70,14 +70,14 @@ instance ComonadStore Int Tape where
 
 -- | /O(1)/, @'viewl' xs@ constructs a 'Tape' by viewing @xs@ from the left, if it is nonempty.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 viewl :: Seq a -> Maybe (Tape a)
 viewl Empty = Nothing
 viewl (x :<| upper) = Just (Tape mempty x upper)
 
 -- | /O(1)/, @'viewl' xs@ constructs a 'Tape' by viewing @xs@ from the left, if it is nonempty.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 viewr :: Seq a -> Maybe (Tape a)
 viewr Empty = Nothing
 viewr (lower :|> x) = Just (Tape lower x mempty)
@@ -85,7 +85,7 @@ viewr (lower :|> x) = Just (Tape lower x mempty)
 -- | /O(log n)/, @'viewAt' i xs@ constructs a 'Tape' focusing the ith element of @xs@, if it is nonempty. @i@ is
 -- clamped to the interval [0, i).
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 viewAt :: Int -> Seq a -> Maybe (Tape a)
 viewAt i xs =
   case Seq.splitAt i xs of

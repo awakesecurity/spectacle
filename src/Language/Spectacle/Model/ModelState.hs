@@ -3,7 +3,7 @@
 
 -- |
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 module Language.Spectacle.Model.ModelState
   ( -- * ModelState
     ModelState (ModelState),
@@ -35,7 +35,7 @@ newtype ModelState ctx = ModelState
   {getModelState :: IntMap (ModelNode ctx)}
   deriving (Semigroup, Monoid) via IntMap (ModelNode ctx)
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 deriving instance HasDict Show ctx => Show (ModelState ctx)
 
 indexNode :: Fingerprint -> Lens' (ModelState ctx) (ModelNode ctx)

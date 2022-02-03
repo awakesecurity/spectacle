@@ -81,7 +81,7 @@ type ActionSyntax =
 -- | Completely evaluate a temporal action yielding either a 'RuntimeException' or a collection of new worlds accessible
 -- by the action given.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 runExceptionalAction ::
   forall ctxt.
   Hashable (Rec ctxt) =>
@@ -142,7 +142,7 @@ runAction knowns action =
 
 -- | Traverses the effects in an action, rewriting all logical operators and quantifiers scoped within a negation.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 rewriteLogic :: Members '[Logic, Quantifier, NonDet] effs => Lang ctx effs Bool -> Lang ctx effs Bool
 rewriteLogic = \case
   Pure x -> pure x
@@ -159,7 +159,7 @@ rewriteLogic = \case
 -- | Reduces logical negation by applying the usual rewrite rules to quantifiers and other logical operators scoped
 -- within the negation.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 applyComplement :: Members '[Logic, Quantifier, NonDet] effs => Lang ctx effs Bool -> Lang ctx effs Bool
 applyComplement = \case
   Pure x -> pure x
@@ -189,7 +189,7 @@ applyComplement = \case
 
 -- | Introduces the variable environment to an 'Action' "underneath" the 'Closure' effect.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 introduceEnv ::
   Lang ctx (Logic ': Closure ': Quantifier ': effs) a ->
   Lang ctx (Logic ': Closure ': Quantifier ': Env ': effs) a

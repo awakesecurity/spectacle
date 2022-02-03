@@ -52,7 +52,7 @@ data LogNode = LogNode
 
 -- | @'traverseRowsOf' f ps@ is a traversal of @f@ on rows of @ps@, collecting the results in a list.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 traverseRowsOf :: (Set Point -> DiagramM a) -> Set Point -> DiagramM [a]
 traverseRowsOf f ps =
   case takeMinRow ps of
@@ -90,7 +90,7 @@ pointSection ps = do
 -- | * | 0x8f46a202
 -- @
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 labelSection :: Tape Point -> DiagramM (Doc AnsiStyle)
 labelSection ps = do
   paths <- labelPaths ps
@@ -104,7 +104,7 @@ labelSection ps = do
 -- | | |   #field2 = 12345
 -- @
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 fieldSection :: Tape Point -> DiagramM [Doc AnsiStyle]
 fieldSection points = do
   paths <- fieldPaths points
@@ -176,13 +176,13 @@ curveSegment points lcol ucol
 -- | @'labelPaths' points@ inserts a line segment for each point in @points@, and a asterrisk for the point under
 -- focus.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 labelPaths :: Tape Point -> DiagramM (Doc AnsiStyle)
 labelPaths = iteratePaths (const (pure "* "))
 
 -- | @'labelPaths' points@ inserts a line segment for each point in @points@.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 fieldPaths :: Tape Point -> DiagramM (Doc AnsiStyle)
 fieldPaths = iteratePaths foci
   where
@@ -232,7 +232,7 @@ iterateLine handleLT handleEQ handleGT points = do
 
 -- | @'verticalSegment' len@ fills a line of length @len@ comprised of segments "│ ".
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 verticalSegment :: Int -> Doc AnsiStyle
 verticalSegment len
   | len <= 0 = Doc.tab
@@ -265,7 +265,7 @@ rightTurnSegment len
 
 -- | @'leavesPaths' len@ fills a line of length @len@ comprised of segments "┴─".
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 leavesSegment :: Int -> Doc AnsiStyle
 leavesSegment len
   | len <= 0 = mempty
@@ -332,7 +332,7 @@ getColorCtx (ColorCtx i) =
     _ -> Magenta
 {-# INLINE getColorCtx #-}
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance Semigroup ColorCtx where
   -- Note: We use addition in Z mod 6 as the semigroup for 'ColorCtx' since the 'Enum' instance is cycles through 6
   -- colors.
@@ -340,12 +340,12 @@ instance Semigroup ColorCtx where
   ColorCtx x <> ColorCtx y = ColorCtx (mod (x + y) 6)
   {-# INLINE (<>) #-}
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance Monoid ColorCtx where
   mempty = ColorCtx 0
   {-# INLINE mempty #-}
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance Enum ColorCtx where
   -- Note: AnsiStyle have six unique colors that are not black or white (cyan, red, green, yellow, blue and magenta).
   -- 'DiagramM' uses this 'Enum' instance and 'succ' to cycle through these six colors since the 'Color' datatype

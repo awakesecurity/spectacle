@@ -43,7 +43,7 @@
 -- fromList [(0,4), (1,3), (1,4), (1,5), (2,3), (2,4), (2,5), ..., (5,4), (6,4)]
 -- @
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 module Language.Spectacle.Interaction.Pos
   ( -- * Locations
     Loc (Loc),
@@ -72,20 +72,20 @@ import Lens.Micro.Extras (view)
 
 -- | A 'Loc' is a position annotated with an length/span.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 data Loc = Loc
   { locPos :: {-# UNPACK #-} !Pos
   , locExt :: {-# UNPACK #-} !Int
   }
   deriving (Eq)
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance Ord Loc where
   compare = compare `on` locPos
 
 -- | Buffer row/column positions.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 newtype Pos = MkPos {getPos :: (Int, Int)}
   deriving (Eq, Semigroup, Monoid) via (Sum Int, Sum Int)
 
@@ -94,7 +94,7 @@ pattern Pos {posRow, posCol} = MkPos (posRow, posCol)
 
 {-# COMPLETE Pos #-}
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance Ord Pos where
   -- The derived implementation of 'Ord' is equivalent to what is given here, but its defined explicitly anyway
   -- to emphasize the row value superseding the order of the column value in this trichotomy.
@@ -102,7 +102,7 @@ instance Ord Pos where
     EQ -> compare y v
     ordering -> ordering
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance Show Pos where
   show (Pos r c) = "Pos(" ++ show r ++ ":" ++ show c ++ ")"
 

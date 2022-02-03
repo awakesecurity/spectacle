@@ -6,7 +6,7 @@
 --
 -- 2. <https://github.com/rampion/tree-traversals>
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 module Control.Applicative.Phases
   ( Phases (Here, There),
     lowerPhases,
@@ -27,7 +27,7 @@ import Data.Kind (Type)
 -- effects of the underlying @f@. The 'Here' constructor apply effects immediately and 'There' constructors
 -- incrementally delay effects.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 data Phases :: (Type -> Type) -> Type -> Type where
   Here :: a -> Phases f a
   There :: (a -> b -> c) -> f a -> Phases f b -> Phases f c
@@ -43,13 +43,13 @@ liftPhases :: Monad f => Phases f (f a) -> Phases f a
 liftPhases (Here x) = There const x (pure ())
 liftPhases (There f x xs) = There const (x >>= \x' -> lowerPhases xs >>= f x') xs
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance Functor (Phases f) where
   fmap f (Here x) = Here (f x)
   fmap f (There op x xs) = There (\y ys -> f (y `op` ys)) x xs
   {-# INLINE fmap #-}
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance Applicative f => Applicative (Phases f) where
   pure = Here
   {-# INLINE pure #-}

@@ -1,6 +1,6 @@
 -- | Quantifiers and logic.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 module Language.Spectacle.Syntax.Logic
   ( Logic (Logic),
     Effect (Complement, Conjunct, Disjunct),
@@ -36,42 +36,42 @@ import Language.Spectacle.Syntax.NonDet (NonDet)
 -- | Logical negation. The 'complement' operator is equivalent to 'not' for simple expressions, but
 -- can be used to negate quantifiers and the other logical operators in spectacle.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 complement :: Member Logic effs => Lang ctx effs Bool -> Lang ctx effs Bool
 complement m = scope (Complement m)
 {-# INLINE complement #-}
 
 -- | Boolean conjunction.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 conjunct :: Member Logic effs => Lang ctx effs Bool -> Lang ctx effs Bool -> Lang ctx effs Bool
 conjunct m n = scope (Conjunct m n)
 {-# INLINE conjunct #-}
 
 -- | Boolean disjunction.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 disjunct :: Member Logic effs => Lang ctx effs Bool -> Lang ctx effs Bool -> Lang ctx effs Bool
 disjunct m n = scope (Disjunct m n)
 {-# INLINE disjunct #-}
 
 -- | Logical implication.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 implies :: Member Logic effs => Lang ctx effs Bool -> Lang ctx effs Bool -> Lang ctx effs Bool
 implies m n = disjunct (complement m) n
 {-# INLINE implies #-}
 
 -- | If and only if.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 iff :: Member Logic effs => Lang ctx effs Bool -> Lang ctx effs Bool -> Lang ctx effs Bool
 iff m n = conjunct (implies m n) (implies n m)
 {-# INLINE iff #-}
 
 -- | Discharge a 'Logic' effect.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 runLogic ::
   forall ctx effs.
   Members '[Error RuntimeException, NonDet] effs =>

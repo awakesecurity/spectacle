@@ -3,7 +3,7 @@
 
 -- |
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 module Language.Spectacle.Specification.Prop
   ( -- * Temporal Formula
     TemporalType (PropG, PropF, PropGF, PropFG),

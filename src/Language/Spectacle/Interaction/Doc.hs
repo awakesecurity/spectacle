@@ -3,7 +3,7 @@
 
 -- |
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 module Language.Spectacle.Interaction.Doc
   ( -- * Direction
     Cardinal (CUp, CDown, CLeft, CRight),
@@ -53,13 +53,13 @@ data Cardinal
 
 -- | Concat a foldable collection with a seperator interspersed.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 sepBy :: Foldable t => Doc ann -> t (Doc ann) -> Doc ann
 sepBy s = Doc.concatWith (Doc.surround s)
 
 -- | Like 'copies', but intersperses space between each copy.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 hcopies :: Int -> Doc ann -> Doc ann
 hcopies len doc
   | len <= 0 = Doc.Internal.Empty
@@ -67,7 +67,7 @@ hcopies len doc
 
 -- | @'copies' n doc@ is a more optimal combinator for @Doc.sep . replicate n doc@
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 copies :: Int -> Doc ann -> Doc ann
 copies len doc
   | len <= 0 = Doc.Internal.Empty
@@ -75,19 +75,19 @@ copies len doc
 
 -- | @'tab'@ inserts a two-space tab.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 tab :: Doc ann
 tab = Doc.Internal.Text 2 "  "
 
 -- | @'tabs' n@ inserts n-many tabs.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 tabs :: Int -> Doc ann
 tabs len = spaces (2 * len)
 
 -- | @'spaces' n@ inserts n-many spaces.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 spaces :: Int -> Doc ann
 spaces len
   | len <= 0 = Doc.Internal.Empty
@@ -96,19 +96,19 @@ spaces len
 
 -- | @'marginr' x n@ inserts @x@ and n-many spaces after.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 marginr :: Int -> Doc ann -> Doc ann
 marginr len doc = Doc.fuse Deep (doc <> spaces len)
 
 -- | @'marginr' x n@ inserts @x@ and n-many spaces after.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 marginl :: Int -> Doc ann -> Doc ann
 marginl len doc = Doc.fuse Deep (spaces len <> doc)
 
 -- | @'segment' n a b@ is a line segment of length @n@ with @a@, @b@ the left and right endpoints.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 segment :: Int -> Doc ann -> Doc ann -> Doc ann
 segment len endl endr
   | len == 0 = Doc.Internal.Empty
@@ -117,7 +117,7 @@ segment len endl endr
 
 -- | Like 'segment', but with an extra argument to specify a 'Doc' used for the line segment.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 segmentWith :: Int -> Doc ann -> Doc ann -> Doc ann -> Doc ann
 segmentWith len doc endl endr
   | len <= 2 = endl <> endr
@@ -125,7 +125,7 @@ segmentWith len doc endl endr
 
 -- | @'spaces' n@ inserts horizontal ruler of length n.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 hruler :: Int -> Doc ann
 hruler len
   | len <= 0 = Doc.Internal.Empty

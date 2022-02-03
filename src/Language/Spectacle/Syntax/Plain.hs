@@ -1,6 +1,6 @@
 -- | Plain or known variable usage and substitution.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 module Language.Spectacle.Syntax.Plain
   ( Plain (Plain),
     Effect (PlainVar),
@@ -22,7 +22,7 @@ import Language.Spectacle.Syntax.Plain.Internal (Effect (PlainVar), Plain (Plain
 
 -- | 'plain' for a variable named @s@ is the value of @s@ from the previous frame of time.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 plain :: (Member Plain effs, Has s a ctx) => Name s -> Lang ctx effs a
 plain nm = scope (PlainVar nm)
 {-# INLINE plain #-}
@@ -30,7 +30,7 @@ plain nm = scope (PlainVar nm)
 -- | Discharge a 'Plain' effect, substituting instances of 'PlainVar' for the values in the given
 -- 'Data.Type.Rec'.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 runPlain :: Rec ctx -> Lang ctx (Plain ': effs) a -> Lang ctx effs a
 runPlain vars = \case
   Pure x -> pure x

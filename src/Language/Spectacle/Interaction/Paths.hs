@@ -2,7 +2,7 @@
 
 -- |
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 module Language.Spectacle.Interaction.Paths
   ( -- * Construction
     toPointSet,
@@ -50,7 +50,7 @@ toPointSet = flip execState Set.empty . start
 
 -- | Like 'splitRow', but always splits on the least row in the set.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 takeMinRow :: Set Point -> (Set Point, Set Point)
 takeMinRow ps =
   case Set.minView ps of
@@ -60,7 +60,7 @@ takeMinRow ps =
 -- | @'splitRow' i ps@ returns a subset of @ps@ containing all elements located on row @i@ and a new set stripped of
 -- this row.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 splitRow :: Int -> Set Point -> (Set Point, Set Point)
 splitRow i = seek Set.empty
   where

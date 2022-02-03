@@ -42,7 +42,7 @@ import Language.Spectacle.Syntax.Quantifier.Internal
 -- returned so long as the given predicate is 'True' for all elements in the container, otherwise a spectacle exception
 -- is raised.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 forall :: (Foldable f, QuantifierIntro m) => f a -> (a -> m Bool) -> m Bool
 forall xs = forallIntro (toList xs)
 {-# INLINE forall #-}
@@ -51,7 +51,7 @@ forall xs = forallIntro (toList xs)
 -- which satisfies the given predicate will be returned. If there exists no element in the container that satisfies the
 -- predicate then an exception is raised.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 exists :: (Foldable f, QuantifierIntro m) => f a -> (a -> m Bool) -> m Bool
 exists xs = existsIntro (toList xs)
 {-# INLINE exists #-}
