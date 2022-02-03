@@ -1,6 +1,6 @@
 -- | Prime (or time) variable usage and substitution.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 module Language.Spectacle.Syntax.Prime
   ( -- * Labels
     Prime (Prime),
@@ -67,7 +67,7 @@ import Language.Spectacle.Syntax.Prime.Internal
 
 -- | 'prime' for a variable named @s@ is the value of @s@ in the next time frame.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 prime :: (Member Prime effs, Has s a ctx) => Name s -> Lang ctx effs a
 prime nm = scope (PrimeVar nm)
 {-# INLINE prime #-}
@@ -75,7 +75,7 @@ prime nm = scope (PrimeVar nm)
 -- | Discharges a 'Prime' effect. This interpreter carries out the substitution of primed variables
 -- using a call-by-need evaluation strategy.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 runPrime ::
   forall ctx effs a.
   Members '[Env, Error RuntimeException, NonDet] effs =>
@@ -110,7 +110,7 @@ runPrime = \case
 -- | Alternative interpreter for 'Prime' that substitutes with a 'Rec' rather than a record of
 -- thunks.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 substPrime :: Rec ctx -> Lang ctx (Prime ': effs) a -> Lang ctx effs a
 substPrime vars = \case
   Pure x -> pure x
@@ -126,7 +126,7 @@ substPrime vars = \case
 
 -- | Evaluates the thunk for a primed variable.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 substitute ::
   (Members '[Env, NonDet, Error RuntimeException] effs, Has s a ctx) =>
   Name s ->

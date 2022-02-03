@@ -4,7 +4,7 @@
 
 -- |
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 module Language.Spectacle.Specification.Action
   ( -- * ActionType
     ActionType (ActionUF, ActionWF, ActionSF),
@@ -26,7 +26,7 @@ import Language.Spectacle.Fairness (Fairness (StrongFair, Unfair, WeakFair), rei
 
 -- | Action declarations.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 data ActionType :: [Ascribe Symbol Type] -> Fairness -> Type where
   ActionUF :: Action ctx Bool -> ActionType ctx 'Unfair
   ActionWF :: Action ctx Bool -> ActionType ctx 'WeakFair

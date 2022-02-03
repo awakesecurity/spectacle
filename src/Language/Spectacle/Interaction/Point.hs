@@ -4,7 +4,7 @@
 
 -- |
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 module Language.Spectacle.Interaction.Point
   ( -- * Points
     Point (Point),
@@ -57,7 +57,7 @@ fromWorld (World hash fs0) = Point hash (docFields fs0) Nothing 0 (Pos 0 0)
         ConE n x xs -> pretty n <+> "=" <+> viaShow x : docFields xs
         NilE -> []
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance Eq Point where
   pt0 == pt1 =
     let lblEq = pt0 ^. label == pt1 ^. label
@@ -65,7 +65,7 @@ instance Eq Point where
      in lblEq && posEq
   {-# INLINE (==) #-}
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance Ord Point where
   compare x y = case (compare `on` pointPos) x y of
     EQ -> (compare `on` pointLabel) x y

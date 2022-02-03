@@ -8,7 +8,7 @@
 --
 -- 2. "Notions of Computations as Monoids" <https://arxiv.org/abs/1406.4823>
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 module Control.Applicative.Day
   ( Day (Day),
     getDay,
@@ -30,12 +30,12 @@ wrapDay ma = Day \mx ->
   ma >>= \case
     Day k -> k mx
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance Functor f => Functor (Day f) where
   fmap f (Day xs) = Day (fmap (first f) . xs)
   {-# INLINE fmap #-}
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance Functor f => Applicative (Day f) where
   pure x = Day (fmap (x,))
   {-# INLINE pure #-}

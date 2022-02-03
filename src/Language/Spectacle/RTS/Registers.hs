@@ -3,7 +3,7 @@
 
 -- | Runtime state used to implement call-by-need evaluation of closures and variable substitution.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 module Language.Spectacle.RTS.Registers
   ( RuntimeState (RuntimeState, plains, primes, callStack, newValues),
     emptyRuntimeState,
@@ -48,7 +48,7 @@ type StateFunSyntax = '[Prime, Plain, NonDet, Error RuntimeException]
 -- * 'callStack' tracks the substitution of primed variables which is used guard against a cyclic
 -- variable relations.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 data RuntimeState ctx = RuntimeState
   { plains :: Rec ctx
   , primes :: Registers ctx
@@ -69,7 +69,7 @@ emptyRuntimeState r =
 
 -- | A record of 'Thunk's.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 newtype Registers ctxt = Registers
   {unRegisters :: RecF (Thunk ctxt) ctxt}
 
@@ -77,25 +77,25 @@ deriving instance Show (RecF (Thunk ctxt) ctxt) => Show (Registers ctxt)
 
 -- | Construct a 'Registers' of unrelated primed variables.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 emptyRegisters :: Rec ctx -> Registers ctx
 emptyRegisters = Registers . Rec.mapF \_ (Identity _) -> Unchanged
 
 -- | Retrieves the value of the variable named @s@ in 'Registers' as a 'Thunk'.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 getRegister :: Has s a ctx => Name s -> Registers ctx -> Thunk ctx a
 getRegister n (Registers rs) = Rec.getF n rs
 
 -- | Sets the value of the variable named @s@ to the result given by evaluating a 'Thunk'.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 setRegister :: Has s a ctx => Name s -> a -> Registers ctx -> Registers ctx
 setRegister n x (Registers rs) = Registers (Rec.setF n (Evaluated x) rs)
 
 -- | Sets the value of the variable named @s@ in 'Registers' to an unevaluated expression.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 setThunk :: Has s a ctx => Name s -> StateFun ctx a -> Registers ctx -> Registers ctx
 setThunk n m (Registers rs) = Registers (Rec.setF n (Thunk m) rs)
 
@@ -105,13 +105,13 @@ setThunk n m (Registers rs) = Registers (Rec.setF n (Thunk m) rs)
 -- * 'Evaluated' result of evaluating a thunk in current world.
 -- * Any primed variable is implicitly 'Unchanged' if it has not been related in the current world.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 data Thunk ctxt a
   = Thunk (StateFun ctxt a)
   | Evaluated a
   | Unchanged
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance Show a => Show (Thunk (s # a ': ctx) a) where
   show (Thunk _) = "<<thunk>>"
   show (Evaluated x) = show x

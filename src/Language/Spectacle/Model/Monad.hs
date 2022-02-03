@@ -2,7 +2,7 @@
 
 -- |
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 module Language.Spectacle.Model.Monad
   ( -- * Model Monad
     ModelIO,
@@ -65,11 +65,11 @@ runModelM model env st =
     & flip runReaderT env
     & flip runRefM st
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 deriving instance MonadIO m => MonadState (ModelState ctx) (ModelM ctx m)
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 deriving instance Monad m => MonadReader ModelEnv (ModelM ctx m)
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 deriving instance Monad m => MonadError (ModelError ctx) (ModelM ctx m)

@@ -1,6 +1,6 @@
 -- | Command-line interface options.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 module Language.Spectacle.Interaction.Options
   ( -- * CLI Options
     OptsCLI (OptsCLI),
@@ -49,7 +49,7 @@ import System.IO (BufferMode (LineBuffering), Handle, IOMode (ReadWriteMode), hS
 
 -- | 'OptsCLI' is a record command-line options for configuring the model checker.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 data OptsCLI = OptsCLI
   { -- | Should the state diagram be drawn?
     optsLogGraph :: Bool
@@ -62,7 +62,7 @@ data OptsCLI = OptsCLI
 
 -- | 'execOptsCLI' runs the command-line options parser.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 execOptsCLI :: IO OptsCLI
 execOptsCLI =
   let option = info (parseOptsCLI <**> helper) idm
@@ -71,7 +71,7 @@ execOptsCLI =
 
 -- | 'parseOptsCLI' is the parses command-line options into an 'OptsCLI'.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 parseOptsCLI :: Parser OptsCLI
 parseOptsCLI =
   OptsCLI
@@ -83,7 +83,7 @@ parseOptsCLI =
 
 -- | CLI parser that consumes the "only-trace" flag.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 pOnlyTrace :: Parser Bool
 pOnlyTrace =
   switch
@@ -96,7 +96,7 @@ pOnlyTrace =
 
 -- | CLI parser that consumes the "log" flag.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 pLogGraph :: Parser Bool
 pLogGraph =
   switch
@@ -112,7 +112,7 @@ pLogGraph =
 -- * @'OutputPath' str@ is a filepath to write logs to.
 -- * 'OutputStdout' represents stdout as the chosen output location.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 data OutputOpt
   = OptStdout
   | OptPath FilePath
@@ -120,13 +120,13 @@ data OutputOpt
 
 -- | Is the output buffer stdout?
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 isStdout :: OutputOpt -> Bool
 isStdout opt = opt == OptStdout
 
 -- | @'handleFrom' opt@ will extract the file hand from the given 'OutputOpt' @opt@.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 handleFrom :: OutputOpt -> IO Handle
 handleFrom opt = do
   handle <- case opt of
@@ -139,13 +139,13 @@ handleFrom opt = do
 -- | CLI parser that consumes the result of 'pOutputPath' if an output path is provided, otherwise 'OutputStd' is
 -- returned by default and logs will be written to stdout.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 pOutputOpt :: Parser OutputOpt
 pOutputOpt = pOutputPath <|> pure OptStdout
 
 -- | CLI parser that consumes a filepath to emit logs to.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 pOutputPath :: Parser OutputOpt
 pOutputPath = OptPath <$> parser
   where

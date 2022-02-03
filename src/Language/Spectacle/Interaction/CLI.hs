@@ -3,7 +3,7 @@
 -- | This module exports the 'CLI' monad, an abstraction over command-line interactions such as emitting logs and
 -- messages from the model checker per options declared by a user.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 module Language.Spectacle.Interaction.CLI
   ( -- * The CLI Monad
     CLI (CLI),
@@ -42,7 +42,7 @@ import qualified Language.Spectacle.Interaction.Options as Opts
 
 -- | The 'CLI' monad is a @'ReaderT' 'IO'@ carrying context of command-line options.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 newtype CLI a = CLI
   {unCLI :: ReaderT ContextCLI IO a}
   deriving stock (Functor)
@@ -52,7 +52,7 @@ newtype CLI a = CLI
 
 -- | Lower 'CLI' into 'IO' given command-line options.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 runCLI :: CLI a -> OptsCLI -> IO a
 runCLI cli opts = do
   ctx <- newContextCLI opts
@@ -69,7 +69,7 @@ runCLI cli opts = do
 
 -- | @'cliPutDoc' doc@ emits the given @doc@ using CLI context's buffer handle.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 cliPutDoc :: Doc AnsiStyle -> CLI ()
 cliPutDoc doc = do
   handle <- asks ctxHandle
@@ -89,7 +89,7 @@ cliPutDoc doc = do
 -- * The type of run the model checker took (either "model check" or "trace").
 -- * The result of the run (either "success" or "failure")
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 cliResultDoc :: Bool -> CLI (Doc AnsiStyle)
 cliResultDoc succeeded = do
   runType <- asks (mkRunTypeDoc . ctxOpts)
@@ -109,7 +109,7 @@ cliResultDoc succeeded = do
 --
 -- Note: the preferred method of construction for 'ContextCLI' is via 'newContextCLI'.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 data ContextCLI = ContextCLI
   { ctxOpts :: OptsCLI
   , ctxHandle :: Handle
@@ -118,7 +118,7 @@ data ContextCLI = ContextCLI
 
 -- | Constructs a 'ContextCLI' from a set of command-line options 'OptsCLI'.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 newContextCLI :: OptsCLI -> IO ContextCLI
 newContextCLI opts = ContextCLI opts <$> Opts.handleFrom (optsLogOutput opts)
 {-# INLINE newContextCLI #-}

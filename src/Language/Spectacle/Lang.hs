@@ -5,7 +5,7 @@
 
 -- | The 'Lang' monad and functions for defining Spectacles syntax as effects.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 module Language.Spectacle.Lang
   ( -- * Lang
     Lang (Pure, Op, Scoped),
@@ -52,7 +52,7 @@ import Language.Spectacle.Lang.Scoped
 
 -- | Used to unwrap the pure value in 'Lang' after all of its effects have been discharged.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 runLang :: Lang ctx '[] a -> a
 runLang (Pure x) = x
 runLang _ =
@@ -75,7 +75,7 @@ runLang _ =
 -- | Appends an effect label @eff@ to the head of a 'Lang's effect signature by the weakening rule
 -- for sum types.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 weaken :: forall eff effs ctx a. Lang ctx effs a -> Lang ctx (eff ': effs) a
 weaken = \case
   Pure x -> pure x

@@ -4,7 +4,7 @@
 
 -- | Model checker errors.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 module Language.Spectacle.Model.ModelError
   ( -- * Model Errors
     ModelError (InitialError, RuntimeError, RefutedError),
@@ -40,7 +40,7 @@ import Language.Spectacle.Specification.Prop (Modality, ppModality)
 
 -- | 'TemporalError' captures information about a temporal property refutation.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 data ModelError :: [Ascribe Symbol Type] -> Type where
   InitialError ::
     ModelError ctx
@@ -51,7 +51,7 @@ data ModelError :: [Ascribe Symbol Type] -> Type where
     TemporalError ctx ->
     ModelError ctx
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 deriving instance HasDict Show ctx => Show (ModelError ctx)
 
 ppModelError :: HasDict Show ctx => ModelError ctx -> Doc AnsiStyle
@@ -70,7 +70,7 @@ ppRuntimeError exc = "runtime error:" <+> viaShow exc
 
 -- | 'TemporalError' captures information about a temporal property refutation.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 data TemporalError ctx = TemporalError
   { errorModality :: Modality
   , errorPropName :: String
@@ -78,7 +78,7 @@ data TemporalError ctx = TemporalError
   , errorPlains :: Maybe (World ctx)
   }
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 deriving instance HasDict Show ctx => Show (TemporalError ctx)
 
 ppTemporalError :: HasDict Show ctx => TemporalError ctx -> Doc AnsiStyle

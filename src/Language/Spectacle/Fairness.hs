@@ -3,7 +3,7 @@
 
 -- |
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 module Language.Spectacle.Fairness
   ( -- * Fairness
     Fairness (Unfair, WeakFair, StrongFair),
@@ -20,7 +20,7 @@ import Type.Reflection (Typeable, someTypeRep)
 
 -- | Enumerated fairness constraints.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 data Fairness
   = Unfair
   | WeakFair
@@ -29,7 +29,7 @@ data Fairness
 
 -- | Reifies a promoted 'Fairness' constructor.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 reifyFairness :: forall (x :: Fairness). Typeable x => Fairness
 reifyFairness
   | actualTyCon == strongTyCon = StrongFair

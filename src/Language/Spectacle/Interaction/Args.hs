@@ -2,7 +2,7 @@
 
 -- |
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 module Language.Spectacle.Interaction.Args where
 
 import Control.Applicative (liftA2)
@@ -70,7 +70,7 @@ tokenReplayOpts = between (single "+replay") (single "-replay") do
 -- 'parseSubtreeOpts' "-from 0x01234567 -to 0x01234567"
 -- @
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 parseSubtreeOpts :: ParseCLI (Fingerprint, Fingerprint)
 parseSubtreeOpts = liftA2 (,) (tokenVarArg "from" tokenFingerprint) (tokenVarArg "to" tokenFingerprint)
 
@@ -80,7 +80,7 @@ parseSubtreeOpts = liftA2 (,) (tokenVarArg "from" tokenFingerprint) (tokenVarArg
 -- 'parseDepthOpts' "-from 10 -to 12"
 -- @
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 parseDepthOpts :: ParseCLI (Int, Int)
 parseDepthOpts = liftA2 (,) (tokenVarArg "from" tokenDepth) (tokenVarArg "to" tokenDepth)
 
@@ -90,7 +90,7 @@ parseDepthOpts = liftA2 (,) (tokenVarArg "from" tokenDepth) (tokenVarArg "to" to
 -- 'parseDepthOpts' "-bound 5"
 -- @
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 parseBoundOpts :: ParseCLI Int
 parseBoundOpts = tokenVarArg "bound" tokenDepth
 
@@ -99,7 +99,7 @@ tokenDepth = read <$> inclusion (many digitChar)
 
 -- | Parse a CLI variable, which for @'tokenVarArg' "from" p@ is a string of the form "-from p(...)".
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 tokenVarArg :: String -> ParseCLI a -> ParseCLI a
 tokenVarArg varName rhs = prefixVar *> rhs
   where

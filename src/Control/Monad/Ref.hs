@@ -1,6 +1,6 @@
 -- | State implemented over 'IORef'.
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 module Control.Monad.Ref
   ( -- * RefM Transformer
     RefM (RefM),
@@ -23,7 +23,7 @@ import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 -- In situations where the state @s@ is a large structure which undergoes frequent alteration, 'RefM' can be used as a
 -- more preformant alternative to state (assuming its impurity is not a concern).
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 newtype RefM s m a = RefM
   {unRefM :: IORef s -> m a}
   deriving (Functor)
@@ -38,7 +38,7 @@ runRefM (RefM k) st = do
 execRefM :: MonadIO m => RefM s m a -> s -> m s
 execRefM refM st = fst <$> runRefM refM st
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance Applicative m => Applicative (RefM s m) where
   pure x = RefM \_ -> pure x
   {-# INLINE pure #-}
@@ -47,18 +47,18 @@ instance Applicative m => Applicative (RefM s m) where
     f ref <*> m ref
   {-# INLINE (<*>) #-}
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance Monad m => Monad (RefM s m) where
   RefM f >>= m = RefM \ref ->
     f ref >>= \x -> unRefM (m x) ref
   {-# INLINE (>>=) #-}
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance MonadIO m => MonadIO (RefM s m) where
   liftIO m = RefM \_ -> liftIO m
   {-# INLINE liftIO #-}
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance MonadIO m => MonadState s (RefM s m) where
   get = RefM (liftIO . readIORef)
   {-# INLINE get #-}

@@ -4,7 +4,7 @@
 
 -- |
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 module Language.Spectacle.Specification.Variable
   ( -- * Syntax
     Var ((:=)),
@@ -45,14 +45,14 @@ class HasVars a where
 
   runInitActions :: VarCtxt a ~ ctxt => a -> RecF (Lang '[] '[NonDet]) ctxt
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance (HasVars a, HasVars b) => HasVars (a :. b) where
   type VarCtxt (a :. b) = VarCtxt a ++ VarCtxt b
 
   runInitActions (xs :. ys) = Rec.concatF (runInitActions xs) (runInitActions ys)
   {-# INLINE runInitActions #-}
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance HasVars (Var var ty) where
   type VarCtxt (Var var ty) = (var # ty) ': '[]
 

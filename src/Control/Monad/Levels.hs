@@ -1,6 +1,6 @@
 -- |
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 module Control.Monad.Levels
   ( -- * Levels
     Levels,

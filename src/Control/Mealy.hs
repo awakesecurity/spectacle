@@ -2,7 +2,7 @@
 
 -- |
 --
--- @since 0.1.0.0
+-- @since 1.0.0
 module Control.Mealy
   ( -- * Mealy Machines
     Mealy,
@@ -39,17 +39,17 @@ type Mealy = MealyM Identity
 runMealy :: Mealy a b -> a -> (b, Mealy a b)
 runMealy (MealyM k) x = runIdentity (k x)
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance (Applicative m, Semigroup b) => Semigroup (MealyM m a b) where
   MealyM f <> MealyM g = MealyM \x -> liftA2 (<>) (f x) (g x)
   {-# INLINE (<>) #-}
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance (Applicative m, Monoid b) => Monoid (MealyM m a b) where
   mempty = MealyM \_ -> pure mempty
   {-# INLINE mempty #-}
 
--- | @since 0.1.0.0
+-- | @since 1.0.0
 instance Applicative m => Applicative (MealyM m a) where
   pure x = MealyM \_ -> pure (x, pure x)
   {-# INLINE pure #-}
