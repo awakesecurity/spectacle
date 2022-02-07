@@ -1,4 +1,3 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ImplicitParams #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -9,73 +8,100 @@
 module Specifications.RateLimit where
 
 import Data.Hashable (Hashable)
-
-import Language.Spectacle (Action, (.=), plain)
-import Language.Spectacle.Checker (modelCheck)
-import Language.Spectacle.Checker.MCError (MCError)
-import Language.Spectacle.Checker.MCMetrics (MCMetrics)
-import Language.Spectacle.Interaction (defaultInteraction)
-import Language.Spectacle.Specification
-  ( Always,
-    Eventually,
+import Language.Spectacle
+  ( Action,
+    ActionType (ActionUF),
     Fairness (Unfair),
-    Spec(Spec),
-    Var((:=)),
-    type VariableCtxt,
-    type (!>)(UnfairAction),
-    type (/\),
-    type (\/)((:\/:)),
+    Specification (Specification),
+    interaction,
+    oneOf,
+    plain,
+    specInit,
+    specNext,
+    specProp,
+    (.=),
+    pattern ConF,
+    pattern NilF,
+    type (#),
   )
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
--- Constants we will use throughout the specification
-data RateLimitConsts = RateLimitConsts
-  { window :: Int -- The interval of time we want to limit messages in.
-  , msgLimit :: Int -- The maximum number of messages we can receive with the set interval.
-  }
-
-newtype Message = Message {msgAge :: Int}
-  deriving (Hashable, Show)
-  deriving Num via Int
+interact :: IO ()
+interact = interaction rateLimitSpec
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
-type RateLimitSpec =
-  Spec
-    (Var "msgLog" [Message])
-    ("sendMessage" !> 'Unfair \/ "passTime" !> 'Unfair)
-    (Always "passTime" /\ Eventually "sendMessage")
+data Constants = Constants
+  { constLifetime :: Int
+  , constMaxCalls :: Int
+  }
 
-sendMessage :: (?constants :: RateLimitConsts) => Action (VariableCtxt RateLimitSpec) Bool
-sendMessage = do
-  let RateLimitConsts {..} = ?constants
-  msgLog <- plain #msgLog
+newtype Call = Call
+  {getCallLifetime :: Int}
+  deriving
+    (Eq, Hashable, Num, Ord, Show)
+    via Int
 
-  #msgLog .= return (0 : msgLog)
+-- ---------------------------------------------------------------------------------------------------------------------
 
-  return (length msgLog <= msgLimit)
+type RateLimitSpec = Specification SpecVar SpecActions SpecProp
 
-passTime :: (?constants :: RateLimitConsts) => Action (VariableCtxt RateLimitSpec) Bool
-passTime = do
-  let RateLimitConsts {..} = ?constants
+type SpecVar =
+  '[ "calls" # [Call]
+   ]
 
-  #msgLog .= (filter ((<= window) . msgAge) . map (1 +) <$> plain #msgLog)
+type SpecActions =
+  '[ "nextSend" # 'Unfair
+   , "nextWait" # 'Unfair
+   ]
 
-  return True
+type SpecProp =
+  '[
+   ]
 
-spec :: RateLimitSpec
-spec = Spec specInit specNext
+rateLimitSpec :: RateLimitSpec
+rateLimitSpec =
+  let specInit = ConF #calls (pure []) NilF
+      specNext =
+        ConF #nextSend (ActionUF nextSend)
+          . ConF #nextWait (ActionUF nextWait)
+          $ NilF
+      specProp = NilF
+   in Specification {..}
   where
-    specInit = #msgLog := return []
+    ?constants = rateLimitConstants
 
-    specNext =
-      let ?constants = RateLimitConsts { window = 2 , msgLimit = 5 }
-      in UnfairAction #sendMessage sendMessage
-           :\/: UnfairAction #passTime passTime
+rateLimitConstants :: Constants
+rateLimitConstants =
+  let constLifetime = 2
+      constMaxCalls = 5
+   in Constants {..}
 
-test :: Either [MCError (VariableCtxt RateLimitSpec)] MCMetrics
-test = modelCheck spec
+nextSend :: (?constants :: Constants) => Action SpecVar Bool
+nextSend = do
+  numCalls <- length <$> plain #calls
+  newCalls <- makeCalls numCalls
+  #calls .= fmap (mappend newCalls) (plain #calls)
 
-check :: IO ()
-check = defaultInteraction spec
+  pure (numCalls < constMaxCalls)
+  where
+    Constants {..} = ?constants
+
+    makeCalls :: Int -> Action SpecVar [Call]
+    makeCalls numCalls = do
+      count <- oneOf [1 .. constMaxCalls - numCalls]
+      pure (replicate count 0)
+
+nextWait :: (?constants :: Constants) => Action SpecVar Bool
+nextWait = do
+  calls <- rmLimitCalls <$> plain #calls
+  #calls .= pure (map (1 +) calls)
+
+  pure True
+  where
+    Constants {..} = ?constants
+
+    rmLimitCalls :: [Call] -> [Call]
+    rmLimitCalls = filter \msg ->
+      getCallLifetime msg < constLifetime
