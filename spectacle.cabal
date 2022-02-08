@@ -49,10 +49,10 @@ common common
   default-extensions:
      BangPatterns BlockArguments ConstraintKinds DataKinds DefaultSignatures
      DeriveFunctor DeriveGeneric DerivingVia FlexibleContexts FlexibleInstances
-     GADTs LambdaCase MagicHash MultiParamTypeClasses PatternSynonyms PolyKinds
-     RankNTypes RoleAnnotations ScopedTypeVariables StandaloneDeriving
-     StandaloneKindSignatures TypeApplications TypeOperators UnicodeSyntax
-     ViewPatterns
+     GADTs ImportQualifiedPost LambdaCase MagicHash MultiParamTypeClasses
+     PatternSynonyms PolyKinds RankNTypes RoleAnnotations ScopedTypeVariables
+     StandaloneDeriving StandaloneKindSignatures TypeApplications TypeOperators
+     UnicodeSyntax ViewPatterns
 
 library
   import:              common
@@ -181,10 +181,12 @@ test-suite integration-tests
     Specifications.Diehard
     Specifications.RateLimit
     Specifications.SimpleClock
+    Specifications.SpanningTree
     Specifications.Status
 
   build-depends:
       spectacle
+    , containers
     , hashable
     , hedgehog
     , tasty
