@@ -11,7 +11,9 @@ import Language.Spectacle.Specification (Specification)
 
 import qualified Specifications.BitClock as BitClock
 import qualified Specifications.Diehard as Diehard
+import qualified Specifications.RateLimit as RateLimit
 import qualified Specifications.SimpleClock as SimpleClock
+import qualified Specifications.SpanningTree as SpanningTree
 import qualified Specifications.Status as Status
 
 -- ---------------------------------------------------------------------------------------------------------------------
@@ -20,10 +22,12 @@ main :: IO ()
 main =
   defaultMain $
     testGroup
-      "integration tests"
+      "Integration"
       [ testProperty "Specifications.BitClock" (testCheckVerify BitClock.bitClockSpec)
       , testProperty "Specifications.Diehard" (testCheckRefute Diehard.diehardSpec)
+      , testProperty "Specifications.RateLimit" (testCheckVerify RateLimit.rateLimitSpec)
       , testProperty "Specifications.SimpleClock" (testCheckVerify SimpleClock.clockSpec)
+      , testProperty "Specifications.SpanningTree" (testCheckVerify SpanningTree.spanTreeSpec)
       , testProperty "Specifications.Status" (testCheckVerify Status.statusSpec)
       ]
 

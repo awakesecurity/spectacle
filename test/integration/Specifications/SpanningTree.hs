@@ -1,176 +1,163 @@
 {-# LANGUAGE ImplicitParams #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+
+{-# OPTIONS -fno-warn-orphans #-}
 
 module Specifications.SpanningTree where
 
-import Control.Monad (forM)
-import Data.HashMap.Strict (HashMap)
-import qualified Data.HashMap.Strict as HashMap
-
+import Data.Hashable (Hashable (hashWithSalt))
+import Data.Map (Map)
+import Data.Map qualified as Map
+import Data.Traversable (for)
+import GHC.Exts (IsString)
 import Language.Spectacle
   ( Action,
-    Initial,
-    Invariant,
-    Terminate,
-    defaultInteraction,
-    define,
-    enabled,
+    ActionType (ActionWF),
+    Fairness (WeakFair),
+    Modality (Always),
+    Specification (Specification),
+    Temporal,
+    TemporalType (PropG),
     exists,
-    modelCheck,
+    interaction,
     plain,
-    strongFair,
+    prime,
+    specInit,
+    specNext,
+    specProp,
     (.=),
-    (==>),
-    (\/),
+    pattern ConF,
+    pattern NilF,
     type (#),
-  )
-import Language.Spectacle.Specification
-  ( Specification
-      ( Specification,
-        fairnessConstraint,
-        initialAction,
-        nextAction,
-        temporalFormula,
-        terminationFormula
-      ),
   )
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
+interact :: IO ()
+interact = interaction spanTreeSpec
+
+-- ---------------------------------------------------------------------------------------------------------------------
+
 data Constants = Constants
-  { nodes :: [String]
-  , edges :: [(String, String)]
-  , root :: String
-  , maxCardinality :: Int
+  { constNodes :: [Node]
+  , constEdges :: [(Node, Node)]
+  , constRoot :: Node
   }
 
-data Node = Node
-  { nodeId :: String
-  , nodeDist :: Int
-  , nodeParent :: String
-  , nodeNeighbors :: [String]
-  }
+newtype Node = Node {getNode :: String}
+  deriving (Eq, Ord, Hashable, IsString, Show) via String
 
-type SpanningTree =
-  '[ -- Parent/Child relationship in the edges of the spanning tree where the key of the hashmap is the child node and
-     -- the mapped value is the parent.
-     "relations" # HashMap String String
-   , -- Mapping from a node in the spanning tree to the distance from its parent.
-     "dists" # HashMap String Int
+instance (Hashable a, Hashable b) => Hashable (Map a b) where
+  hashWithSalt s = hashWithSalt s . Map.toList
+
+-- ---------------------------------------------------------------------------------------------------------------------
+
+type SpanTreeSpec = Specification SpecVar SpecActions SpecProp
+
+type SpecVar =
+  '[ "hierarchy" # Map Node Node
+   , "distances" # Map Node Int
    ]
 
-neighbors :: (?constants :: Constants) => String -> [String]
-neighbors node = [m | (m, n) <- edges ?constants, node == n]
+type SpecActions =
+  '[ "nextSpan" # 'WeakFair
+   ]
 
-initial :: (?constants :: Constants) => Initial SpanningTree ()
-initial = do
-  let Constants {..} = ?constants
-  #relations `define` do
-    let mom = [(node, node) | node <- nodes]
-    return (HashMap.fromList mom)
-  #dists `define` do
-    let dists = [(node, maxCardinality) | node <- nodes, node /= root]
-    return (HashMap.fromList ((root, 0) : dists))
+type SpecProp =
+  '[ "safety" # 'Always
+   ]
 
-next :: (?constants :: Constants) => Action SpanningTree Bool
-next = do
-  let Constants {..} = ?constants
+spanTreeSpec :: SpanTreeSpec
+spanTreeSpec =
+  let specInit =
+        ConF #hierarchy (pure initHierarchy)
+          . ConF #distances (pure initDistances)
+          $ NilF
+      specNext =
+        let ?constants = spanTreeConstants
+         in ConF #nextSpan (ActionWF nextSpan) NilF
+      specProp =
+        let ?constants = spanTreeConstants
+         in ConF #safety (PropG safety) NilF
+   in Specification {..}
+  where
+    constants = spanTreeConstants
 
-  relations <- plain #relations
-  dists <- plain #dists
+    maxCardinality = length (constNodes constants)
 
-  exists nodes \n ->
-    exists (neighbors n) \m -> do
-      let distM :: Int = distance m dists
-          distN :: Int = distance n dists
+    initHierarchy = Map.fromList (map (\n -> (n, n)) (constNodes constants))
+
+    initDistances = Map.fromList do
+      node <- constNodes constants
+      if node == constRoot constants
+        then pure (node, 0)
+        else pure (node, maxCardinality)
+
+spanTreeConstants :: Constants
+spanTreeConstants =
+  let constNodes = ["a", "b", "c"]
+      constEdges = [("a", "b"), ("b", "c")]
+      constRoot = "a"
+   in Constants {..}
+
+nextSpan :: (?constants :: Constants) => Action SpecVar Bool
+nextSpan = do
+  hierarchy <- plain #hierarchy
+  distances <- plain #distances
+  exists constNodes \n ->
+    exists (neighborsOf n) \m -> do
+      let distM = distances Map.! m
+      let distN = distances Map.! n
       exists [distM + 1 .. distN - 1] \d -> do
-        #dists .= return (HashMap.insert n d dists)
-        #relations .= return (HashMap.insert n m relations)
+        #distances .= pure (Map.insert n d distances)
+        #hierarchy .= pure (Map.insert n m hierarchy)
         return (distM < 1 + distN && m /= n)
   where
-    distance :: (?constants :: Constants) => String -> HashMap String Int -> Int
-    distance n ds = HashMap.lookupDefault (maxCardinality ?constants) n ds
+    Constants {..} = ?constants
 
-formula :: (?constants :: Constants) => Invariant SpanningTree Bool
-formula = do
-  not <$> enabled ==> postCondition
+safety :: (?constants :: Constants) => Temporal SpecVar Bool
+safety = do
+  distances <- plain #distances
+  distances' <- prime #distances
+  if distances == distances'
+    then
+      and <$> for constNodes \node -> do
+        root <- isRoot node
+        leaf <- isLeaf node
+        branch <- isBranch node
+        pure (root || leaf || branch)
+    else pure True
   where
-    postCondition :: Invariant SpanningTree Bool
-    postCondition = do
-      let Constants {..} = ?constants
-      and <$> forM nodes \node ->
-        isRoot node \/ isLeaf node \/ isNode node
+    Constants {..} = ?constants
 
-getNode :: (?constants :: Constants) => String -> Invariant SpanningTree (Maybe Node)
-getNode name = do
-  dist <- HashMap.lookup name <$> plain #dists
-  parent <- HashMap.lookup name <$> plain #relations
-  return (Node name <$> dist <*> parent <*> pure (neighbors name))
+    maxCardinality = length constNodes
 
-furthestNeighbors :: (?constants :: Constants) => String -> Invariant SpanningTree Bool
-furthestNeighbors name = do
-  let Constants {..} = ?constants
-  getNode name >>= \case
-    Nothing -> return False
-    Just Node {..} -> do
-      dists <- plain #dists
-      return (all (\n -> Just maxCardinality == HashMap.lookup n dists) nodeNeighbors)
+    isLeaf node = do
+      distance <- fmap (Map.! node) (plain #distances)
+      neighbor <- fmap (Map.! node) (plain #hierarchy)
 
-isRoot :: (?constants :: Constants) => String -> Invariant SpanningTree Bool
-isRoot name = do
-  let Constants {..} = ?constants
-  getNode name >>= \case
-    Nothing -> return False
-    Just Node {..} -> do
-      furthest <- furthestNeighbors name
-      return (nodeId == root && nodeDist == 0 && furthest)
+      ns <- for (neighborsOf node) \nbr -> do
+        d <- fmap (Map.! nbr) (plain #distances)
+        pure (d == maxCardinality)
 
-isLeaf :: (?constants :: Constants) => String -> Invariant SpanningTree Bool
-isLeaf name = do
-  let Constants {..} = ?constants
-  getNode name >>= \case
-    Nothing -> return False
-    Just Node {..} -> do
-      furthest <- furthestNeighbors name
-      return (nodeDist == maxCardinality && name == nodeParent && furthest)
+      pure (and ns && neighbor == node && distance == maxCardinality)
 
-isNode :: (?constants :: Constants) => String -> Invariant SpanningTree Bool
-isNode name = do
-  let Constants {..} = ?constants
-  getNode name >>= \case
-    Nothing -> return False
-    Just Node {..} -> do
-      dists <- plain #dists
-      let closeToParent = maybe False (\d -> nodeDist == d + 1) (HashMap.lookup nodeParent dists)
-      return (1 <= nodeDist && nodeDist <= maxCardinality && nodeParent `elem` nodeNeighbors && closeToParent)
+    isBranch node = do
+      distance <- fmap (Map.! node) (plain #distances)
+      neighbor <- fmap (Map.! node) (plain #hierarchy)
+      nbrDist <- fmap (Map.! neighbor) (plain #distances)
 
-termination :: Terminate ctx Bool
-termination = not <$> enabled
+      pure ((neighbor `elem` neighborsOf node) && distance == nbrDist + 1)
 
-check :: IO ()
-check = do
-  -- let ?constants =
-  --       Constants
-  --         { nodes = ["a", "b", "c", "d", "e"]
-  --         , edges = [("a", "b"), ("a", "d"), ("b", "c"), ("d", "c"), ("c", "e"), ("e", "d")]
-  --         , root = "a"
-  --         , maxCardinality = 4
-  --         }
-  let ?constants =
-        Constants
-          { nodes = ["a", "b", "c"]
-          , edges = [("a", "b"), ("b", "c")]
-          , root = "a"
-          , maxCardinality = 2
-          }
-  let spec :: Specification SpanningTree
-      spec =
-        Specification
-          { initialAction = initial
-          , nextAction = next
-          , temporalFormula = formula
-          , terminationFormula = Just termination
-          , fairnessConstraint = strongFair
-          }
-  defaultInteraction (modelCheck spec)
+    isRoot node = do
+      distance <- fmap (Map.! node) (plain #distances)
+      neighbor <- fmap (Map.! node) (plain #hierarchy)
+      pure (node == constRoot && distance == 0 && neighbor == node)
+
+neighborsOf :: (?constants :: Constants) => Node -> [Node]
+neighborsOf node = [m | (m, n) <- constEdges, node == n]
+  where
+    Constants {..} = ?constants
