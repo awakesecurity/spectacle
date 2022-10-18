@@ -1,5 +1,3 @@
-{-# LANGUAGE TupleSections #-}
-
 -- | Effect queues.
 --
 -- @since 1.0.0
@@ -24,7 +22,7 @@ import Control.Applicative.Phases (Phases (Here, There), liftPhases, lowerPhases
 type Queue f = Day (Phases f)
 
 runQueue :: Applicative f => Queue f a -> f a
-runQueue = fmap fst . lowerPhases . flip getDay (Here ())
+runQueue q = fmap fst (lowerPhases (getDay q (Here ())))
 
 liftQueue :: Monad f => Queue f (f a) -> Queue f a
 liftQueue (Day f) = Day \x ->
@@ -33,7 +31,9 @@ liftQueue (Day f) = Day \x ->
    in liftA2 (,) (liftPhases fx) fy
 
 wrapQueue :: Monad f => f (Queue f a) -> Queue f a
-wrapQueue f = Day \x -> wrapPhases (fmap (($ x) . getDay) f)
+wrapQueue f = Day \x ->
+  let k a b = getDay b a -- NB: *necessary* for simplified subsumption in GHC 9.0, sigh...
+   in wrapPhases (fmap (k x) f)
 
 joinQueue :: Monad f => Queue f (Queue f a) -> Queue f a
 joinQueue (Day f) = Day \x ->

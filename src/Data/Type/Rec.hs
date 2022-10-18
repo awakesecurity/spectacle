@@ -129,11 +129,13 @@ instance HasDict Show ctx => Show (Rec ctx) where
       go NilE = []
       go (ConE name field xs) = (show name ++ " = " ++ show field) : go (evident @Show xs)
 
+
 -- | @since 0.1.0.0
-instance HasDict Hashable ctx => Hashable (Rec ctx) where
-  hashWithSalt salt rs = case evident @Hashable rs of
+instance (HasDict Eq ctx, HasDict Hashable ctx) => Hashable (Rec ctx) where
+  hashWithSalt salt rs = case evident @Eq rs of
     NilE -> salt
-    ConE _ x xs -> hashWithSalt (hashWithSalt salt x) xs
+    ConE {} -> case evident @Hashable rs of
+      ConE _ x xs -> hashWithSalt (hashWithSalt salt x) xs
 
 set :: Has s a ctx => Name s -> a -> Rec ctx -> Rec ctx
 set name x = setF name (Identity x)

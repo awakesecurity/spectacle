@@ -33,7 +33,7 @@ import Prettyprinter (line)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
-interaction :: (HasDict Hashable ctx, HasDict Show ctx) => Specification ctx acts form -> IO ()
+interaction :: (HasDict Eq ctx, HasDict Hashable ctx, HasDict Show ctx) => Specification ctx acts form -> IO ()
 interaction spec = do
   opts <- Opts.execOptsCLI
   result <-
