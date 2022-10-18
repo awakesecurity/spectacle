@@ -61,12 +61,12 @@ library
   build-depends:
       comonad
     , containers >= 0.6
-    , hashable >= 1.3.0.0
+    , hashable >= 1.3.4.0
     , microlens
     , microlens-mtl
     , mtl >= 2.2
     , optparse-applicative
-    , logict
+    , logict >= 0.8
     , prettyprinter
     , prettyprinter-ansi-terminal
     , text

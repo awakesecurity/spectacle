@@ -1,7 +1,6 @@
 dist
 dist-*
 cabal-dev
-hie.yaml
 TAGS
 *.o
 *.hi
@@ -26,3 +25,4 @@ cabal.project.local~
 result
 result-*
 .DS_Store
+.direnv
