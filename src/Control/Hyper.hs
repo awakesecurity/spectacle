@@ -12,5 +12,8 @@ import Data.Kind (Type)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
+-- | Hyperfunction transformer.
+--
+-- | @since 1.0.0
 newtype HyperM :: (Type -> Type) -> Type -> Type -> Type where
   HyperM :: {invokeM :: m ((HyperM m a b -> a) -> b)} -> HyperM m a b

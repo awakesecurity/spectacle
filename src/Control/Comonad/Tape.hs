@@ -1,3 +1,6 @@
+-- | A @'Tape'@ type for walking over and focusing on sequences of values.
+--
+-- @since 1.0.0
 module Control.Comonad.Tape
   ( -- * Tape Comonad
     Tape (Tape, before, focus, after),
@@ -25,6 +28,10 @@ import qualified Data.Sequence as Seq
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
+-- | A simple type reflecting a "storage tape" -- a type with the ability to move left and right
+-- down the tape, focusing on individual elements.
+--
+-- | @since 1.0.0
 data Tape a = Tape {before :: Seq a, focus :: a, after :: Seq a}
   deriving (Eq, Functor, Show)
 
@@ -93,26 +100,43 @@ viewAt i xs =
     (lower :|> x, Empty) -> Just (Tape lower x Empty)
     (lower, x :<| upper) -> Just (Tape lower x upper)
 
+-- | Convert a tape to a @'Seq'@
+--
+-- @since 1.0.0
 toSeq :: Tape a -> Seq a
 toSeq (Tape lower x upper) = lower <> (x <| upper)
 
+-- | Shift a tape @n@ items to the left.
+--
+-- @since 1.0.0
 shiftl :: Int -> Tape a -> Tape a
 shiftl i (Tape lw0 x0 up0) =
   case Seq.splitAt (length lw0 - abs i) lw0 of
     (_, Empty) -> Tape lw0 x0 up0
     (lw, x :<| up) -> Tape lw x (up <> (x0 <| up0))
 
+-- | Shift a tape @n@ items to the right.
+--
+-- @since 1.0.0
 shiftr :: Int -> Tape a -> Tape a
 shiftr i (Tape lw0 x0 up0) =
   case Seq.splitAt (abs i) up0 of
     (Empty, _) -> Tape lw0 x0 up0
     (lw :|> x, up) -> Tape (lw0 <> (x0 <| lw)) x up
 
+-- | "Tabulate" a tape, producing a sequence of tapes, with the focus of successive
+-- tapes moving piecewise-leftward.
+--
+-- @since 1.0.0
 tabulatel :: Tape a -> Seq (Tape a)
 tabulatel sp@(Tape lower _ _)
   | Seq.null lower = Seq.empty
   | otherwise = tabulatel (shiftl 1 sp) |> shiftl 1 sp
 
+-- | "Tabulate" a tape, producing a sequence of tapes, with the focus of successive
+-- tapes moving piecewise-rightward.
+--
+-- @since 1.0.0
 tabulater :: Tape a -> Seq (Tape a)
 tabulater sp@(Tape _ _ up)
   | Seq.null up = Seq.empty

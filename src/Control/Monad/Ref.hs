@@ -25,9 +25,15 @@ import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 --
 -- @since 1.0.0
 newtype RefM s m a = RefM
-  {unRefM :: IORef s -> m a}
+  { -- | Acquire the underlying @'IORef'@ for a monadic stateful computation.
+    unRefM :: IORef s -> m a
+  }
   deriving (Functor)
 
+-- | Run an impure reference-using computation, given a state, resulting in the
+-- final state and return value.
+--
+-- @since 1.0.0
 runRefM :: MonadIO m => RefM s m a -> s -> m (s, a)
 runRefM (RefM k) st = do
   ref <- liftIO (newIORef st)
@@ -35,6 +41,10 @@ runRefM (RefM k) st = do
   st' <- liftIO (readIORef ref)
   return (st', ret)
 
+-- | Run an impure reference-using computation, given a state, resulting in the
+-- final state.
+--
+-- @since 1.0.0
 execRefM :: MonadIO m => RefM s m a -> s -> m s
 execRefM refM st = fst <$> runRefM refM st
 
