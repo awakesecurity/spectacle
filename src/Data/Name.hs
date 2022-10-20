@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- | @'Name'@s for variables in a Spectacle specification.
 module Data.Name
   ( Name (Name),
     inferName,
@@ -46,6 +47,7 @@ instance Eq (Name s) where
   -- Nominal equality
   _ == _ = True
 
+-- | Infer a @'Name'@ from a type-level @'Symbol'@
 inferName :: KnownSymbol s => Name s
 inferName = Name Proxy
 {-# INLINE CONLIKE inferName #-}

@@ -1,4 +1,4 @@
--- |
+-- | A @'Bag'@ of @'Node'@s.
 --
 -- @since 0.1.0.0
 module Data.Bag
@@ -15,18 +15,28 @@ import Data.Node (Node (Leaf, (:*:)))
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
+-- | A bag that either contains a set of @'Node'@s (@'Some'@ xs) or nothing at all (@'None'@).
+--
+-- @
+-- Bag a ~ Maybe [a]
+-- @
+--
+-- @since 1.0.0
 data Bag :: Type -> Type where
   None :: Bag a
   Some :: Node a -> Bag a
   deriving (Show)
 
+-- | An empty @'Bag'.
 empty :: Bag a
 empty = None
 
+-- | Concatenate a value onto a @'Bag'@.
 cons :: a -> Bag a -> Bag a
 cons x None = Some (Leaf x)
 cons x (Some xs) = Some (Leaf x :*: xs)
 
+-- | Construct a single-value @'Bag'@ from a value @a@.
 singleton :: a -> Bag a
 singleton = Some . Leaf
 

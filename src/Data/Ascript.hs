@@ -1,5 +1,8 @@
 {-# LANGUAGE TypeFamilies #-}
 
+-- | Type ascription.
+--
+-- @since 1.0.0
 module Data.Ascript
   ( Ascribe (..),
     type (#),

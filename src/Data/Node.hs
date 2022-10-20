@@ -1,3 +1,6 @@
+-- | A simple tree of @'Node'@s.
+--
+-- @since 1.0.0
 module Data.Node
   ( Node (Leaf, (:*:)),
   )
@@ -10,8 +13,11 @@ import GHC.Base (Applicative (liftA2))
 
 infixr 5 :*:
 
+-- | A simple type of binary trees where the @'Node'@ is strict in the leaf
 data Node :: Type -> Type where
+  -- | A leaf of the tree. The value is strict.
   Leaf :: !a -> Node a
+  -- | 2-way branch for a tree.
   (:*:) :: Node a -> Node a -> Node a
   deriving (Show)
 
