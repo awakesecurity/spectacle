@@ -79,8 +79,6 @@ library
     , Control.Comonad.Tape
     , Control.Hyper
     , Control.Mealy
-    , Control.Monad.Levels
-    , Control.Monad.Levels.Internal
     , Control.Monad.Ref
     , Control.Natural
     , Data.Ascript
