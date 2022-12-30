@@ -37,5 +37,5 @@ reifyFairness
   | otherwise = Unfair
   where
     actualTyCon = someTypeRep (Proxy @x)
-    strongTyCon = someTypeRep (Proxy @ 'StrongFair)
-    weakTyCon = someTypeRep (Proxy @ 'WeakFair)
+    strongTyCon = someTypeRep (Proxy @'StrongFair)
+    weakTyCon = someTypeRep (Proxy @'WeakFair)
