@@ -76,7 +76,7 @@ data Specification ctx acts form where
     } ->
     Specification ctx acts form
 
-runInitialSpec :: HasDict Hashable ctx => Specification ctx acts form -> Set (World ctx)
+runInitialSpec :: (HasDict Eq ctx, HasDict Hashable ctx) => Specification ctx acts form -> Set (World ctx)
 runInitialSpec spec =
   specInit spec
     & Rec.mapF (\_ -> runLang . runNonDetA @[])
