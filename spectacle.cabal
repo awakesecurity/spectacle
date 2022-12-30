@@ -66,7 +66,7 @@ library
     , microlens-mtl
     , mtl >= 2.2
     , optparse-applicative
-    , prettyprinter
+    , prettyprinter >=1.7.0
     , prettyprinter-ansi-terminal
     , text
     , transformers >= 0.5

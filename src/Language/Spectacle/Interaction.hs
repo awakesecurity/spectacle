@@ -16,7 +16,7 @@ import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Reader (asks)
 import Data.Either (isRight)
 import Data.Hashable (Hashable)
-import Data.Text.Prettyprint.Doc (line)
+import Prettyprinter (line)
 
 import Data.Functor.Tree (Tree)
 import Data.Type.Rec (HasDict)
