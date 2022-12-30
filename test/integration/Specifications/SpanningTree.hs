@@ -8,7 +8,7 @@
 
 module Specifications.SpanningTree where
 
-import Data.Hashable (Hashable (hashWithSalt))
+import Data.Hashable (Hashable)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Traversable (for)
@@ -49,9 +49,6 @@ data Constants = Constants
 
 newtype Node = Node {getNode :: String}
   deriving (Eq, Ord, Hashable, IsString, Show) via String
-
-instance (Hashable a, Hashable b) => Hashable (Map a b) where
-  hashWithSalt s = hashWithSalt s . Map.toList
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
