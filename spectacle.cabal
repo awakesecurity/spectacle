@@ -21,6 +21,7 @@ build-type:          Simple
 tested-with:
   GHC == 8.10.3
   GHC == 8.10.4
+  GHC == 9.4.3
 
 extra-source-files:
   README.md
@@ -44,7 +45,7 @@ common common
     -Wunused-packages
 
   build-depends:
-      base >=4.14 && <4.15
+      base >=4.14 && <4.18
 
   default-extensions:
      BangPatterns BlockArguments ConstraintKinds DataKinds DefaultSignatures
