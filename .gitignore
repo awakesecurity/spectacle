@@ -1,28 +1,50 @@
-dist
-dist-*
-cabal-dev
-TAGS
-*.o
-*.hi
-*.hie
-*.chi
-*.chs.h
-*.dyn_o
-*.dyn_hi
+
+# Build Products
+**/*.dyn_o
+**/*.dyn_hi
+**/*.o
+
+# Direnv products
+**/.direnv
+
+# Haskell 
+**/*.hi
+**/*.hie
+**/*.chi
+**/*.chs.h
+.ghc.environment.*
 .hpc
 .hsenv
-.cabal-sandbox/
-cabal.sandbox.config
-*.prof
-*.aux
-*.hp
-*.eventlog
-.stack-work/
+.HTF/
+
+# Haskell debugging products
+**/*.prof
+**/*.aux
+**/*.hp
+**/*.eventlog
+
+# Haskell cabal products 
+cabal-dev
 cabal.project.local
 cabal.project.local~
-.HTF/
-.ghc.environment.*
+cabal.sandbox.config
+.cabal-sandbox/
+dist
+dist-*
+
+# Haskell stack products
+.stack-work/
+
+# Editor: Emacs 
+**/TAGS
+
+# Editor: VSCode
+**/.vscode
+*.code-workspace
+
+# Nix
 result
 result-*
+
+# System - MacOS
 .DS_Store
-.direnv

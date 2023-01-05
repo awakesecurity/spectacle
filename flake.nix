@@ -13,29 +13,55 @@
         system.aarch64-darwin
       ];
 
-      ghcVersion = "9.2.4";
+      ghc = "ghc924";
 
     in flake-utils.lib.eachSystem systems (system:
       let
-        overlays = [ ];
-        pkgs = import nixpkgs { inherit system overlays; };
+        pkgs = import nixpkgs { 
+          inherit system; 
 
-        haskellPackages =
-          # Mangle the version string into the proper attribute name, then use that.
-          let attr = with pkgs.lib; "ghc" + (concatStrings (splitString "." ghcVersion));
-          in pkgs.haskell.packages."${attr}";
+          config.packageOverrides = import (nix/overlays.nix) {
+            inherit ghc;
+          };
+        };
+
+        haskell-packages = pkgs.haskell.packages."${ghc}";
 
         packages = flake-utils.lib.flattenTree rec {
-          default = spectacle;
-          spectacle = haskellPackages.callCabal2nix "spectacle" ./. {
-            logict = haskellPackages.logict_0_8_0_0;
-          };
-          inherit (haskellPackages) fourmolu;
+          inherit (haskell-packages)
+            haskell-language-server
+            fourmolu;
+
+          default = haskell-packages.spectacle;
         };
 
         apps = {
-          fourmolu = { type = "app"; program = "${packages.fourmolu}/bin/fourmolu"; };
+          fourmolu = { 
+            type = "app"; 
+            program = "${packages.fourmolu}/bin/fourmolu"; 
+          };
+          haskell-language-server = { 
+            type = "app"; 
+            program = "${packages.haskell-language-server}/bin/haskell-language-server"; 
+          };
         };
 
-      in { inherit packages apps; });
+        devShells = {
+          default = haskell-packages.shellFor {
+            name = "grpc-mqtt";
+
+            buildInputs = with haskell-packages; [
+              fourmolu
+              haskell-language-server
+            ];
+
+            packages = pkgs: [
+              pkgs.spectacle
+            ];
+          };
+        };
+
+      in { 
+        inherit apps devShells packages; 
+      });
 }
