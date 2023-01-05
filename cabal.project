@@ -1,3 +1,4 @@
 tests: true
+documentation: true
 packages:
   *

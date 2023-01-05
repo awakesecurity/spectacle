@@ -42,7 +42,7 @@ runLoom :: Loom m n a b -> (m a -> n b)
 runLoom (Loom ctx eta) m = eta (m <$ ctx)
 {-# INLINE runLoom #-}
 
--- | 'Loom' composition, 'Loom's can be constructed with the 'bind', 'lift', 'run', and 'hoist' combinators
+-- | 'Loom' composition, 'Loom's can be constructed with the 'bind', 'lift', 'runLoom', and 'hoist' combinators
 -- and subsequently composed to produce complex weaves in a straightforward way:
 --
 -- @

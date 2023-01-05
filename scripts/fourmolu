@@ -8,7 +8,7 @@ if [ "$#" -eq 0 ]; then
 fi
 
 git_root=$(git rev-parse --show-toplevel)
-fourmolu=$(nix-build "${git_root}/nix/pkgs.nix" --attr haskellPackages.fourmolu  --no-out-link)
+fourmolu=$(nix build ".#fourmolu" --print-out-paths --no-link)
 standard_options=(\
   --ghc-opt -XTypeApplications \
   --ghc-opt -XBangPatterns \

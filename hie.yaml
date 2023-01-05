@@ -1,0 +1,8 @@
+cradle:
+  cabal:
+    - path: "./src/"
+      component: "lib:spectacle"
+    - path: "./test/integration/"
+      component: "spectacle:integration-tests"
+    - path: "./test/unit-tests/"
+      component: "spectacle:unit-tests"

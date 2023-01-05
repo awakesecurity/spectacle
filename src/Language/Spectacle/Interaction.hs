@@ -16,7 +16,6 @@ import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Reader (asks)
 import Data.Either (isRight)
 import Data.Hashable (Hashable)
-import Data.Text.Prettyprint.Doc (line)
 
 import Data.Functor.Tree (Tree)
 import Data.Type.Rec (HasDict)
@@ -30,9 +29,11 @@ import Language.Spectacle.Model (modelcheck, modeltrace)
 import Language.Spectacle.Model.ModelError (ModelError, ppModelError)
 import Language.Spectacle.Specification (Specification)
 
+import Prettyprinter (line)
+
 -- ---------------------------------------------------------------------------------------------------------------------
 
-interaction :: (HasDict Hashable ctx, HasDict Show ctx) => Specification ctx acts form -> IO ()
+interaction :: (HasDict Eq ctx, HasDict Hashable ctx, HasDict Show ctx) => Specification ctx acts form -> IO ()
 interaction spec = do
   opts <- Opts.execOptsCLI
   result <-

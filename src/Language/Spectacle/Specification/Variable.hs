@@ -59,7 +59,7 @@ instance HasVars (Var var ty) where
   runInitActions (name := act) = ConF name act NilF
   {-# INLINE runInitActions #-}
 
-runInitStates :: forall vars ctx. (HasVars vars, HasDict Hashable ctx, VarCtxt vars ~ ctx) => vars -> [World ctx]
+runInitStates :: forall vars ctx. (HasVars vars, HasDict Eq ctx, HasDict Hashable ctx, VarCtxt vars ~ ctx) => vars -> [World ctx]
 runInitStates vs = map makeWorld (go acts)
   where
     go :: RecF [] ctx' -> [Rec ctx']

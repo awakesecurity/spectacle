@@ -22,9 +22,18 @@ import Data.Kind (Type)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
+-- | Cayley applicative transformer.
+--
+-- @since 1.0.0
 newtype Day :: (Type -> Type) -> Type -> Type where
-  Day :: {getDay :: forall x. f x -> f (a, x)} -> Day f a
+  Day ::
+    { -- | Retrieve the underlying @'Day'@ transformer
+      --
+      -- @since 1.0.0
+      getDay :: forall x. f x -> f (a, x)
+    } -> Day f a
 
+-- | Wrap any @'Day'@ inside any given @'Monad'@.
 wrapDay :: Monad m => m (Day m a) -> Day m a
 wrapDay ma = Day \mx ->
   ma >>= \case

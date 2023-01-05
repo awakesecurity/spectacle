@@ -44,7 +44,7 @@ runModelAction world action =
     Left err -> throwError (RuntimeError err)
     Right worlds -> pure worlds
 
-fromActionSpec :: HasDict Hashable ctx => Map String (Action ctx Bool) -> [ModelAction ctx]
+fromActionSpec :: (HasDict Eq ctx, HasDict Hashable ctx) => Map String (Action ctx Bool) -> [ModelAction ctx]
 fromActionSpec =
   Map.foldMapWithKey \name action ->
     let runner world = runExceptionalAction (world ^. worldValues) action

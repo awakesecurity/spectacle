@@ -2,6 +2,9 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UndecidableInstances #-}
 
+-- | Representation of model states; the \"world\" a model lives in.
+--
+-- @since 1.0.0
 module Data.World
   ( -- * Worlds
     World (World),

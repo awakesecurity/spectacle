@@ -25,7 +25,10 @@ import Data.Type.Rec (Rec)
 -- | 'Fingerprint' is a 32-bit hash used for uniquely identifying worlds while model checking.
 --
 -- @since 0.1.0.0
-newtype Fingerprint = Fingerprint {getFingerprint :: Int}
+newtype Fingerprint = Fingerprint
+    { -- | Get the numeric hash value for a @'Fingerprint'@
+      getFingerprint :: Int
+    }
   deriving stock (Eq, Ord)
   deriving (Enum, Hashable, Integral, Num, Real) via Int
 
@@ -46,7 +49,7 @@ fingerprintRec :: Hashable (Rec ctx) => Rec ctx -> Fingerprint
 fingerprintRec world = Fingerprint (hash world)
 
 -- | Converts an 'Int' to a hexdecimal string without a strictly positive constraint and without the preformance hit of
--- the analogous prelude function 'showHex'.
+-- the analogous prelude function @'Numeric.showHex'@.
 --
 -- @since 0.1.0.0
 showAsHex :: Int -> String
@@ -58,7 +61,7 @@ showAsHex = go 0
       | otherwise = []
 
 -- | Converts an 'n :: Int' in the interval [0, 15] to @['0' .. '9']@ if @n <= 9@, otherwise @n@ is mapped to
--- @['a' .. 'f']@. Used to quickly convert 'Int' to a hexdecimal string.
+-- @[\'a\' .. \'f\']@. Used to quickly convert 'Int' to a hexdecimal string.
 --
 -- Note 'fastToHexEnum' is implemented via 'toEnum' so it is as fast as it is unsafe.
 --

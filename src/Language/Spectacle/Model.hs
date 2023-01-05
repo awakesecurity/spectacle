@@ -68,7 +68,7 @@ import Language.Spectacle.Specification
 -- ---------------------------------------------------------------------------------------------------------------------
 
 modelcheck ::
-  HasDict Hashable ctx =>
+  (HasDict Eq ctx, HasDict Hashable ctx) =>
   Specification ctx acts form ->
   IO (Either (ModelError ctx) [Tree (World ctx)])
 modelcheck spec = do
@@ -84,7 +84,7 @@ modelcheck spec = do
     Right modelTrees -> pure (Right modelTrees)
 
 modeltrace ::
-  HasDict Hashable ctx =>
+  (HasDict Eq ctx, HasDict Hashable ctx) =>
   Specification ctx acts form ->
   IO (Either (ModelError ctx) [Tree (World ctx)])
 modeltrace spec = do

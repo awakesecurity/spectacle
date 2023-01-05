@@ -1,10 +1,38 @@
 -- | 'Phases' applicative functor transformer.
 --
+-- The type can be explained by an effect system metaphor. A simple product type
+-- @(,) :: Type -> Type -> Type@ can take two different ("heterogeneous") types
+-- as parameters and stuff exactly two things inside. In contrast, a list type
+-- @[] :: Type -> Type@ takes only one type, and can stuff an unbounded number
+-- of things inside: the list is an iterative application of product type, where
+-- the types parameters are equal ("homogenous").
+--
+-- Now, given the (covariant) Day Convolution (which is __NOT__ the same type
+-- provided by this package via @'Control.Applicative.Day'@):
+--
+-- @
+-- data Day f g a where
+--   Day :: forall b. (a -> b -> c) -> f a -> g b -> Day f g c
+-- @
+--
+-- we can think of @Day f g@ being an "enriched product type": one which is
+-- designed for two homogenous effects types, @f@ and @g@. This leads us to a
+-- metaphor:
+--
+-- "@Day@ is to @(,)@ what @'Phases'@ is to @[]@"": an iterative application of
+-- a 2-ary type constructor, restricted to homogenous type parameters. Whereas
+-- @Day@ allows us to carry exactly two heterogenously-typed effects and apply
+-- them (and @(,)@ carries exactly two heterogenously-typed values), @'Phases'@
+-- allows us to carry an unbounded number of homogenously-typed effects (nee,
+-- unbounded number of homogenous-typed values) and apply them.
+--
 -- === Reference
 --
 -- 1. <https://doisinkidney.com/posts/2020-11-23-applicative-queue.html>
 --
 -- 2. <https://github.com/rampion/tree-traversals>
+--
+-- 3. <https://www.cs.ox.ac.uk/people/jeremy.gibbons/publications/traversals.pdf>
 --
 -- @since 1.0.0
 module Control.Applicative.Phases
@@ -32,13 +60,22 @@ data Phases :: (Type -> Type) -> Type -> Type where
   Here :: a -> Phases f a
   There :: (a -> b -> c) -> f a -> Phases f b -> Phases f c
 
+-- | Discharge the underlying series of effects.
+--
+-- | @since 1.0.0
 lowerPhases :: Applicative f => Phases f a -> f a
 lowerPhases (Here x) = pure x
 lowerPhases (There op x xs) = liftA2 op x (lowerPhases xs)
 
+-- | Given an effect producing a series of effects, "collapse" the effectful types.
+--
+-- | @since 1.0.0
 wrapPhases :: Monad f => f (Phases f a) -> Phases f a
 wrapPhases f = There const (f >>= lowerPhases) (pure ())
 
+-- | Given a series of effects producing an effect, collapse the effectful types.
+--
+-- | @since 1.0.0
 liftPhases :: Monad f => Phases f (f a) -> Phases f a
 liftPhases (Here x) = There const x (pure ())
 liftPhases (There f x xs) = There const (x >>= \x' -> lowerPhases xs >>= f x') xs
