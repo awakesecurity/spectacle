@@ -1,3 +1,4 @@
+{-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
 -- Module      :  Control.Hyper

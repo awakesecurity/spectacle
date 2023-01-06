@@ -1,3 +1,5 @@
+{-# OPTIONS_HADDOCK show-extensions #-}
+
 -- |
 -- Module      :  Control.Natural
 -- Copyright   :  (c) Arista Networks, 2022-2023

@@ -1,4 +1,5 @@
 {-# LANGUAGE EmptyCase #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
 -- Module      :  Language.Spectacle.Lang.Op

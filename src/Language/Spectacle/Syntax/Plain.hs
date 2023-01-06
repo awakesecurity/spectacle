@@ -1,3 +1,4 @@
+{-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
 -- Module      :  Language.Spectacle.Syntax.Plain

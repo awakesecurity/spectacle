@@ -1,3 +1,5 @@
+{-# OPTIONS_HADDOCK show-extensions #-}
+
 -- |
 -- Module      :  Language.Spectacle.Syntax.Env
 -- Copyright   :  (c) Arista Networks, 2022-2023
