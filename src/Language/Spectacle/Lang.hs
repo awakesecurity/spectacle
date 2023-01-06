@@ -1,9 +1,16 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE QuantifiedConstraints #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
 
--- | The 'Lang' monad and functions for defining Spectacles syntax as effects.
+-- |
+-- Module      :  Language.Spectacle.Lang
+-- Copyright   :  (c) Arista Networks, 2022-2023
+-- License     :  Apache License 2.0, see LICENSE
+--
+-- Stability   :  stable
+-- Portability :  non-portable (GHC extensions)
+--
+-- The 'Lang' monad and functions for defining Spectacles syntax as effects.
 --
 -- @since 1.0.0
 module Language.Spectacle.Lang

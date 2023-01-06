@@ -1,4 +1,12 @@
--- | The 'Fingerprint' data type.
+-- |
+-- Module      :  Data.Fingerprint
+-- Copyright   :  (c) Arista Networks, 2022-2023
+-- License     :  Apache License 2.0, see LICENSE
+--
+-- Stability   :  stable
+-- Portability :  non-portable (GHC extensions)
+--
+-- The 'Fingerprint' data type.
 --
 -- @since 0.1.0.0
 module Data.Fingerprint

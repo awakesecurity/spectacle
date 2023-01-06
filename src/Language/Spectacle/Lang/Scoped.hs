@@ -2,7 +2,15 @@
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE TypeFamilies #-}
 
--- | Defining and handling higher-order effects in the 'Effect' data family.
+-- |
+-- Module      :  Language.Spectacle.Lang.Scoped
+-- Copyright   :  (c) Arista Networks, 2022-2023
+-- License     :  Apache License 2.0, see LICENSE
+--
+-- Stability   :  stable
+-- Portability :  non-portable (GHC extensions)
+--
+-- Defining and handling higher-order effects in the 'Effect' data family.
 --
 -- === Example usage of the Effect family
 --
@@ -13,12 +21,13 @@
 --   Ask :: Reader r r
 -- @
 --
--- 'EffectK' intentionally precludes the ability for accessing the 'Language.Spectacle.Lang.Lang' in
--- its continuation which is needed to define a "local" operation for Reader. If this was allowed,
--- it becomes very easy for effects to escape the scope of the free monad and continue without being
+-- 'EffectK' intentionally precludes the ability for accessing the 
+-- 'Language.Spectacle.Lang.Lang' in its continuation which is needed to define
+-- a "local" operation for Reader. If this was allowed, it becomes very easy for
+-- effects to escape the scope of the free monad and continue without being 
 -- handled, examples of which are in [1. Effect Handlers in Haskell, Evidently.]("Language.Spectacle.Lang.Scoped#references").
--- Instead, scoped operations like local are defined in a corresponding instance of 'Effect'
--- like so:
+-- Instead, scoped operations like local are defined in a corresponding instance
+-- of 'Effect' like so:
 --
 -- @
 -- data instance 'Effect' (Reader r) m a where

@@ -1,6 +1,13 @@
-{-# LANGUAGE TupleSections #-}
 
--- | The 'NonDet' effect models nondeterminism.
+-- |
+-- Module      :  Language.Spectacle.Syntax.NonDet
+-- Copyright   :  (c) Arista Networks, 2022-2023
+-- License     :  Apache License 2.0, see LICENSE
+--
+-- Stability   :  stable
+-- Portability :  non-portable (GHC extensions)
+--
+-- The 'NonDet' effect models nondeterminism.
 --
 -- @since 1.0.0
 module Language.Spectacle.Syntax.NonDet

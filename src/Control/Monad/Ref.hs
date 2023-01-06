@@ -1,4 +1,12 @@
--- | State implemented over 'IORef'.
+-- |
+-- Module      :  Control.Monad.Ref
+-- Copyright   :  (c) Arista Networks, 2022-2023
+-- License     :  Apache License 2.0, see LICENSE
+--
+-- Stability   :  stable
+-- Portability :  non-portable (GHC extensions)
+--
+-- State implemented over 'IORef'.
 --
 -- @since 1.0.0
 module Control.Monad.Ref

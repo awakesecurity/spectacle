@@ -1,6 +1,16 @@
 {-# LANGUAGE OverloadedStrings #-}
 
--- | @'Name'@s for variables in a Spectacle specification.
+-- |
+-- Module      :  Data.Name
+-- Copyright   :  (c) Arista Networks, 2022-2023
+-- License     :  Apache License 2.0, see LICENSE
+--
+-- Stability   :  stable
+-- Portability :  non-portable (GHC extensions)
+--
+-- @'Name'@s for variables in a Spectacle specification.
+--
+-- @since 1.0.0
 module Data.Name
   ( Name (Name),
     inferName,

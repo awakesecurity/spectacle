@@ -1,5 +1,13 @@
--- | The 'Loom' functor. The mnemonic for 'Loom' is from it accumulating a continuation of /weaving/
--- functions.
+-- |
+-- Module      :  Data.Functor.Loom
+-- Copyright   :  (c) Arista Networks, 2022-2023
+-- License     :  Apache License 2.0, see LICENSE
+--
+-- Stability   :  stable
+-- Portability :  non-portable (GHC extensions)
+--
+-- The 'Loom' functor. The mnemonic for 'Loom' is from it accumulating a 
+-- continuation of effect "weaving" functions.
 --
 -- @since 0.1.0.0
 module Data.Functor.Loom

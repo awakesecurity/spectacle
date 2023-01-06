@@ -1,7 +1,15 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
 
--- | Runtime state used to implement call-by-need evaluation of closures and variable substitution.
+-- |
+-- Module      :  Language.Spectacle.RTS.Registers
+-- Copyright   :  (c) Arista Networks, 2022-2023
+-- License     :  Apache License 2.0, see LICENSE
+--
+-- Stability   :  stable
+-- Portability :  non-portable (GHC extensions)
+--
+-- Runtime state used to implement call-by-need evaluation of closures and
+-- variable substitution.
 --
 -- @since 1.0.0
 module Language.Spectacle.RTS.Registers

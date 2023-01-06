@@ -1,4 +1,12 @@
--- | Effect queues.
+-- |
+-- Module      :  Control.Applicative.Queue
+-- Copyright   :  (c) Arista Networks, 2022-2023
+-- License     :  Apache License 2.0, see LICENSE
+--
+-- Stability   :  stable
+-- Portability :  non-portable (GHC extensions)
+--
+-- Effect queues.
 --
 -- @since 1.0.0
 module Control.Applicative.Queue

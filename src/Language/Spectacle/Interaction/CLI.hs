@@ -1,7 +1,16 @@
 {-# LANGUAGE OverloadedStrings #-}
 
--- | This module exports the 'CLI' monad, an abstraction over command-line interactions such as emitting logs and
--- messages from the model checker per options declared by a user.
+-- |
+-- Module      :  Language.Spectacle.Interaction.CLI
+-- Copyright   :  (c) Arista Networks, 2022-2023
+-- License     :  Apache License 2.0, see LICENSE
+--
+-- Stability   :  stable
+-- Portability :  non-portable (GHC extensions)
+-- 
+-- This module exports the 'CLI' monad, an abstraction over command-line 
+-- interactions such as emitting logs and messages from the model checker per 
+-- options declared by a user.
 --
 -- @since 1.0.0
 module Language.Spectacle.Interaction.CLI

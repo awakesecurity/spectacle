@@ -67,6 +67,7 @@ library
   hs-source-dirs: src
 
   build-depends:
+    , megaparsec
     , optparse-applicative
     , prettyprinter
     , prettyprinter-ansi-terminal

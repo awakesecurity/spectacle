@@ -1,4 +1,12 @@
--- | The 'Error' effect for throwing exceptions which can be caught.
+-- |
+-- Module      :  Language.Spectacle.Syntax.Error
+-- Copyright   :  (c) Arista Networks, 2022-2023
+-- License     :  Apache License 2.0, see LICENSE
+--
+-- Stability   :  stable
+-- Portability :  non-portable (GHC extensions)
+--
+-- The 'Error' effect for throwing exceptions which can be caught.
 --
 -- @since 1.0.0
 module Language.Spectacle.Syntax.Error

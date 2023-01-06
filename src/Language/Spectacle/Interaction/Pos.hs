@@ -1,24 +1,36 @@
-{-# LANGUAGE RecordWildCards #-}
 
--- | 'Pos' is pair of integers representing a position in grid. The implementation for 'compare' on 'Pos' is biased to
--- the row-value of the position, i.e.
+-- |
+-- Module      :  Language.Spectacle.Interaction.Pos
+-- Copyright   :  (c) Arista Networks, 2022-2023
+-- License     :  Apache License 2.0, see LICENSE
+--
+-- Stability   :  stable
+-- Portability :  non-portable (GHC extensions)
+--
+-- 'Pos' is pair of integers representing a position in grid. The implementation 
+-- for 'compare' on 'Pos' is biased to the row-value of the position, i.e.
 --
 -- @
 -- ∀ (x y u v :: Int) -> x ≢ u -> Pos x y `compare` Pos u v ≡ compare x u
 -- @
 --
--- This definition of 'compare' enables collections of 'Pos' to preserve most of the structural information in a rose
--- tree when kept in ordered-containers who manage their internal structure with 'compare' such as 'Set'. To motivate
--- why this is useful, it is worth noting that the model checker works exclusively with nested structures like rose
--- trees. Rendering output from trees is difficult since it is not always clear how to traverse a tree to extract a
--- flattened presentation of information in a tree that can be easily rendered as output.
+-- This definition of 'compare' enables collections of 'Pos' to preserve most of
+-- the structural information in a rose tree when kept in ordered-containers who 
+-- manage their internal structure with 'compare' such as 'Set'. To motivate why
+-- this is useful, it is worth noting that the model checker works exclusively 
+-- with nested structures like rose trees. Rendering output from trees is 
+-- difficult since it is not always clear how to traverse a tree to extract a
+-- flattened presentation of information in a tree that can be easily rendered
+-- as output.
 --
--- Traversing a ('Set' 'Pos') is trivial, though, since 'Set' is (for all intent and purposes) a flat collection of
--- elements, and more specifically one which manages its structure with 'compare' internally. As a result of the way in
--- which 'compare' is defined, column and row values of 'Pos' can simultaneously be viewed as file locations and
--- node positions in a tree. Sets of Pos are flat organizations of information that can be rendered to output
--- straightforward way while still being able to store/recover the shape information of the original tree we're
--- interested in logging:
+-- Traversing a ('Set' 'Pos') is trivial, though, since 'Set' is (for all intent
+-- and purposes) a flat collection of elements, and more specifically one which 
+-- manages its structure with 'compare' internally. As a result of the way in
+-- which 'compare' is defined, column and row values of 'Pos' can simultaneously
+-- be viewed as file locations and node positions in a tree. Sets of Pos are 
+-- flat organizations of information that can be rendered to output 
+-- straightforward way while still being able to store/recover the shape 
+-- information of the original tree we're interested in logging:
 --
 -- @
 --   1  2  3  4  5  6  7  8  9
