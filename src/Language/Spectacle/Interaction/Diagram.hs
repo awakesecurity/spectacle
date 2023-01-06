@@ -1,5 +1,3 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -141,7 +139,7 @@ curveSection = foldr cons (pure mempty) . duplicate
   where
     cons points
       | focus points ^. extent == 0 = id
-      | otherwise = liftA2 (mappend) (go points)
+      | otherwise = liftA2 mappend (go points)
 
     go points@Tape {..}
       | lcol <= col && col < ucol = pure mempty

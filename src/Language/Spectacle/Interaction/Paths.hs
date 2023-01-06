@@ -1,4 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
 
 -- |
 -- Module      :  Language.Spectacle.Interaction.Paths
