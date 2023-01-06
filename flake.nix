@@ -13,7 +13,7 @@
         system.aarch64-darwin
       ];
 
-      ghc = "ghc924";
+      ghcVersion = "ghc924";
 
     in flake-utils.lib.eachSystem systems (system:
       let
@@ -21,11 +21,11 @@
           inherit system; 
 
           config.packageOverrides = import (nix/overlays.nix) {
-            inherit ghc;
+            inherit ghcVersion;
           };
         };
 
-        haskell-packages = pkgs.haskell.packages."${ghc}";
+        haskell-packages = pkgs.haskell.packages."${ghcVersion}";
 
         packages = flake-utils.lib.flattenTree rec {
           inherit (haskell-packages)
@@ -48,7 +48,7 @@
 
         devShells = {
           default = haskell-packages.shellFor {
-            name = "grpc-mqtt";
+            name = "spectacle";
 
             buildInputs = with haskell-packages; [
               fourmolu
