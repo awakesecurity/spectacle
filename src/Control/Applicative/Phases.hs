@@ -1,4 +1,14 @@
--- | 'Phases' applicative functor transformer.
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Control.Applicative.Phases
+-- Copyright   :  (c) Arista Networks, 2022-2023
+-- License     :  Apache License 2.0, see LICENSE
+--
+-- Stability   :  stable
+-- Portability :  non-portable (GHC extensions)
+--
+-- 'Phases' applicative functor transformer.
 --
 -- The type can be explained by an effect system metaphor. A simple product type
 -- @(,) :: Type -> Type -> Type@ can take two different ("heterogeneous") types
@@ -26,13 +36,14 @@
 -- allows us to carry an unbounded number of homogenously-typed effects (nee,
 -- unbounded number of homogenous-typed values) and apply them.
 --
--- === Reference
+-- === References
 --
--- 1. <https://doisinkidney.com/posts/2020-11-23-applicative-queue.html>
---
--- 2. <https://github.com/rampion/tree-traversals>
---
--- 3. <https://www.cs.ox.ac.uk/people/jeremy.gibbons/publications/traversals.pdf>
+-- 1. "A Queue for Effectful Breadth-First Traversals" 
+--    <https://doisinkidney.com/posts/2020-11-23-applicative-queue.html>
+-- 2. Tree Traversals
+--    <https://github.com/rampion/tree-traversals>
+-- 3. "Breadth-First Traversal Via Staging"
+--    <https://www.cs.ox.ac.uk/people/jeremy.gibbons/publications/traversals.pdf>
 --
 -- @since 1.0.0
 module Control.Applicative.Phases
@@ -62,20 +73,20 @@ data Phases :: (Type -> Type) -> Type -> Type where
 
 -- | Discharge the underlying series of effects.
 --
--- | @since 1.0.0
+-- @since 1.0.0
 lowerPhases :: Applicative f => Phases f a -> f a
 lowerPhases (Here x) = pure x
 lowerPhases (There op x xs) = liftA2 op x (lowerPhases xs)
 
 -- | Given an effect producing a series of effects, "collapse" the effectful types.
 --
--- | @since 1.0.0
+-- @since 1.0.0
 wrapPhases :: Monad f => f (Phases f a) -> Phases f a
 wrapPhases f = There const (f >>= lowerPhases) (pure ())
 
 -- | Given a series of effects producing an effect, collapse the effectful types.
 --
--- | @since 1.0.0
+-- @since 1.0.0
 liftPhases :: Monad f => Phases f (f a) -> Phases f a
 liftPhases (Here x) = There const x (pure ())
 liftPhases (There f x xs) = There const (x >>= \x' -> lowerPhases xs >>= f x') xs

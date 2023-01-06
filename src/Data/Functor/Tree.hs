@@ -1,6 +1,14 @@
 {-# LANGUAGE TypeFamilies #-}
 
--- | Utilities for manipulating @'Data.Tree.Tree'@s.
+-- |
+-- Module      :  Data.Functor.Tree
+-- Copyright   :  (c) Arista Networks, 2022-2023
+-- License     :  Apache License 2.0, see LICENSE
+--
+-- Stability   :  stable
+-- Portability :  non-portable (GHC extensions)
+--
+-- Utilities for manipulating @'Data.Tree.Tree'@s.
 --
 -- @since 0.1.0.0
 module Data.Functor.Tree

@@ -44,7 +44,7 @@ common common
     -Wmissing-import-lists
 
   build-depends:
-      base           >= 4.14 && < 4.17
+      base           >= 4.14 && < 4.18
     , comonad        >= 5
     , containers     >= 0.6
     , hashable       >= 1.3.4.0
@@ -114,7 +114,6 @@ library
     , Language.Spectacle.Model.ModelTemporal
     , Language.Spectacle.Model.Monad
     , Language.Spectacle.Lang
-    , Language.Spectacle.Lang.Internal
     , Language.Spectacle.Lang.Member
     , Language.Spectacle.Lang.Op
     , Language.Spectacle.Lang.Scoped
@@ -125,23 +124,26 @@ library
     , Language.Spectacle.Specification.Variable
     , Language.Spectacle.Syntax
     , Language.Spectacle.Syntax.Closure
-    , Language.Spectacle.Syntax.Closure.Internal
     , Language.Spectacle.Syntax.Enabled
-    , Language.Spectacle.Syntax.Enabled.Internal
     , Language.Spectacle.Syntax.Env
-    , Language.Spectacle.Syntax.Env.Internal
     , Language.Spectacle.Syntax.Error
-    , Language.Spectacle.Syntax.Error.Internal
-    , Language.Spectacle.Syntax.NonDet
-    , Language.Spectacle.Syntax.NonDet.Internal
-    , Language.Spectacle.Syntax.Plain
-    , Language.Spectacle.Syntax.Plain.Internal
-    , Language.Spectacle.Syntax.Prime
-    , Language.Spectacle.Syntax.Prime.Internal
-    , Language.Spectacle.Syntax.Quantifier
-    , Language.Spectacle.Syntax.Quantifier.Internal
     , Language.Spectacle.Syntax.Logic
+    , Language.Spectacle.Syntax.NonDet
+    , Language.Spectacle.Syntax.Plain
+    , Language.Spectacle.Syntax.Prime
+    , Language.Spectacle.Syntax.Quantifier
+
+  other-modules:
+    , Language.Spectacle.Lang.Internal
+    , Language.Spectacle.Syntax.Closure.Internal
+    , Language.Spectacle.Syntax.Enabled.Internal
+    , Language.Spectacle.Syntax.Env.Internal
+    , Language.Spectacle.Syntax.Error.Internal
     , Language.Spectacle.Syntax.Logic.Internal
+    , Language.Spectacle.Syntax.NonDet.Internal
+    , Language.Spectacle.Syntax.Plain.Internal
+    , Language.Spectacle.Syntax.Prime.Internal
+    , Language.Spectacle.Syntax.Quantifier.Internal
 
 test-suite unit-tests
   import:              common

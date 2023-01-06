@@ -1,4 +1,14 @@
--- | Quantifiers and logic.
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Language.Spectacle.Syntax.Logic
+-- Copyright   :  (c) Arista Networks, 2022-2023
+-- License     :  Apache License 2.0, see LICENSE
+--
+-- Stability   :  stable
+-- Portability :  non-portable (GHC extensions)
+--
+-- Quantifiers and logic.
 --
 -- @since 1.0.0
 module Language.Spectacle.Syntax.Logic
@@ -59,7 +69,7 @@ disjunct m n = scope (Disjunct m n)
 --
 -- @since 1.0.0
 implies :: Member Logic effs => Lang ctx effs Bool -> Lang ctx effs Bool -> Lang ctx effs Bool
-implies m n = disjunct (complement m) n
+implies m = disjunct (complement m) 
 {-# INLINE implies #-}
 
 -- | If and only if.

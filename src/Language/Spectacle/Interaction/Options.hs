@@ -1,4 +1,14 @@
--- | Command-line interface options.
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Language.Spectacle.Interaction.Options
+-- Copyright   :  (c) Arista Networks, 2022-2023
+-- License     :  Apache License 2.0, see LICENSE
+--
+-- Stability   :  stable
+-- Portability :  non-portable (GHC extensions)
+-- 
+-- Command-line interface options.
 --
 -- @since 1.0.0
 module Language.Spectacle.Interaction.Options

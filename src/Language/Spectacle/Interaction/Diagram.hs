@@ -1,8 +1,18 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
+-- |
+-- Module      :  Language.Spectacle.Interaction.Diagram
+-- Copyright   :  (c) Arista Networks, 2022-2023
+-- License     :  Apache License 2.0, see LICENSE
+--
+-- Stability   :  stable
+-- Portability :  non-portable (GHC extensions)
+-- 
+-- TODO: docs
+--
+-- @since 1.0.0
 module Language.Spectacle.Interaction.Diagram where
 
 import Control.Applicative (liftA2)
@@ -130,7 +140,7 @@ curveSection = foldr cons (pure mempty) . duplicate
   where
     cons points
       | focus points ^. extent == 0 = id
-      | otherwise = liftA2 (mappend) (go points)
+      | otherwise = liftA2 mappend (go points)
 
     go points@Tape {..}
       | lcol <= col && col < ucol = pure mempty

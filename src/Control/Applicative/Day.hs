@@ -1,12 +1,22 @@
 {-# LANGUAGE TupleSections #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
--- | Cayley applicative transformer.
+-- |
+-- Module      :  Control.Applicative.Day
+-- Copyright   :  (c) Arista Networks, 2022-2023
+-- License     :  Apache License 2.0, see LICENSE
 --
--- === Reference
+-- Stability   :  stable
+-- Portability :  non-portable (GHC extensions)
 --
--- 1. <https://doisinkidney.com/posts/2020-11-23-applicative-queue.html>
+-- Cayley applicative transformer.
 --
--- 2. "Notions of Computations as Monoids" <https://arxiv.org/abs/1406.4823>
+-- === References
+--
+--   1. "A Queue for Effectful Breadth-First Traversals" 
+--      <https://doisinkidney.com/posts/2020-11-23-applicative-queue.html>
+--   2. "Notions of Computations as Monoids" 
+--      <https://arxiv.org/abs/1406.4823>
 --
 -- @since 1.0.0
 module Control.Applicative.Day
@@ -28,8 +38,6 @@ import Data.Kind (Type)
 newtype Day :: (Type -> Type) -> Type -> Type where
   Day ::
     { -- | Retrieve the underlying @'Day'@ transformer
-      --
-      -- @since 1.0.0
       getDay :: forall x. f x -> f (a, x)
     } -> Day f a
 

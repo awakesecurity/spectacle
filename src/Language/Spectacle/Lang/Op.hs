@@ -1,6 +1,15 @@
 {-# LANGUAGE EmptyCase #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
--- | First-order effect operations.
+-- |
+-- Module      :  Language.Spectacle.Lang.Op
+-- Copyright   :  (c) Arista Networks, 2022-2023
+-- License     :  Apache License 2.0, see LICENSE
+--
+-- Stability   :  stable
+-- Portability :  non-portable (GHC extensions)
+--
+-- First-order effect operations.
 --
 -- @since 1.0.0
 module Language.Spectacle.Lang.Op

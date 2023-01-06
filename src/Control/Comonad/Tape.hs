@@ -1,4 +1,14 @@
--- | A @'Tape'@ type for walking over and focusing on sequences of values.
+{-# OPTIONS_HADDOCK show-extensions #-}
+
+-- |
+-- Module      :  Control.Comonad.Tape
+-- Copyright   :  (c) Arista Networks, 2022-2023
+-- License     :  Apache License 2.0, see LICENSE
+--
+-- Stability   :  stable
+-- Portability :  non-portable (GHC extensions)
+--
+-- A @'Tape'@ type for walking over and focusing on sequences of values.
 --
 -- @since 1.0.0
 module Control.Comonad.Tape
@@ -31,7 +41,7 @@ import qualified Data.Sequence as Seq
 -- | A simple type reflecting a "storage tape" -- a type with the ability to move left and right
 -- down the tape, focusing on individual elements.
 --
--- | @since 1.0.0
+-- @since 1.0.0
 data Tape a = Tape {before :: Seq a, focus :: a, after :: Seq a}
   deriving (Eq, Functor, Show)
 
