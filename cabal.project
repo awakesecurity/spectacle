@@ -18,4 +18,4 @@ package *
   haddock-hoogle: true
   haddock-hyperlink-source: true
   haddock-quickjump: true
-  haddock-internal: true
+  haddock-internal: false
