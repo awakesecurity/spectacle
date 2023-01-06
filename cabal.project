@@ -1,4 +1,21 @@
-tests: true
+with-compiler: ghc-9.2.4
+
+-- package-level parallelism:
+jobs: $ncpus
+
 documentation: true
-packages:
-  *
+
+packages: 
+  spectacle.cabal
+
+package *
+  optimization: 2
+  
+  ghc-options: 
+    -fwrite-ide-info
+
+  haddock-html: true
+  haddock-hoogle: true
+  haddock-hyperlink-source: true
+  haddock-quickjump: true
+  haddock-internal: true
