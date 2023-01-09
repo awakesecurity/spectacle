@@ -13,29 +13,30 @@
 -- TODO: docs
 --
 -- @since 1.0.0
-module Language.Spectacle.Model.ModelNode
-  ( -- * Model State Nodes
-    ModelNode (ModelNode),
-    nodeNextEntries,
-    nodeValuation,
+module Language.Spectacle.Model.ModelNode (
+  -- * Model State Nodes
+  ModelNode (ModelNode),
+  nodeNextEntries,
+  nodeValuation,
 
-    -- ** Lenses
-    nextEntries,
-    queuedOf,
-    isEnabled,
-    isDisabled,
-    actionsOf,
-    valuation,
-  )
-where
+  -- ** Lenses
+  nextEntries,
+  queuedOf,
+  isEnabled,
+  isDisabled,
+  actionsOf,
+  valuation,
+) where
 
-import Data.Map (Map)
-import qualified Data.Map as Map
-import Data.Set (Set)
-import Lens.Micro (Lens', SimpleGetter, lens, to)
-
+import Control.Exception (assert)
 import Data.Fingerprint (Fingerprint)
+import Data.List qualified as List
+import Data.Map (Map)
+import Data.Map qualified as Map
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Type.Rec (HasDict, Rec)
+import Lens.Micro (Lens', SimpleGetter, lens, to)
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -44,6 +45,27 @@ data ModelNode ctx = ModelNode
   , nodeActionQueue :: Set String
   , nodeValuation :: Rec ctx
   }
+
+-- | @since 1.0.0
+instance HasDict Eq ctx => Semigroup (ModelNode ctx) where
+  node1 <> node2 =
+    ModelNode
+      { nodeNextEntries =
+          Map.unionWith
+            List.union
+            (nodeNextEntries node1)
+            (nodeNextEntries node2)
+      , nodeActionQueue =
+          Set.intersection
+            (nodeActionQueue node1)
+            (nodeActionQueue node2)
+      , nodeValuation =
+          -- "ModelNode.(<>): valuations are not equal!" 
+          assert 
+            (nodeValuation node1 == nodeValuation node2)
+            (nodeValuation node1) 
+      }
+  {-# INLINE (<>) #-}
 
 -- | @since 1.0.0
 deriving instance HasDict Show ctx => Show (ModelNode ctx)
