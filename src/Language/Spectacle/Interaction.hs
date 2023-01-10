@@ -15,7 +15,8 @@
 module Language.Spectacle.Interaction (
   -- * CLI
   interaction,
-  handleInteraction,
+  handleCheckInteraction,
+  handleTraceInteraction,
 ) where
 
 import Control.Monad (unless, when)
@@ -54,11 +55,11 @@ interaction spec = do
     if Options.run_check options
       then do
         checkResult <- liftIO (modelcheck spec)
-        handleInteraction checkResult
+        handleCheckInteraction checkResult
 
         when (Options.run_trace options) do
           traceResult <- liftIO (modeltrace spec)
-          handleInteraction traceResult
+          handleTraceInteraction traceResult
 
         modesDoc <- CLI.docRunModes (isRight checkResult)
         CLI.cliPutDoc (modesDoc <> Doc.line)
@@ -68,7 +69,7 @@ interaction spec = do
             result <- liftIO (modeltrace spec)
             modesDoc <- CLI.docRunModes (isRight result)
 
-            handleInteraction result
+            handleTraceInteraction result
 
             unless (Options.log_diagram options) do
               CLI.cliPutDoc (docWarn ("running " <> style "--trace" <> " without enabling " <> style "--diagram"))
@@ -83,14 +84,22 @@ interaction spec = do
     style :: Doc AnsiStyle -> Doc AnsiStyle
     style = Doc.annotate (Doc.color Blue)
 
-handleInteraction ::
+handleCheckInteraction ::
   HasDict Show ctx =>
   Either (ModelError ctx) [Tree (World ctx)] ->
   CLI ()
-handleInteraction result = do
+handleCheckInteraction result = do
   case result of
-    Left err -> do
-      CLI.cliPutDoc (ppModelError err <> Doc.line)
+    Left err -> CLI.cliPutDoc (ppModelError err <> Doc.line)
+    Right {} -> pure ()
+
+handleTraceInteraction ::
+  HasDict Show ctx =>
+  Either (ModelError ctx) [Tree (World ctx)] ->
+  CLI ()
+handleTraceInteraction result = do
+  case result of
+    Left err -> CLI.cliPutDoc (ppModelError err <> Doc.line)
     Right trees -> do
       options <- asks CLI.ctx_options
 
