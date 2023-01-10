@@ -8,47 +8,47 @@
 --
 -- Stability   :  stable
 -- Portability :  non-portable (GHC extensions)
--- 
--- This module exports the 'CLI' monad, an abstraction over command-line 
--- interactions such as emitting logs and messages from the model checker per 
+--
+-- This module exports the 'CLI' monad, an abstraction over command-line
+-- interactions such as emitting logs and messages from the model checker per
 -- options declared by a user.
 --
 -- @since 1.0.0
-module Language.Spectacle.Interaction.CLI
-  ( -- * The CLI Monad
-    CLI (CLI),
-    unCLI,
+module Language.Spectacle.Interaction.CLI (
+  -- * The CLI Monad
+  CLI (..),
 
-    -- ** Running CLI
-    runCLI,
+  -- ** Running CLI
+  runCLI,
 
-    -- ** CLI Operations
-    cliPutDoc,
+  -- ** CLI Operations
+  cliPutDoc,
 
-    -- ** CLI Documents
-    cliResultDoc,
+  -- ** CLI Documents
+  docRunModes,
+  docCheckMode,
 
-    -- * CLI Context
-    ContextCLI (ContextCLI),
-    ctxOpts,
-    ctxHandle,
+  -- * CLI Context
+  ContextCLI (..),
 
-    -- ** Construction
-    newContextCLI,
-  )
-where
+  -- ** Construction
+  newContextCLI,
+) where
 
-import Control.Monad (unless)
-import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Reader (MonadReader, ReaderT, asks, runReaderT)
-import Prettyprinter (Doc, annotate, line, unAnnotate, (<+>))
-import Prettyprinter.Render.Terminal (AnsiStyle, Color (Green, Red), bold, color, hPutDoc)
-import System.IO (Handle, hClose)
+import Data.List qualified as List
+import Language.Spectacle.Interaction.Options (OptionsCLI)
+import Language.Spectacle.Interaction.Options qualified as Options
+import Prettyprinter (Doc)
+import Prettyprinter qualified as Doc
+import Prettyprinter.Render.Terminal (AnsiStyle, Color (..))
+import Prettyprinter.Render.Terminal qualified as Doc
+import System.IO (Handle)
+import System.IO qualified as System
+import Data.Foldable (fold)
 
-import Language.Spectacle.Interaction.Options (OptsCLI, isStdout, optsLogOutput, optsOnlyTrace)
-import qualified Language.Spectacle.Interaction.Options as Opts
-
--- ---------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
 -- | The 'CLI' monad is a @'ReaderT' 'IO'@ carrying context of command-line options.
 --
@@ -63,72 +63,117 @@ newtype CLI a = CLI
 -- | Lower 'CLI' into 'IO' given command-line options.
 --
 -- @since 1.0.0
-runCLI :: CLI a -> OptsCLI -> IO a
-runCLI cli opts = do
-  ctx <- newContextCLI opts
-  ret <- runReaderT (unCLI cli) ctx
+runCLI :: OptionsCLI -> CLI a -> IO a
+runCLI options cli = do
+  context <- newContextCLI options
+  result <- runReaderT (unCLI cli) context
 
-  unless (Opts.isStdout $ optsLogOutput opts) do
-    -- Close the handle to the log-output buffer created by
-    -- 'newContextCLI'/'handleFrom' after the command-line
-    -- interaction has been completed, if the handle was not
-    -- to System.IO.stdout
-    hClose (ctxHandle ctx)
+  case Options.output_path (ctx_options context) of
+    Options.OutputPath filepath -> do
+      let handle = ctx_handle context
 
-  pure ret
+      -- Release the handle on the output buffer created by 'newContextCLI' and
+      -- 'openOutput' after the command-line interaction session has been
+      -- terminatred, if the handle was not 'System.IO.stdout' or
+      -- 'System.IO.stderr'.
+      putStrLn ("output written to: " <> filepath)
+      System.hClose handle 
+
+      pure result
+    _ ->
+      pure result
 
 -- | @'cliPutDoc' doc@ emits the given @doc@ using CLI context's buffer handle.
 --
 -- @since 1.0.0
 cliPutDoc :: Doc AnsiStyle -> CLI ()
 cliPutDoc doc = do
-  handle <- asks ctxHandle
-  output <- asks (optsLogOutput . ctxOpts)
-  if isStdout output
-    then liftIO do
-      hPutDoc handle doc
-    else liftIO do
+  handle <- asks ctx_handle
+  options <- asks ctx_options
+  case Options.output_path options of
+    Options.OutputPath {} -> liftIO do
       -- Clear 'AnsiStyle' annotations from the 'Doc' for
       -- buffers other than stdout, since they can not be
       -- rendered by the terminal.
-      hPutDoc handle (unAnnotate doc)
+      Doc.hPutDoc handle (Doc.unAnnotate doc)
+    _ -> liftIO do
+      Doc.hPutDoc handle doc
 
--- | @'cliResultDoc' succeeded@ for a boolean flag @succeeded@ indicating if the model checker encountered an error or
--- not, lays out the document containing:
+-- | Renders a 'Doc' describing each of the modes that are enabled for a model
+-- checker run.
 --
--- * The type of run the model checker took (either "model check" or "trace").
--- * The result of the run (either "success" or "failure")
---
--- @since 1.0.0
-cliResultDoc :: Bool -> CLI (Doc AnsiStyle)
-cliResultDoc succeeded = do
-  runType <- asks (mkRunTypeDoc . ctxOpts)
-  pure ("specification:" <+> runType <> ":" <+> resultDoc <> line)
+-- @since 1.0.1
+docRunModes :: 
+  -- | A 'Bool' value indicating if property checks were satisfied or refuted.
+  Bool -> 
+  -- | The rendered 'Doc'.
+  CLI (Doc AnsiStyle)
+docRunModes suceeded = do
+  options <- asks ctx_options
+
+  let noteCheckMode :: [Doc AnsiStyle]
+      noteCheckMode
+        | Options.run_check options = [docCheckMode suceeded]
+        | otherwise = mempty
+
+  let noteTraceMode :: [Doc AnsiStyle]
+      noteTraceMode
+        | Options.run_trace options = ["trace"]
+        | otherwise = mempty
+
+  pure (catModes (fold [noteCheckMode, noteTraceMode]))
   where
-    mkRunTypeDoc opts
-      | optsOnlyTrace opts = "trace"
-      | otherwise = "model check"
+    catModes :: [Doc AnsiStyle] -> Doc AnsiStyle
+    catModes = Doc.cat . List.intersperse (Doc.annotate (Doc.color Blue) "+")
 
-    resultDoc
-      | succeeded = annotate (bold <> color Green) "success"
-      | otherwise = annotate (bold <> color Red) "failure"
-
--- ---------------------------------------------------------------------------------------------------------------------
-
--- | 'ContextCLI' is the collection frequently needed information for command-line interaction.
+-- | Renders the string "check" along with a parenthesized status indicator 
+-- telling:
+-- 
+--   * If the specification's passed property checks, for 
+--     @('docCheckMode' 'True' :: 'Doc' 'AnsiStyle')@.
 --
--- Note: the preferred method of construction for 'ContextCLI' is via 'newContextCLI'.
+--   * Or if the model checker refuted the specification's property checks, for
+--     @('docCheckMode' 'False' :: 'Doc' 'AnsiStyle')@.
+--
+-- @since 1.0.1
+docCheckMode :: 
+  -- | A 'Bool' value indicating if property checks were satisfied or refuted.
+  Bool -> 
+  -- | The rendered 'Doc'.
+  Doc AnsiStyle
+docCheckMode succeeded
+  | succeeded = "check" <> Doc.parens (style Green "pass")
+  | otherwise = "check" <> Doc.parens (style Red "fail")
+  where
+    style :: Color -> Doc AnsiStyle -> Doc AnsiStyle
+    style c = Doc.annotate (Doc.bold <> Doc.color c)
+
+--------------------------------------------------------------------------------
+
+-- | 'ContextCLI' is the collection frequently needed information for 
+-- command-line interaction.
+--
+-- __Note:__ the preferred method of construction for 'ContextCLI' is via 
+-- 'newContextCLI'.
 --
 -- @since 1.0.0
 data ContextCLI = ContextCLI
-  { ctxOpts :: OptsCLI
-  , ctxHandle :: Handle
+  { -- | The options configured for the interactive session. 
+    -- 
+    -- @since 1.0.1
+    ctx_options :: OptionsCLI
+  , -- | The file 'Handle' to the interactive session will output logs to.
+    -- 
+    -- @since 1.0.1
+    ctx_handle :: Handle
   }
   deriving stock (Show)
 
--- | Constructs a 'ContextCLI' from a set of command-line options 'OptsCLI'.
+-- | Constructs a 'ContextCLI' from a set of command-line options 'OptionsCLI'.
 --
 -- @since 1.0.0
-newContextCLI :: OptsCLI -> IO ContextCLI
-newContextCLI opts = ContextCLI opts <$> Opts.handleFrom (optsLogOutput opts)
-{-# INLINE newContextCLI #-}
+newContextCLI :: OptionsCLI -> IO ContextCLI
+newContextCLI options = do
+  let path = Options.output_path options
+  handle <- Options.openOutput path
+  pure (ContextCLI options handle)
