@@ -175,6 +175,7 @@ test-suite integration-tests
 
   other-modules:
     Specifications.BitClock
+    Specifications.Convergence
     Specifications.Diehard
     Specifications.RateLimit
     Specifications.SimpleClock

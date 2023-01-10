@@ -37,6 +37,7 @@ import Language.Spectacle.Model.ModelError (ModelError, ppModelError)
 import Language.Spectacle.Specification (Specification)
 
 import Prettyprinter (line)
+import qualified Data.Set as Set
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -48,7 +49,7 @@ interaction spec = do
       then modeltrace spec
       else modelcheck spec
 
-  runCLI (handleInteraction result) opts
+  runCLI (handleInteraction (Set.toList <$> result)) opts
 
 handleInteraction :: HasDict Show ctx => Either (ModelError ctx) [Tree (World ctx)] -> CLI ()
 handleInteraction result =

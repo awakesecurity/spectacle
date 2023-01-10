@@ -17,70 +17,76 @@ import Control.Monad (unless)
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (local)
-import Control.Monad.State (gets)
+import Control.Monad.State (gets, modify')
 import Data.Foldable (for_, traverse_)
 import Data.Function (on)
 import Data.Hashable (Hashable)
 import Data.List (nubBy)
-import qualified Data.Map as Map
+import Data.Map qualified as Map
 import Data.Set (Set)
-import qualified Data.Set as Set
+import Data.Set qualified as Set
 import Data.Traversable (for)
 import Lens.Micro (over, (&), (^.))
 import Lens.Micro.Mtl (use, view, (%=), (.=))
 
 import Data.Fingerprint (Fingerprint)
+import Data.Foldable (fold)
 import Data.Functor.Tree (Tree, rootOf, pattern (:-))
+import Data.Map.Strict (Map)
 import Data.Type.Rec (HasDict)
 import Data.World (World (World), fingerprint, worldValues)
-import Language.Spectacle.Model.ModelAction
-  ( ModelAction (modelActionName),
-    fromActionSpec,
-    runModelAction,
-  )
-import Language.Spectacle.Model.ModelError
-  ( ModelError (InitialError, RefutedError),
-    TemporalError (TemporalError),
-  )
-import Language.Spectacle.Model.ModelNode as ModelNode
-  ( ModelNode (ModelNode),
-    nextEntries,
-    valuation,
-  )
-import Language.Spectacle.Model.ModelState as ModelState
-  ( enabledActionsAt,
-    indexNode,
-    member,
-    queuedActionsAt,
-  )
-import Language.Spectacle.Model.ModelTemporal
-  ( ModelTemporal (getModelTemporal, modelTemporalName),
-    fromTemporalSpec,
-  )
-import Language.Spectacle.Model.Monad
-  ( ModelM,
-    modalityOf,
-    newModelEnv,
-    runModelM,
-    strongFairActions,
-    weakFairActions,
-  )
-import Language.Spectacle.Specification
-  ( Modality (Always, Eventually, Infinitely, Stays),
-    Specification,
-    getActionFormulae,
-    getFairnessSpec,
-    getModalitySpec,
-    getTemporalFormulae,
-    runInitialSpec,
-  )
+import Language.Spectacle.Model.ModelAction (
+  ModelAction (modelActionName),
+  fromActionSpec,
+  runModelAction,
+ )
+import Language.Spectacle.Model.ModelError (
+  ModelError (InitialError, RefutedError),
+  TemporalError (TemporalError),
+ )
+import Language.Spectacle.Model.ModelNode as ModelNode (
+  ModelNode (ModelNode),
+  nextEntries,
+  valuation,
+ )
+import Language.Spectacle.Model.ModelState as ModelState (
+  enabledActionsAt,
+  evidence,
+  indexEvidence,
+  indexNode,
+  insertEvidence,
+  member,
+  queuedActionsAt,
+ )
+import Language.Spectacle.Model.ModelTemporal (
+  ModelTemporal (getModelTemporal, modelTemporalName),
+  fromTemporalSpec,
+ )
+import Language.Spectacle.Model.Monad (
+  ModelM,
+  modalityOf,
+  newModelEnv,
+  runModelM,
+  strongFairActions,
+  weakFairActions,
+ )
+import Language.Spectacle.Specification (
+  Modality (Always, Eventually, Infinitely, Stays),
+  Specification,
+  getActionFormulae,
+  getFairnessSpec,
+  getModalitySpec,
+  getTemporalFormulae,
+  runInitialSpec,
+ )
+import qualified Debug.Trace as Debug
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
 modelcheck ::
-  (HasDict Eq ctx, HasDict Hashable ctx) =>
+  (HasDict Eq ctx, HasDict Show ctx, HasDict Hashable ctx) =>
   Specification ctx acts form ->
-  IO (Either (ModelError ctx) [Tree (World ctx)])
+  IO (Either (ModelError ctx) (Set (Tree (World ctx))))
 modelcheck spec = do
   let initials = runInitialSpec spec
   let formulae = fromTemporalSpec (getTemporalFormulae spec)
@@ -94,9 +100,9 @@ modelcheck spec = do
     Right modelTrees -> pure (Right modelTrees)
 
 modeltrace ::
-  (HasDict Eq ctx, HasDict Hashable ctx) =>
+  (HasDict Eq ctx, HasDict Show ctx, HasDict Hashable ctx) =>
   Specification ctx acts form ->
-  IO (Either (ModelError ctx) [Tree (World ctx)])
+  IO (Either (ModelError ctx) (Set (Tree (World ctx))))
 modeltrace spec = do
   let initials = runInitialSpec spec
   let actions = fromActionSpec (getActionFormulae spec)
@@ -105,118 +111,255 @@ modeltrace spec = do
   snd <$> runModelM (traceModelSpec initials actions) env mempty
 
 traceModelSpec ::
-  MonadIO m =>
+  (HasDict Show ctx, MonadIO m) =>
   Set (World ctx) ->
   [ModelAction ctx] ->
-  ModelM ctx m [Tree (World ctx)]
+  ModelM ctx m (Set (Tree (World ctx)))
 traceModelSpec initials actions
-  | Set.null initials = do
-    throwError InitialError
+  | Set.null initials = throwError InitialError
   | otherwise = do
-    _ <- unfoldModelState actions initials
+      _ <- unfoldModelState actions initials
 
-    for (Set.toList initials) \initial ->
-      expandAction (initial ^. fingerprint)
+      forSet initials \initial -> do
+        runs <- expandAction initial
+        let subtrees = Map.elems runs
+        pure (initial :- subtrees)
 
 checkModelSpec ::
-  MonadIO m =>
+  (HasDict Show ctx, MonadIO m) =>
   Set (World ctx) ->
   [ModelAction ctx] ->
   [ModelTemporal ctx] ->
-  ModelM ctx m [Tree (World ctx)]
+  ModelM ctx m (Set (Tree (World ctx)))
 checkModelSpec initials actions formulae
-  | Set.null initials = do
-    throwError InitialError
+  | Set.null initials = throwError InitialError
   | otherwise = do
-    _ <- unfoldModelState actions initials
+      _ <- unfoldModelState actions initials
 
-    for (Set.toList initials) \initial -> do
-      let hash = initial ^. fingerprint
-      modelTree <- expandAction hash
+      results <- forSet initials \initial -> do
+        let hash = initial ^. fingerprint
 
-      for_ formulae \formula -> do
-        let name = modelTemporalName formula
-        modality <- view (modalityOf name)
-        case modality of
-          Always -> checkAlways formula modelTree
-          Eventually -> checkFuture formula modelTree
-          Infinitely -> checkInfinitely formula modelTree
-          Stays -> checkStays formula modelTree
+        -- world <- World hash <$> use (indexNode hash . valuation)
+        modelSubtrees <- expandAction initial 
 
-      pure modelTree
+        results <- for formulae \formula -> do
+          let formulaName = modelTemporalName formula
 
-checkAlways :: Monad m => ModelTemporal ctx -> Tree (World ctx) -> ModelM ctx m ()
-checkAlways formula (initial :- subtrees) = traverse_ (go initial) subtrees
+          modality <- view (modalityOf formulaName)
+
+          result <- flip Map.traverseWithKey modelSubtrees \action modelTree -> do
+
+            result <- case modality of
+              Always -> checkAlways formula modelTree
+              Eventually -> checkFuture formula modelTree
+              Infinitely -> checkInfinitely formula modelTree
+              Stays -> checkStays formula modelTree
+
+            modify' (insertEvidence hash action formulaName result)
+
+            pure modelTree
+
+          pure (Set.fromList (Map.elems result))
+
+        pure (Set.unions results) -- modelTree
+      
+      pure (Set.unions results)
+
+checkAlways ::
+  forall m ctx.
+  Monad m =>
+  ModelTemporal ctx ->
+  Tree (World ctx) ->
+  ModelM ctx m Bool
+checkAlways formula (initial :- subtrees) = do
+  results <- traverse (go initial) subtrees
+  pure (and results)
   where
+    go :: World ctx -> Tree (World ctx) -> ModelM ctx m Bool
     go here (there :- nexts) = do
       let satisfied = getModelTemporal formula here there
-      unless satisfied do
-        let name = modelTemporalName formula
-        throwRefuteAlways name (Just here) (Just there)
-      traverse_ (go there) nexts
+      if satisfied
+        then do
+          results <- traverse (go there) nexts
+          pure (and results)
+        else do
+          let name = modelTemporalName formula
+          throwRefuteAlways name (Just here) (Just there)
 
-checkFuture :: MonadIO m => ModelTemporal ctx -> Tree (World ctx) -> ModelM ctx m ()
-checkFuture formula (root :- subtrees) = traverse_ (go root) subtrees
+checkFuture ::
+  forall m ctx.
+  MonadIO m =>
+  ModelTemporal ctx ->
+  Tree (World ctx) ->
+  ModelM ctx m Bool
+checkFuture formula (root :- subtrees) = do 
+  results <- traverse (go root) subtrees
+  pure (and results)
   where
+    go :: World ctx -> Tree (World ctx) -> ModelM ctx m Bool
     go here (there :- nexts)
       | null nexts = do
-        let name = modelTemporalName formula
-        let satisfied = getModelTemporal formula here there
-        unless satisfied do
-          throwRefuteEventually name (Just here) (Just there)
+          let name = modelTemporalName formula
+          let satisfied = getModelTemporal formula here there
+          if satisfied
+            then do
+              pure True
+            else do
+              throwRefuteEventually name (Just here) (Just there)
+              -- pure False -- redundant but explicit
       | otherwise = do
-        let satisfied = getModelTemporal formula here there
-        unless satisfied do
-          traverse_ (go there) nexts
+          let satisfied = getModelTemporal formula here there
+          if satisfied 
+            then do 
+              pure True
+            else do 
+              -- TODO: docs// tail behavior of satisfiability of <>.
+              -- * ALL results should be true due to model_evidence
+              -- * and doesn't make since here, but it seems more principled than or
+              -- * any errors False cases will have thrown 'throwRefuteEventually' 
+              results <- traverse (go there) nexts
+              pure (and results)
 
-checkInfinitely :: Monad m => ModelTemporal ctx -> Tree (World ctx) -> ModelM ctx m ()
-checkInfinitely formula (root :- subtrees) = traverse_ (go root) subtrees
+
+checkInfinitely ::
+  forall m ctx.
+  Monad m =>
+  ModelTemporal ctx ->
+  Tree (World ctx) ->
+  ModelM ctx m Bool
+checkInfinitely formula (root :- subtrees) = do
+  results <- traverse (go root) subtrees
+  pure (and results)
   where
+    go :: World ctx -> Tree (World ctx) -> ModelM ctx m Bool
     go here (there :- nexts)
       | null nexts = do
-        let name = modelTemporalName formula
-        throwRefuteInfinitely name (Just here) (Just there)
+          let name = modelTemporalName formula
+          throwRefuteInfinitely name (Just here) (Just there)
       | otherwise = do
-        let satisfied = getModelTemporal formula here there
-        if satisfied
-          then do
-            isCyclicallySatisfied <- and <$> traverse (cyclically here) nexts
-            unless isCyclicallySatisfied do
-              let name = modelTemporalName formula
-              throwRefuteInfinitely name (Just here) (Just there)
-          else do
-            traverse_ (go there) nexts
+          let satisfied = getModelTemporal formula here there
+          if satisfied
+            then do
+              isCyclicallySatisfied <- and <$> traverse (cyclically here) nexts
+              if isCyclicallySatisfied
+                then do 
+                  pure True 
+                else do 
+                  let name = modelTemporalName formula
+                  throwRefuteInfinitely name (Just here) (Just there)
+            else do 
+              results <- traverse (go there) nexts
+              pure (and results)
 
     cyclically match (here :- []) = pure (match == here)
     cyclically match (here :- there)
       | match == here = pure True
-      | otherwise = do
-        and <$> traverse (cyclically match) there
+      | otherwise = and <$> traverse (cyclically match) there
 
-checkStays :: Monad m => ModelTemporal ctx -> Tree (World ctx) -> ModelM ctx m ()
+-- Things to keep in mind:
+--
+-- 1. For any action A and for all states w_i and w_j.
+--    if w_i == w_j ==> A(w_i) == A(w_j).
+
+-- To detect a <>[](p) checking, with cycles for weak fairness:
+--
+-- 1. If we detect a state "w_i", such that @(<>[](p(w_i)) == 'False')@, then:
+--   i.   We make a note of state w_i and continue checking.
+--   ii.  If there exists some state "w_j", such that i < j and w_i == w_j,
+--        then:
+--     a. If theres some action A that has not been taken, we must take that
+--        action.
+--     b. If proceeding down the run A(w_j) does not imply @<>[](p(w_i))@. then
+--        we may refute @<>[](p(w_i))@ or @<>[](p(w_j))@ (by w_i == w_j).
+--   iii. Otherwise, if there does not exists some "w_j", such that i < j and
+--        w_i == w_j, then:
+--     a. If and only if. all actions A_n(w_i) do not return to w_i and do not
+--        imply @<>[](p(w_i))@ can we refute that "stay-as" holds.
+--
+
+checkStays ::
+  forall m ctx.
+  MonadIO m =>
+  ModelTemporal ctx ->
+  Tree (World ctx) ->
+  ModelM ctx m Bool
 checkStays formula (root :- subtrees) = do
   results <- traverse (go root) subtrees
   let satisfied = and results
-  unless satisfied do
-    let name = modelTemporalName formula
-    throwRefuteStays name (Just root) Nothing
+  if satisfied 
+    then do 
+      pure True
+    else do
+      let name = modelTemporalName formula
+      throwRefuteStays name (Just root) Nothing
   where
-    go here (there :- nexts)
-      | null nexts = do
-        pure (getModelTemporal formula here there)
-      | otherwise = do
-        results <- traverse (go there) nexts
-        pure (and results)
+    formulaName :: String
+    formulaName = modelTemporalName formula
 
-expandAction :: MonadIO m => Fingerprint -> ModelM ctx m (Tree (World ctx))
+    go :: World ctx -> Tree (World ctx) -> ModelM ctx m Bool
+    go here (there :- nexts) =
+      if null nexts
+        then do
+          -- If there are no runs that have /new/ states that we can proceed in,
+          -- then...
+          -- pure (getModelTemporal formula here there)
+          caseWeakFairPast here there
+        else do
+          results <- traverse (go there) nexts
+          pure (and results)
+
+    checkSatisfied ::
+      -- \| The fingerprint of a world reachable by a model
+      Fingerprint ->
+      -- \| The name of a model action
+      String ->
+      ModelM ctx m Bool
+    checkSatisfied hash action =
+      gets (ModelState.indexEvidence hash action formulaName)
+
+    -- @(actions :: Set String)@ be the set of actions that we can take, we
+    -- partition @actions@ into two sets:
+    --
+    -- 1. The set of all actions that lead to runs which do satisfy <>[](p).
+    --    We don't need to do anything for these actions, since we already know
+    --    they can not be refuted.
+    --
+    -- 2. The set of all actions that lead to runs which do not satisfy <>[p].
+    -- 
+    -- NOTE: nexts == []
+    caseWeakFairPast :: World ctx -> World ctx -> ModelM ctx m Bool
+    caseWeakFairPast here there = do
+      actionsWF <- view weakFairActions
+
+      runResults <- forSet actionsWF \actionWF -> do
+        isSatisfied <- checkSatisfied (here ^. fingerprint) actionWF
+
+        if isSatisfied
+          then pure True -- isSatisfied == True
+          else checkSatisfied (there ^. fingerprint) actionWF
+
+      pure (and runResults)
+
+forSet :: (Applicative f, Ord b) => Set a -> (a -> f b) -> f (Set b)
+forSet xs f = fmap Set.fromList . traverse f . Set.toList $ xs
+
+expandAction ::
+  forall m ctx.
+  (HasDict Show ctx, MonadIO m) =>
+  -- | TODO: docs
+  World ctx ->
+  -- | TODO: docs (actionName, Model run leading from @actionName@ of @hash@)
+  ModelM ctx m (Map String (Tree (World ctx)))
 expandAction = run
   where
-    run hash = do
-      world <- World hash <$> use (indexNode hash . valuation)
+    run :: World ctx -> ModelM ctx m (Map String (Tree (World ctx)))
+    run world = do
+      let fingerprintHere = world ^. fingerprint
+      let !_ = Debug.trace ("fingerprint (world here): " ++ show world) ()
 
-      enabled <- gets (enabledActionsAt hash)
+      enabled <- gets (enabledActionsAt fingerprintHere)
       actionsTodo <- do
-        queued <- use (queuedActionsAt hash)
+        queued <- use (queuedActionsAt fingerprintHere)
         pure (filter (`Set.member` queued) enabled)
 
       if null actionsTodo
@@ -232,27 +375,49 @@ expandAction = run
               if null todoWF
                 then do
                   -- No actions left todo, no fairness constraints to solve, so stutter and terminate.
-                  pure (world :- [world :- []])
+                  pure (foldr (`Map.insert` (world :- [])) Map.empty actionsWF)
                 else do
                   subtrees <- for todoWF \actionWF ->
                     local (over weakFairActions (Set.delete actionWF)) do
-                      entries <- use (indexNode hash . nextEntries actionWF)
-                      traverse run (filter (/= hash) entries)
-                  pure (world :- nubBy ((==) `on` rootOf) (concat subtrees))
-            else do
-              subtrees <- for todoSF \actionSF -> do
-                local (over strongFairActions (Set.delete actionSF)) do
-                  entries <- use (indexNode hash . nextEntries actionSF)
-                  traverse run (filter (/= hash) entries)
-              pure (world :- nubBy ((==) `on` rootOf) (concat subtrees))
-        else do
-          subtrees <- for actionsTodo \todo -> do
-            entries <- use (indexNode hash . nextEntries todo)
-            queuedActionsAt hash %= Set.delete todo
-            -- Take only changing steps
-            traverse run (filter (/= hash) entries)
+                      entries <- use (indexNode fingerprintHere . nextEntries actionWF)
 
-          pure (world :- concat subtrees)
+                      subtrees <- for (filter (/= fingerprintHere) entries) \fingerprintNext -> do 
+                        world' <- World fingerprintNext <$> use (indexNode fingerprintNext . valuation)
+                        result <- run world'
+                        pure (Map.elems result)
+
+                      pure (actionWF, world :- concat subtrees)
+
+                  pure (Map.fromList subtrees)
+            else do
+              subtrees <- for todoSF \actionSF ->
+                local (over strongFairActions (Set.delete actionSF)) do
+                  entries <- use (indexNode fingerprintHere . nextEntries actionSF)
+                  results <- undefined -- traverse run (filter (/= fingerprintHere) entries)
+                  pure (actionSF, map Map.elems results)
+
+              subtrees' <- for subtrees \(action, subtree) -> do
+                let subtree' = undefined -- nubBy ((==) `on` rootOf) (concat (concat subtree))
+                pure (action, subtree')
+
+              pure undefined -- (Map.fromList subtrees')
+        else do
+          subtrees <- for actionsTodo \actionTodo -> do
+            entries <- use (indexNode fingerprintHere . nextEntries actionTodo)
+
+            let !_ = Debug.trace ("entries: " ++ show entries) ()
+
+            queuedActionsAt fingerprintHere %= Set.delete actionTodo
+
+            subtrees <- for (filter (/= fingerprintHere) entries) \fingerprintNext -> do 
+              world' <- World fingerprintNext <$> use (indexNode fingerprintNext . valuation)
+              fmap Map.elems (run world')
+              
+            let !_ = Debug.trace ("run results: " ++ show subtrees) ()
+
+            pure (actionTodo, world :- concat subtrees)
+
+          pure (Map.fromList subtrees)
 
 unfoldModelState ::
   MonadIO m =>
@@ -266,8 +431,7 @@ unfoldModelState actions = traverse go . Set.toList
       isSeen <- gets (ModelState.member hash)
 
       if isSeen
-        then do
-          pure (hash :- [])
+        then pure (hash :- [])
         else do
           nexts <- Map.fromList <$> traverse (runAction world) actions
 

@@ -37,7 +37,7 @@ singleConvergenceSpec :: ConvergenceSpec SingleActs
 singleConvergenceSpec =
   Specification
     { specInit =
-        ConF #stepsLeft (pure 4)
+        ConF #stepsLeft (pure 6)
           . ConF #position (pure 0)
           $ NilF
     , specNext =
@@ -60,7 +60,7 @@ splitConvergenceSpec :: ConvergenceSpec SplitActs
 splitConvergenceSpec =
   Specification
     { specInit =
-        ConF #stepsLeft (pure 4)
+        ConF #stepsLeft (pure 6)
           . ConF #position (pure 0)
           $ NilF
     , specNext =

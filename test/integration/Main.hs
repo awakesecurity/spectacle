@@ -43,7 +43,7 @@ testCheckVerify spec =
       Right {} -> success
 
 testCheckRefute ::
-  (HasDict Eq ctx, HasDict Hashable ctx) =>
+  (HasDict Eq ctx, HasDict Show ctx, HasDict Hashable ctx) =>
   Specification ctx acts form ->
   Property
 testCheckRefute spec =
