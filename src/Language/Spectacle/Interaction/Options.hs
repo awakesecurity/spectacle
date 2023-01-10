@@ -45,7 +45,7 @@ defineStringOption :: IsString s => [Mod OptionFields s] -> Parser s
 defineStringOption = Options.strOption . fold
 
 defineSwitchOption' :: [Mod FlagFields Bool] -> Parser Bool
-defineSwitchOption' = Options.flag False True . fold
+defineSwitchOption' = Options.switch . fold
 
 -- OptionsCLI ------------------------------------------------------------------
 
