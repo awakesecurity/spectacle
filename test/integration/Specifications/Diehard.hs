@@ -67,6 +67,9 @@ fillBig = do
   #bigJug .= pure 5
   pure True
 
+-- (~) :: Action DiehardVars Bool
+-- plain #someVar ~ prime #someVar
+
 bigToSmall :: Action DiehardVars Bool
 bigToSmall = do
   bigJug <- plain #bigJug
