@@ -13,7 +13,7 @@
         system.aarch64-darwin
       ];
 
-      ghcVersion = "ghc924";
+      ghcVersion = "ghc92";
 
     in flake-utils.lib.eachSystem systems (system:
       let
