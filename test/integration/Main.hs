@@ -11,9 +11,7 @@ import Language.Spectacle.Specification (Specification)
 
 import qualified Specifications.Alphabet as Alphabet
 import qualified Specifications.BitClock as BitClock
--- NOTE: Convergence is kept compiled for the future; to re-enable its tests
--- (see issue #47), change this to: import qualified Specifications.Convergence as Convergence
-import Specifications.Convergence ()
+import qualified Specifications.Convergence as Convergence
 import qualified Specifications.Diehard as Diehard
 import qualified Specifications.RateLimit as RateLimit
 import qualified Specifications.SimpleClock as SimpleClock
@@ -34,14 +32,8 @@ main =
       , testProperty "Specifications.SimpleClock" (testCheckVerify SimpleClock.clockSpec)
       , testProperty "Specifications.SpanningTree" (testCheckVerify SpanningTree.spanTreeSpec)
       , testProperty "Specifications.Status" (testCheckVerify Status.statusSpec)
-      -- Specifications.Convergence (single + split) reproduce issue #47 ("Weird
-      -- behaviour with NonDet and Stays modality"). The issue (Jan 2023) reports
-      -- only the single (oneOf) variant refuting; on this branch (May 2026) both
-      -- variants refute under PropFG, with errorModality = Stays at the root state.
-      -- That bug is in the 'Stays/PropFG semantics, distinct from issue #56's
-      -- self-loop bug fixed here. Both rows stay disabled until #47 is addressed.
-      -- , testProperty "Specifications.Convergence (single)" (testCheckVerify Convergence.singleConvergenceSpec)
-      -- , testProperty "Specifications.Convergence (split)" (testCheckVerify Convergence.splitConvergenceSpec)
+      , testProperty "Specifications.Convergence (single)" (testCheckVerify Convergence.singleConvergenceSpec)
+      , testProperty "Specifications.Convergence (split)" (testCheckVerify Convergence.splitConvergenceSpec)
       ]
 
 testCheckVerify ::

@@ -111,6 +111,7 @@ library
     , Language.Spectacle.Model.ModelNode
     , Language.Spectacle.Model.ModelState
     , Language.Spectacle.Model.ModelTemporal
+    , Language.Spectacle.Model.Scc
     , Language.Spectacle.Model.Monad
     , Language.Spectacle.Lang
     , Language.Spectacle.Lang.Member

@@ -17,12 +17,13 @@ import Control.Monad (unless)
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (local)
-import Control.Monad.State (gets)
+import Control.Monad.State (get, gets)
 import Data.Foldable (for_, traverse_)
 import Data.Function (on)
 import Data.Hashable (Hashable)
 import Data.List (nubBy)
 import qualified Data.Map as Map
+import Data.Maybe (listToMaybe, mapMaybe)
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Traversable (for)
@@ -45,10 +46,12 @@ import Language.Spectacle.Model.ModelError
 import Language.Spectacle.Model.ModelNode as ModelNode
   ( ModelNode (ModelNode),
     nextEntries,
+    nodeNextEntries,
     valuation,
   )
 import Language.Spectacle.Model.ModelState as ModelState
-  ( enabledActionsAt,
+  ( ModelState,
+    enabledActionsAt,
     indexNode,
     member,
     queuedActionsAt,
@@ -64,6 +67,12 @@ import Language.Spectacle.Model.Monad
     runModelM,
     strongFairActions,
     weakFairActions,
+  )
+import Language.Spectacle.Model.Scc
+  ( SccInfo (..),
+    computeSccs,
+    isFairScc,
+    reachableFrom,
   )
 import Language.Spectacle.Specification
   ( Modality (Always, Eventually, Infinitely, Stays),
@@ -141,7 +150,7 @@ checkModelSpec initials actions formulae
           Always -> checkAlways formula modelTree
           Eventually -> checkFuture formula modelTree
           Infinitely -> checkInfinitely formula modelTree
-          Stays -> checkStays formula modelTree
+          Stays -> checkStaysScc formula initials
 
       pure modelTree
 
@@ -193,20 +202,69 @@ checkInfinitely formula (root :- subtrees) = traverse_ (go root) subtrees
       | otherwise = do
         and <$> traverse (cyclically match) there
 
-checkStays :: Monad m => ModelTemporal ctx -> Tree (World ctx) -> ModelM ctx m ()
-checkStays formula (root :- subtrees) = do
-  results <- traverse (go root) subtrees
-  let satisfied = and results
-  unless satisfied do
-    let name = modelTemporalName formula
-    throwRefuteStays name (Just root) Nothing
-  where
-    go here (there :- nexts)
-      | null nexts = do
-        pure (getModelTemporal formula here there)
-      | otherwise = do
-        results <- traverse (go there) nexts
-        pure (and results)
+-- | SCC-based @\<>[] P@ checker. The previous tree-walking @checkStays@ was
+-- consulted on the (incorrectly fairness-annotated) tree from @expandAction@
+-- and could not distinguish a real "stutter forever at @X@" behavior from a
+-- genuine fair lasso, which is exactly what made issue #47's @Convergence@
+-- spec refute spuriously.
+--
+-- The fair-cycle algorithm: @\<>[] P@ holds iff every fair lasso reaches a
+-- bottom SCC ("BSCC") whose every visited transition satisfies @P@. Refute iff
+-- some fair BSCC reachable from an initial state contains a transition whose
+-- @getModelTemporal@ evaluates @False@ (or, for a sink BSCC — singleton without
+-- a self-loop — its self-evaluation is @False@).
+checkStaysScc ::
+  MonadIO m =>
+  ModelTemporal ctx ->
+  Set (World ctx) ->
+  ModelM ctx m ()
+checkStaysScc formula initials = do
+  mst <- get
+  wf <- view weakFairActions
+  sf <- view strongFairActions
+  let initialHashes = Set.map (^. fingerprint) initials
+      reach = reachableFrom mst initialHashes
+      reachableSccs =
+        filter (\info -> Set.isSubsetOf (sccNodes info) reach) (computeSccs mst)
+      fairBsccs =
+        filter (\info -> sccIsBottom info && isFairScc wf sf info) reachableSccs
+      offenders = mapMaybe (badEdge mst formula) fairBsccs
+  case listToMaybe offenders of
+    Nothing -> pure ()
+    Just (here, there) ->
+      throwRefuteStays (modelTemporalName formula) (Just here) (Just there)
+
+-- | Find a transition inside @info@ that does not satisfy @formula@. For a
+-- trivial bottom SCC (sink) the check degenerates to the implicit stutter
+-- @formula(X, X)@.
+badEdge ::
+  ModelState ctx ->
+  ModelTemporal ctx ->
+  SccInfo ->
+  Maybe (World ctx, World ctx)
+badEdge mst formula info
+  | sccIsTrivial info = case Set.toList (sccNodes info) of
+      [h] ->
+        let w = mkWorld mst h
+         in if getModelTemporal formula w w
+              then Nothing
+              else Just (w, w)
+      _ -> Nothing
+  | otherwise =
+      listToMaybe
+        [ (here, there)
+        | h <- Set.toList (sccNodes info)
+        , let here = mkWorld mst h
+              entries = nodeNextEntries (mst ^. indexNode h)
+        , (_action, targets) <- Map.toList entries
+        , h' <- targets
+        , h' `Set.member` sccNodes info
+        , let there = mkWorld mst h'
+        , not (getModelTemporal formula here there)
+        ]
+
+mkWorld :: ModelState ctx -> Fingerprint -> World ctx
+mkWorld mst h = World h (mst ^. indexNode h . valuation)
 
 expandAction :: MonadIO m => Fingerprint -> ModelM ctx m (Tree (World ctx))
 expandAction = run
