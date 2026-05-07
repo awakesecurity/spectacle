@@ -16,7 +16,6 @@ module Language.Spectacle.Model where
 import Control.Monad (unless)
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO)
-import Control.Monad.Reader (local)
 import Control.Monad.State (get, gets)
 import Data.Foldable (for_, traverse_)
 import Data.Function (on)
@@ -27,7 +26,7 @@ import Data.Maybe (listToMaybe, mapMaybe)
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Traversable (for)
-import Lens.Micro (over, (&), (^.))
+import Lens.Micro ((&), (^.))
 import Lens.Micro.Mtl (use, view, (%=), (.=))
 
 import Data.Fingerprint (Fingerprint)
@@ -383,6 +382,32 @@ isAllNotP mst formula info
         )
         (Set.toList (sccNodes info))
 
+-- | Materialize the model as a 'Tree' of behaviors rooted at @hash@.
+--
+-- Termination uses the global per-state action queue from 'unfoldModelState':
+-- each enabled action at a state is processed exactly once (via
+-- @actionsTodo@) and removed from that state's queue. When a state is
+-- revisited via a different path the queue is empty, and we emit a
+-- @world :- [world :- []]@ stutter representing "we have already explored
+-- from here." True terminal states (no enabled action) emit the same shape;
+-- self-loop entries (an action that ran without changing state — see issue
+-- #56) materialize as a @world :- []@ stutter leaf inside their parent so
+-- terminal self-looping states appear as @here@ to some pair during property
+-- checking.
+--
+-- Earlier formulations of @expandAction@ also @local@-deleted entries from
+-- @weakFairActions@ \/ @strongFairActions@ on each recursive descent and
+-- fell through to a terminal stutter once that env was empty. That
+-- manufactured /false/ stutter leaves at non-terminal states (any state
+-- whose queue had been consumed once and whose ancestors had already
+-- discharged a WF\/SF action), which leaked into the tree-based liveness
+-- checkers as fictitious "stutter forever at an enabled state" behaviors
+-- (issues #47 and #56) and into @--trace --diagram@ output as misleading
+-- paths. The fairness checkers (@checkFutureScc@, @checkInfinitelyScc@,
+-- @checkStaysScc@) are now SCC-based and read 'ModelState' directly, so
+-- the tree no longer needs to encode fairness obligations — only
+-- @checkAlways@ and trace mode consume it, and both want a faithful
+-- spanning of the reachable state graph.
 expandAction :: MonadIO m => Fingerprint -> ModelM ctx m (Tree (World ctx))
 expandAction = run
   where
@@ -394,52 +419,15 @@ expandAction = run
         queued <- use (queuedActionsAt hash)
         pure (filter (`Set.member` queued) enabled)
 
-      -- Recursively expand an action's @nextEntries@. The @(/= hash)@ filter avoids
-      -- recursing into the current state. When the original entries contain @hash@
-      -- (i.e. the action ran without changing state — e.g. its @.=@ was guarded out),
-      -- emit a @world :- []@ child. Property checkers walk the tree as @(parent, child)@
-      -- pairs and feed those to @getModelTemporal formula here there@, which evaluates
-      -- @plain@ on @here@ and @prime@ on @there@; without this stutter child a terminal
-      -- self-looping state is never @here@ to anything, so its @plain@ form is never
-      -- checked and @PropF@/@PropG@ refute on the final transition. Note: this also
-      -- changes @checkInfinitely@ semantics for self-looping states — they now register
-      -- as length-1 cycles rather than refuting.
-      let runEntries entries = do
+      if null actionsTodo
+        then -- queue exhausted (revisit) or true terminal — emit a stutter
+             pure (world :- [world :- []])
+        else do
+          subtrees <- for actionsTodo \action -> do
+            entries <- use (indexNode hash . nextEntries action)
+            queuedActionsAt hash %= Set.delete action
             children <- traverse run (filter (/= hash) entries)
             pure (if hash `elem` entries then (world :- []) : children else children)
-
-      if null actionsTodo
-        then do
-          actionsSF <- Set.toList <$> view strongFairActions
-          let todoSF = filter (`elem` enabled) actionsSF
-
-          if null todoSF
-            then do
-              actionsWF <- Set.toList <$> view weakFairActions
-              let todoWF = filter (`elem` enabled) actionsWF
-
-              if null todoWF
-                then do
-                  -- No actions left todo, no fairness constraints to solve, so stutter and terminate.
-                  pure (world :- [world :- []])
-                else do
-                  subtrees <- for todoWF \actionWF ->
-                    local (over weakFairActions (Set.delete actionWF)) do
-                      entries <- use (indexNode hash . nextEntries actionWF)
-                      runEntries entries
-                  pure (world :- nubBy ((==) `on` rootOf) (concat subtrees))
-            else do
-              subtrees <- for todoSF \actionSF -> do
-                local (over strongFairActions (Set.delete actionSF)) do
-                  entries <- use (indexNode hash . nextEntries actionSF)
-                  runEntries entries
-              pure (world :- nubBy ((==) `on` rootOf) (concat subtrees))
-        else do
-          subtrees <- for actionsTodo \todo -> do
-            entries <- use (indexNode hash . nextEntries todo)
-            queuedActionsAt hash %= Set.delete todo
-            runEntries entries
-
           pure (world :- nubBy ((==) `on` rootOf) (concat subtrees))
 
 unfoldModelState ::
