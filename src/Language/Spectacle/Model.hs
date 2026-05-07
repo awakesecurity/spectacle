@@ -219,6 +219,20 @@ expandAction = run
         queued <- use (queuedActionsAt hash)
         pure (filter (`Set.member` queued) enabled)
 
+      -- Recursively expand an action's @nextEntries@. The @(/= hash)@ filter avoids
+      -- recursing into the current state. When the original entries contain @hash@
+      -- (i.e. the action ran without changing state — e.g. its @.=@ was guarded out),
+      -- emit a @world :- []@ child. Property checkers walk the tree as @(parent, child)@
+      -- pairs and feed those to @getModelTemporal formula here there@, which evaluates
+      -- @plain@ on @here@ and @prime@ on @there@; without this stutter child a terminal
+      -- self-looping state is never @here@ to anything, so its @plain@ form is never
+      -- checked and @PropF@/@PropG@ refute on the final transition. Note: this also
+      -- changes @checkInfinitely@ semantics for self-looping states — they now register
+      -- as length-1 cycles rather than refuting.
+      let runEntries entries = do
+            children <- traverse run (filter (/= hash) entries)
+            pure (if hash `elem` entries then (world :- []) : children else children)
+
       if null actionsTodo
         then do
           actionsSF <- Set.toList <$> view strongFairActions
@@ -237,22 +251,21 @@ expandAction = run
                   subtrees <- for todoWF \actionWF ->
                     local (over weakFairActions (Set.delete actionWF)) do
                       entries <- use (indexNode hash . nextEntries actionWF)
-                      traverse run (filter (/= hash) entries)
+                      runEntries entries
                   pure (world :- nubBy ((==) `on` rootOf) (concat subtrees))
             else do
               subtrees <- for todoSF \actionSF -> do
                 local (over strongFairActions (Set.delete actionSF)) do
                   entries <- use (indexNode hash . nextEntries actionSF)
-                  traverse run (filter (/= hash) entries)
+                  runEntries entries
               pure (world :- nubBy ((==) `on` rootOf) (concat subtrees))
         else do
           subtrees <- for actionsTodo \todo -> do
             entries <- use (indexNode hash . nextEntries todo)
             queuedActionsAt hash %= Set.delete todo
-            -- Take only changing steps
-            traverse run (filter (/= hash) entries)
+            runEntries entries
 
-          pure (world :- concat subtrees)
+          pure (world :- nubBy ((==) `on` rootOf) (concat subtrees))
 
 unfoldModelState ::
   MonadIO m =>
