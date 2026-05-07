@@ -10,13 +10,16 @@ import Language.Spectacle.Model (modelcheck)
 import Language.Spectacle.Specification (Specification)
 
 import qualified Specifications.Alphabet as Alphabet
+import qualified Specifications.AsyncInterface as AsyncInterface
 import qualified Specifications.BitClock as BitClock
 import qualified Specifications.Convergence as Convergence
 import qualified Specifications.Diehard as Diehard
+import qualified Specifications.LightSwitch as LightSwitch
 import qualified Specifications.RateLimit as RateLimit
 import qualified Specifications.SimpleClock as SimpleClock
 import qualified Specifications.SpanningTree as SpanningTree
 import qualified Specifications.Status as Status
+import qualified Specifications.TokenRing as TokenRing
 
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -26,12 +29,15 @@ main =
     testGroup
       "Integration"
       [ testProperty "Specifications.Alphabet" (testCheckVerify Alphabet.alphabetSpec)
+      , testProperty "Specifications.AsyncInterface" (testCheckVerify AsyncInterface.asyncInterfaceSpec)
       , testProperty "Specifications.BitClock" (testCheckVerify BitClock.bitClockSpec)
       , testProperty "Specifications.Diehard" (testCheckRefute Diehard.diehardSpec)
+      , testProperty "Specifications.LightSwitch" (testCheckVerify LightSwitch.lightSwitchSpec)
       , testProperty "Specifications.RateLimit" (testCheckVerify RateLimit.rateLimitSpec)
       , testProperty "Specifications.SimpleClock" (testCheckVerify SimpleClock.clockSpec)
       , testProperty "Specifications.SpanningTree" (testCheckVerify SpanningTree.spanTreeSpec)
       , testProperty "Specifications.Status" (testCheckVerify Status.statusSpec)
+      , testProperty "Specifications.TokenRing" (testCheckVerify TokenRing.tokenRingSpec)
       , testProperty "Specifications.Convergence (single)" (testCheckVerify Convergence.singleConvergenceSpec)
       , testProperty "Specifications.Convergence (split)" (testCheckVerify Convergence.splitConvergenceSpec)
       ]

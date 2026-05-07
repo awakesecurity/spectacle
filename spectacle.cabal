@@ -175,13 +175,16 @@ test-suite integration-tests
 
   other-modules:
     Specifications.Alphabet
+    Specifications.AsyncInterface
     Specifications.BitClock
     Specifications.Convergence
     Specifications.Diehard
+    Specifications.LightSwitch
     Specifications.RateLimit
     Specifications.SimpleClock
     Specifications.SpanningTree
     Specifications.Status
+    Specifications.TokenRing
 
   build-depends:
       spectacle
