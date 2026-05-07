@@ -73,6 +73,8 @@ import Language.Spectacle.Model.Scc
     computeSccs,
     isFairScc,
     reachableFrom,
+    reachableVia,
+    successorsOf,
   )
 import Language.Spectacle.Specification
   ( Modality (Always, Eventually, Infinitely, Stays),
@@ -148,8 +150,8 @@ checkModelSpec initials actions formulae
         modality <- view (modalityOf name)
         case modality of
           Always -> checkAlways formula modelTree
-          Eventually -> checkFuture formula modelTree
-          Infinitely -> checkInfinitely formula modelTree
+          Eventually -> checkFutureScc formula initials
+          Infinitely -> checkInfinitelyScc formula initials
           Stays -> checkStaysScc formula initials
 
       pure modelTree
@@ -265,6 +267,121 @@ badEdge mst formula info
 
 mkWorld :: ModelState ctx -> Fingerprint -> World ctx
 mkWorld mst h = World h (mst ^. indexNode h . valuation)
+
+-- | SCC-based @\<>P@ (Eventually) checker. A path satisfies @\<>P@ iff some
+-- transition along it has @formula@ true (state-property formulas only depend
+-- on the source, transition formulas can use both endpoints — the unified view
+-- treats both via @getModelTemporal@). Refute iff there is a fair lasso whose
+-- prefix is composed entirely of @¬P@-edges and whose ultimate BSCC has no
+-- internal @P@-witness.
+checkFutureScc ::
+  MonadIO m =>
+  ModelTemporal ctx ->
+  Set (World ctx) ->
+  ModelM ctx m ()
+checkFutureScc formula initials = do
+  mst <- get
+  wf <- view weakFairActions
+  sf <- view strongFairActions
+  let initialHashes = Set.map (^. fingerprint) initials
+      reach = reachableFrom mst initialHashes
+      reachableSccs =
+        filter (\info -> Set.isSubsetOf (sccNodes info) reach) (computeSccs mst)
+      fairBsccs =
+        filter (\info -> sccIsBottom info && isFairScc wf sf info) reachableSccs
+
+      -- The path is @P@-free iff every traversed edge has @formula False@.
+      isFreeEdge h h' =
+        not (getModelTemporal formula (mkWorld mst h) (mkWorld mst h'))
+
+      -- Frontier expansion only follows @¬P@-edges, modeling the "the path
+      -- avoids @P@ all the way to the BSCC" condition.
+      freeReach = reachableVia mst isFreeEdge initialHashes
+
+      offendingBsccs =
+        filter
+          (\info -> isAllNotP mst formula info && not (Set.disjoint (sccNodes info) freeReach))
+          fairBsccs
+  case listToMaybe offendingBsccs of
+    Nothing -> pure ()
+    Just info -> case Set.toList (sccNodes info) of
+      h : _ ->
+        let w = mkWorld mst h
+         in throwRefuteEventually (modelTemporalName formula) (Just w) Nothing
+      _ -> pure ()
+
+-- | SCC-based @[]\<>P@ (Infinitely) checker. A fair lasso satisfies @[]\<>P@
+-- iff its BSCC contains a @P@-witness — some internal transition where
+-- @formula@ holds, or for a sink the implicit stutter @formula(X, X)@. Refute
+-- iff some fair BSCC reachable from initials has no @P@-witness.
+checkInfinitelyScc ::
+  MonadIO m =>
+  ModelTemporal ctx ->
+  Set (World ctx) ->
+  ModelM ctx m ()
+checkInfinitelyScc formula initials = do
+  mst <- get
+  wf <- view weakFairActions
+  sf <- view strongFairActions
+  let initialHashes = Set.map (^. fingerprint) initials
+      reach = reachableFrom mst initialHashes
+      reachableSccs =
+        filter (\info -> Set.isSubsetOf (sccNodes info) reach) (computeSccs mst)
+      fairBsccs =
+        filter (\info -> sccIsBottom info && isFairScc wf sf info) reachableSccs
+
+      offendingBsccs = filter (not . hasWitness mst formula) fairBsccs
+  case listToMaybe offendingBsccs of
+    Nothing -> pure ()
+    Just info -> case Set.toList (sccNodes info) of
+      h : _ ->
+        let w = mkWorld mst h
+         in throwRefuteInfinitely (modelTemporalName formula) (Just w) Nothing
+      _ -> pure ()
+
+-- | An @info@ BSCC has a @P@-witness when some internal edge satisfies the
+-- formula or, for a trivial sink, the stutter self-evaluation does.
+hasWitness :: ModelState ctx -> ModelTemporal ctx -> SccInfo -> Bool
+hasWitness mst formula info
+  | sccIsTrivial info = case Set.toList (sccNodes info) of
+      [h] ->
+        let w = mkWorld mst h
+         in getModelTemporal formula w w
+      _ -> False
+  | otherwise =
+      any
+        ( \h ->
+            let here = mkWorld mst h
+             in any
+                  ( \h' ->
+                      h' `Set.member` sccNodes info
+                        && getModelTemporal formula here (mkWorld mst h')
+                  )
+                  (successorsOf mst h)
+        )
+        (Set.toList (sccNodes info))
+
+-- | An @info@ BSCC is "all @¬P@" when every internal transition fails the
+-- formula and (for sinks) the stutter self-evaluation also fails.
+isAllNotP :: ModelState ctx -> ModelTemporal ctx -> SccInfo -> Bool
+isAllNotP mst formula info
+  | sccIsTrivial info = case Set.toList (sccNodes info) of
+      [h] ->
+        let w = mkWorld mst h
+         in not (getModelTemporal formula w w)
+      _ -> False
+  | otherwise =
+      all
+        ( \h ->
+            let here = mkWorld mst h
+             in all
+                  ( \h' ->
+                      not (h' `Set.member` sccNodes info)
+                        || not (getModelTemporal formula here (mkWorld mst h'))
+                  )
+                  (successorsOf mst h)
+        )
+        (Set.toList (sccNodes info))
 
 expandAction :: MonadIO m => Fingerprint -> ModelM ctx m (Tree (World ctx))
 expandAction = run

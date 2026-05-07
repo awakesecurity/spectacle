@@ -23,6 +23,8 @@ module Language.Spectacle.Model.Scc
 
     -- * Reachability
     reachableFrom,
+    reachableVia,
+    successorsOf,
 
     -- * Fairness
     isFairScc,
@@ -78,7 +80,16 @@ computeSccs mst =
 
 -- | Reachable states from a set of seed states, following any outgoing edge.
 reachableFrom :: ModelState ctx -> Set Fingerprint -> Set Fingerprint
-reachableFrom mst = go Set.empty
+reachableFrom mst = reachableVia mst (\_ _ -> True)
+
+-- | Reachable states from seeds, following only edges @(x, y)@ where
+-- @admit x y@ holds. Used by 'Eventually' to walk the @¬P@-edge subgraph.
+reachableVia ::
+  ModelState ctx ->
+  (Fingerprint -> Fingerprint -> Bool) ->
+  Set Fingerprint ->
+  Set Fingerprint
+reachableVia mst admit = go Set.empty
   where
     go seen frontier
       | Set.null frontier = seen
@@ -88,10 +99,17 @@ reachableFrom mst = go Set.empty
                 Set.fromList $
                   [ s
                   | h <- Set.toList frontier
-                  , s <- successors mst h
+                  , s <- successorsOf mst h
+                  , admit h s
                   ]
               frontier' = Set.difference succs seen'
            in go seen' frontier'
+
+-- | All next-state fingerprints reachable in one transition from a state.
+successorsOf :: ModelState ctx -> Fingerprint -> [Fingerprint]
+successorsOf mst h =
+  let n = mst ^. indexNode h
+   in concat (Map.elems (nodeNextEntries n))
 
 -- | An SCC is fair under given WF/SF action sets when every WF/SF obligation is
 -- discharged on the cycle. WF: an action enabled at /every/ state of the cycle
@@ -118,15 +136,10 @@ isFairScc wfActions sfActions info
 -- Build the @stronglyConnComp@-shaped adjacency triples for the full graph.
 adjacency :: ModelState ctx -> [(Fingerprint, Fingerprint, [Fingerprint])]
 adjacency mst@(ModelState nodes) =
-  [ (h, h, successors mst h)
+  [ (h, h, successorsOf mst h)
   | h_int <- IntMap.keys nodes
   , let h = Fingerprint h_int
   ]
-
-successors :: ModelState ctx -> Fingerprint -> [Fingerprint]
-successors mst h =
-  let n = mst ^. indexNode h
-   in concat (Map.elems (nodeNextEntries n))
 
 sccToSet :: Graph.SCC Fingerprint -> Set Fingerprint
 sccToSet (Graph.AcyclicSCC h) = Set.singleton h
@@ -182,5 +195,5 @@ mkSccInfo mst membership idx scc =
 
     -- Trivial: singleton with no self-edge.
     isTrivial = case Set.toList scc of
-      [h] -> not (h `elem` successors mst h)
+      [h] -> h `notElem` successorsOf mst h
       _ -> False
